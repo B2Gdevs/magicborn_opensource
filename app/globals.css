@@ -3,29 +3,31 @@
 @tailwind utilities;
 
 :root {
-  /* Magicborn: Modred's Legacy - Dark Organic Theme */
-  --color-void: #0a0a0f;
-  --color-shadow: #1a1a2e;
-  --color-deep: #16213e;
-  --color-abyss: #0f1419;
+  /* Magicborn: Modred's Legacy - Dark Shadowy Theme */
+  --color-void: #000000;
+  --color-shadow: #0a0a0a;
+  --color-deep: #1a1a1a;
+  --color-abyss: #050505;
   
-  /* Organic Accents */
-  --color-ember: #c94a2a;
-  --color-ember-glow: #ff6b4a;
-  --color-moss: #2d5a3d;
-  --color-moss-glow: #4a8a5f;
-  --color-shadow-purple: #4a2c5a;
-  --color-shadow-purple-glow: #6b3d7a;
+  /* Earthy Dark Accents */
+  --color-ember: #8b4513;
+  --color-ember-glow: #cd853f;
+  --color-earth: #3d2817;
+  --color-earth-glow: #6b4423;
+  --color-shadow-purple: #2d1b2e;
+  --color-shadow-purple-glow: #4a2d4a;
+  --color-bone: #8b7d6b;
+  --color-bone-glow: #c4b5a0;
   
   /* Text Colors */
   --color-text-primary: #e8e6e3;
   --color-text-secondary: #b8b5b0;
   --color-text-muted: #7a7875;
-  --color-text-glow: #ffd89b;
+  --color-text-glow: #d4a574;
   
   /* Border & Divider */
-  --color-border: #2a2a3e;
-  --color-border-glow: #4a4a6e;
+  --color-border: #2a2a2a;
+  --color-border-glow: #4a4a4a;
 }
 
 @layer base {
@@ -36,77 +38,182 @@
   body {
     @apply bg-void text-text-primary antialiased;
     background-image: 
-      radial-gradient(circle at 20% 50%, rgba(201, 74, 42, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(75, 44, 90, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 40% 20%, rgba(45, 90, 61, 0.05) 0%, transparent 50%);
+      radial-gradient(circle at 20% 50%, rgba(139, 69, 19, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(45, 27, 46, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 40% 20%, rgba(61, 40, 23, 0.1) 0%, transparent 50%);
     background-attachment: fixed;
   }
 }
 
 @layer components {
-  /* Card with organic shadow */
+  /* Neobrutal Card with harsh shadows */
   .card {
-    @apply bg-shadow/80 backdrop-blur-sm border border-border rounded-lg p-6;
+    @apply bg-shadow border-2 border-border rounded-none p-6;
     box-shadow: 
-      0 4px 6px -1px rgba(0, 0, 0, 0.3),
-      0 2px 4px -1px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+      8px 8px 0px 0px rgba(0, 0, 0, 0.8),
+      4px 4px 0px 0px rgba(139, 69, 19, 0.3),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    position: relative;
+  }
+  
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.05) 0%, transparent 50%);
+    pointer-events: none;
   }
   
   .card-glow {
     @apply card;
     box-shadow: 
-      0 4px 6px -1px rgba(0, 0, 0, 0.3),
-      0 2px 4px -1px rgba(0, 0, 0, 0.2),
-      0 0 20px rgba(201, 74, 42, 0.2),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+      8px 8px 0px 0px rgba(0, 0, 0, 0.8),
+      4px 4px 0px 0px rgba(139, 69, 19, 0.5),
+      0 0 20px rgba(139, 69, 19, 0.2),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   }
   
-  /* Organic button styles */
+  .card-glow::before {
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, transparent 50%);
+  }
+  
+  /* Neobrutal button styles */
   .btn {
-    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200;
-    @apply bg-gradient-to-r from-ember to-ember-glow;
+    @apply px-6 py-3 rounded-none font-bold transition-all duration-200;
+    @apply bg-ember border-2 border-ember-glow;
     @apply text-white shadow-lg;
-    @apply hover:shadow-ember-glow/50 hover:scale-105;
-    @apply active:scale-95;
+    @apply hover:shadow-ember-glow/50 hover:translate-x-1 hover:translate-y-1;
+    @apply active:translate-x-2 active:translate-y-2 active:shadow-none;
+    box-shadow: 
+      4px 4px 0px 0px rgba(0, 0, 0, 0.8),
+      2px 2px 0px 0px rgba(205, 133, 63, 0.5);
   }
   
   .btn-secondary {
-    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200;
-    @apply bg-shadow border border-border;
+    @apply px-6 py-3 rounded-none font-bold transition-all duration-200;
+    @apply bg-deep border-2 border-border;
     @apply text-text-primary;
-    @apply hover:bg-deep hover:border-border-glow;
+    @apply hover:bg-shadow hover:border-border-glow hover:translate-x-1 hover:translate-y-1;
+    box-shadow: 
+      4px 4px 0px 0px rgba(0, 0, 0, 0.8),
+      2px 2px 0px 0px rgba(139, 69, 19, 0.3);
   }
   
-  /* Badge with organic glow */
+  /* Badge with neobrutal style */
   .badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
-    @apply bg-shadow border border-border;
+    @apply inline-flex items-center px-3 py-1 rounded-none text-xs font-bold;
+    @apply bg-shadow border-2 border-border;
     @apply text-text-secondary;
+    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.8);
   }
   
   .badge-glow {
     @apply badge;
-    @apply border-ember/50 bg-ember/10;
+    @apply border-ember bg-earth;
     @apply text-ember-glow;
-    box-shadow: 0 0 10px rgba(201, 74, 42, 0.3);
+    box-shadow: 
+      2px 2px 0px 0px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(139, 69, 19, 0.4);
   }
   
   /* Text with organic glow */
   .text-glow {
     @apply text-text-glow;
-    text-shadow: 0 0 10px rgba(255, 216, 155, 0.5);
+    text-shadow: 
+      0 0 10px rgba(212, 165, 116, 0.5),
+      0 0 20px rgba(139, 69, 19, 0.3);
   }
   
   /* Organic divider */
   .divider {
-    @apply border-t border-border;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+    @apply border-t-2 border-border;
+    box-shadow: 0 2px 0 rgba(139, 69, 19, 0.2);
   }
   
   /* Muted text */
   .text-muted {
     @apply text-text-muted;
+  }
+}
+
+@layer utilities {
+  .bg-void {
+    background-color: var(--color-void);
+  }
+  
+  .bg-shadow {
+    background-color: var(--color-shadow);
+  }
+  
+  .bg-deep {
+    background-color: var(--color-deep);
+  }
+  
+  .bg-abyss {
+    background-color: var(--color-abyss);
+  }
+  
+  .bg-ember {
+    background-color: var(--color-ember);
+  }
+  
+  .bg-ember-glow {
+    background-color: var(--color-ember-glow);
+  }
+  
+  .bg-earth {
+    background-color: var(--color-earth);
+  }
+  
+  .bg-earth-glow {
+    background-color: var(--color-earth-glow);
+  }
+  
+  .bg-shadow-purple {
+    background-color: var(--color-shadow-purple);
+  }
+  
+  .bg-shadow-purple-glow {
+    background-color: var(--color-shadow-purple-glow);
+  }
+  
+  .bg-bone {
+    background-color: var(--color-bone);
+  }
+  
+  .bg-bone-glow {
+    background-color: var(--color-bone-glow);
+  }
+  
+  .text-text-primary {
+    color: var(--color-text-primary);
+  }
+  
+  .text-text-secondary {
+    color: var(--color-text-secondary);
+  }
+  
+  .text-text-muted {
+    color: var(--color-text-muted);
+  }
+  
+  .text-text-glow {
+    color: var(--color-text-glow);
+  }
+  
+  .border-border {
+    border-color: var(--color-border);
+  }
+  
+  .border-border-glow {
+    border-color: var(--color-border-glow);
+  }
+  
+  .shadow-ember-glow {
+    box-shadow: 0 0 20px rgba(139, 69, 19, 0.4);
   }
   
   /* Animations */
@@ -144,74 +251,13 @@
     animation: fade-in 1s ease-out 0.8s forwards;
     opacity: 0;
   }
-}
-
-@layer utilities {
-  .bg-void {
-    background-color: var(--color-void);
+  
+  /* Neobrutal hover effects */
+  .hover-lift {
+    @apply transition-transform duration-200;
   }
   
-  .bg-shadow {
-    background-color: var(--color-shadow);
-  }
-  
-  .bg-deep {
-    background-color: var(--color-deep);
-  }
-  
-  .bg-abyss {
-    background-color: var(--color-abyss);
-  }
-  
-  .bg-ember {
-    background-color: var(--color-ember);
-  }
-  
-  .bg-ember-glow {
-    background-color: var(--color-ember-glow);
-  }
-  
-  .bg-moss {
-    background-color: var(--color-moss);
-  }
-  
-  .bg-moss-glow {
-    background-color: var(--color-moss-glow);
-  }
-  
-  .bg-shadow-purple {
-    background-color: var(--color-shadow-purple);
-  }
-  
-  .bg-shadow-purple-glow {
-    background-color: var(--color-shadow-purple-glow);
-  }
-  
-  .text-text-primary {
-    color: var(--color-text-primary);
-  }
-  
-  .text-text-secondary {
-    color: var(--color-text-secondary);
-  }
-  
-  .text-text-muted {
-    color: var(--color-text-muted);
-  }
-  
-  .text-text-glow {
-    color: var(--color-text-glow);
-  }
-  
-  .border-border {
-    border-color: var(--color-border);
-  }
-  
-  .border-border-glow {
-    border-color: var(--color-border-glow);
-  }
-  
-  .shadow-ember-glow {
-    box-shadow: 0 0 20px rgba(201, 74, 42, 0.4);
+  .hover-lift:hover {
+    transform: translate(-2px, -2px);
   }
 }
