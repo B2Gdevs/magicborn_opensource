@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import HeroVideo from "@components/HeroVideo";
 
 export default function LandingPage() {
@@ -10,14 +11,24 @@ export default function LandingPage() {
         <HeroVideo loopVideos={true}>
           <div className="container mx-auto px-12 text-center">
             <div className="max-w-4xl mx-auto">
-              <h1 className="text-7xl md:text-8xl font-bold mb-4 text-white drop-shadow-2xl animate-fade-in">
-                Magicborn
-              </h1>
-              <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white drop-shadow-lg animate-fade-in-delay">
-                <em>Modred's Legacy</em>
-              </h2>
-              <p className="text-lg md:text-xl text-white/80 mb-4 font-light max-w-2xl mx-auto drop-shadow-lg animate-fade-in-delay-2">
-                In the shadowy depths where magic flows like blood, spellcrafters forge their destiny
+              {/* Logo */}
+              <div className="relative w-64 h-64 mx-auto mb-8 animate-fade-in">
+                <Image
+                  src="/logos/magicborn_logo.png"
+                  alt="Magicborn: Modred's Legacy"
+                  fill
+                  className="object-contain drop-shadow-2xl"
+                  priority
+                />
+              </div>
+              
+              {/* Dramatic Subtext */}
+              <p className="text-xl md:text-2xl text-white/90 mb-4 font-light max-w-3xl mx-auto drop-shadow-lg animate-fade-in-delay-2 leading-relaxed">
+                You are <strong className="text-white font-bold">Magicborn</strong>—a military slave, your kind oppressed and used for war. 
+                Treated as second-class citizens, silenced for your power. 
+                <br /><br />
+                <em className="text-white/80">Craft your spells to survive in this godforsaken land. 
+                This is the story of the oppressed, and what they must do to survive... their way.</em>
               </p>
             </div>
           </div>
