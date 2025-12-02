@@ -14,8 +14,8 @@ const stories = [
 
 export default function StoriesPage() {
   return (
-    <main className="min-h-screen bg-void text-text-primary">
-      <div className="container mx-auto px-6 py-12 max-w-4xl">
+    <main className="ml-64 mt-16 min-h-screen bg-void text-text-primary">
+      <div className="container mx-auto px-12 py-12 max-w-4xl">
         <h1 className="text-5xl font-bold mb-4 text-glow">Tales from the Shadow</h1>
         <p className="text-xl text-text-secondary mb-12">
           Stories from the Magicborn: Modred's Legacy universe

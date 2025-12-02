@@ -25,8 +25,10 @@ export default function PlayerDetailPage() {
   if (!player) return null;
 
   return (
-    <main className="grid gap-4">
-      <div className="card">
+    <main className="ml-64 mt-16 p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="grid gap-4">
+          <div className="card">
         <h2 className="text-xl font-semibold">Player: {player.name}</h2>
         <p className="text-muted">ID: {player.id}</p>
       </div>
@@ -39,6 +41,7 @@ export default function PlayerDetailPage() {
             .map(([k, v]) => (
               <span className="badge" key={k}>{k}:{(v as number).toFixed(2)}</span>
             ))}
+        </div>
         </div>
       </div>
     </main>

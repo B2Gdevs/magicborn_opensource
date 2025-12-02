@@ -14,8 +14,10 @@ export default function PlayersPage() {
   };
 
   return (
-    <main className="grid gap-4">
-      <div className="card">
+    <main className="ml-64 mt-16 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid gap-4">
+          <div className="card">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Players</h2>
           <a className="btn" href="/players/new">
@@ -94,6 +96,7 @@ export default function PlayersPage() {
             </table>
           </div>
         )}
+        </div>
       </div>
     </main>
   );

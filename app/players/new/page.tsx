@@ -46,8 +46,10 @@ export default function CreatePlayerPage() {
   };
 
   return (
-    <main className="grid gap-4">
-      <div className="card">
+    <main className="ml-64 mt-16 p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="grid gap-4">
+          <div className="card">
         <h2 className="text-xl font-semibold mb-2">Create Player</h2>
         <p className="text-muted">We’ll store players in localStorage for now.</p>
       </div>
@@ -89,6 +91,8 @@ export default function CreatePlayerPage() {
           <a className="btn-secondary" href="/players">Back to Players</a>
         </div>
       </form>
+        </div>
+      </div>
     </main>
   );
 }

@@ -10,11 +10,11 @@ export default function CraftingPage() {
 
   if (!player) {
     return (
-      <main className="p-6">
+      <main className="ml-64 mt-16 p-6">
         <div className="card">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-text-secondary">
             No active player. Go to{" "}
-            <a className="underline" href="/players">
+            <a className="underline text-ember-glow" href="/players">
               Players
             </a>{" "}
             and create / select one.
@@ -25,7 +25,7 @@ export default function CraftingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-purple-950 text-slate-100 p-6">
+    <main className="ml-64 mt-16 min-h-screen bg-void text-text-primary p-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-2xl font-bold mb-4">Spell Crafting</h1>
         <CraftingScreen

@@ -2,8 +2,8 @@
 
 export default function StyleGuidePage() {
   return (
-    <main className="min-h-screen bg-void text-text-primary">
-      <div className="container mx-auto px-6 py-12 max-w-6xl">
+    <main className="ml-64 mt-16 min-h-screen bg-void text-text-primary">
+      <div className="container mx-auto px-12 py-12 max-w-6xl">
         <h1 className="text-5xl font-bold mb-4 text-glow">Magicborn: Modred's Legacy</h1>
         <p className="text-2xl text-text-secondary mb-12">Design System & Style Guide</p>
 
