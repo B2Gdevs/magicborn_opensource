@@ -40,6 +40,9 @@ export default function TopNav() {
           <Link href="/style-guide" className="text-text-secondary hover:text-moss-glow transition-colors">
             Style Guide
           </Link>
+          <Link href="/development" className="text-text-secondary hover:text-shadow-purple-glow transition-colors">
+            Development
+          </Link>
           <span className="text-text-muted mx-2">|</span>
           <span className="text-sm text-text-secondary">
             Active: {active ? <span className="text-ember-glow font-semibold">{active.name}</span> : <span className="text-text-muted italic">none</span>}
