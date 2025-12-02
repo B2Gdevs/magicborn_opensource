@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { getAllBooks, getBookById, type BookId } from "@lib/data/stories";
+import { getMordredsTaleBook } from "@lib/data/books";
 
 // Concept art images for stories
 const conceptArt = [
@@ -63,68 +64,91 @@ export default function StoriesPage() {
         <div className="mb-16 text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-4 text-white">Tales from the Shadow</h1>
           <p className="text-xl text-text-secondary max-w-3xl mx-auto leading-relaxed font-serif">
-            Stories from the Magicborn universe. Explore the prequel, <em className="text-ember-glow/80">The Tale of Modred</em>, 
-            and the ongoing stories of <strong className="text-ember-glow">Modred's Legacy</strong>—the timeline where the game takes place.
+            Stories from the Magicborn universe. <strong className="text-ember-glow">Modred's Legacy</strong> is the main timeline 
+            where the game takes place. Explore short stories of oppressed magicborn, military slaves, and those who craft spells to survive.
           </p>
         </div>
 
         {/* Books Section */}
         <section className="mb-20">
-          <h2 className="text-3xl font-bold mb-8 text-ember-glow">The Books</h2>
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold mb-2 text-ember-glow">The Books</h2>
+            <p className="text-text-muted text-sm font-serif">
+              <strong className="text-ember-glow">Modred's Legacy</strong> is the focus of the game. Short stories will appear here as we expand the narrative.
+            </p>
+          </div>
           <div className="grid md:grid-cols-2 gap-8 mb-8">
-            {books.map((book) => (
-              <div
-                key={book.id}
-                className={`card-glow cursor-pointer transition-all hover:border-ember ${
-                  selectedBook === book.id ? "border-ember border-2" : ""
-                }`}
-                onClick={() => setSelectedBook(selectedBook === book.id ? null : book.id)}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-2 text-ember-glow">{book.title}</h3>
-                    {book.isPrequel && (
-                      <span className="badge-glow text-xs">Prequel</span>
-                    )}
+            {books.map((book) => {
+              const isPrequel = book.id === "tale_of_modred";
+              const modredsTaleBook = isPrequel ? getMordredsTaleBook() : null;
+              const pageCount = modredsTaleBook ? modredsTaleBook.totalPages : 0;
+              
+              return (
+                <Link
+                  key={book.id}
+                  href={isPrequel ? "/books/tale-of-modred?page=1" : "#"}
+                  onClick={(e) => {
+                    if (!isPrequel) {
+                      e.preventDefault();
+                      setSelectedBook(selectedBook === book.id ? null : book.id);
+                    }
+                  }}
+                  className={`card-glow transition-all hover:border-ember block ${
+                    isPrequel ? "opacity-60 hover:opacity-80" : ""
+                  } ${selectedBook === book.id && !isPrequel ? "border-ember border-2" : ""}`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className={`text-2xl font-bold mb-2 ${isPrequel ? "text-text-secondary" : "text-ember-glow"}`}>
+                        {book.title}
+                      </h3>
+                      {book.isPrequel && (
+                        <span className="badge text-xs opacity-60">Prequel</span>
+                      )}
+                      {!book.isPrequel && (
+                        <span className="badge-glow text-xs">Main Game Timeline</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <p className="text-text-secondary mb-4 leading-relaxed font-serif">
-                  {book.description}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-muted">
-                    {book.stories.length} {book.stories.length === 1 ? "story" : "stories"}
-                  </span>
-                  <span className="text-sm text-ember-glow">
-                    {selectedBook === book.id ? "▼" : "▶"}
-                  </span>
-                </div>
-              </div>
-            ))}
+                  <p className={`mb-4 leading-relaxed font-serif ${isPrequel ? "text-text-muted" : "text-text-secondary"}`}>
+                    {book.description}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      {isPrequel ? (
+                        <span className="text-sm text-text-muted">
+                          {pageCount} {pageCount === 1 ? "page" : "pages"}
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-sm text-ember-glow">
+                            {book.stories.length} {book.stories.length === 1 ? "story" : "stories"}
+                          </span>
+                          {pageCount > 0 && (
+                            <span className="text-xs text-text-muted">
+                              {pageCount} {pageCount === 1 ? "page" : "pages"} total
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <span className={`text-sm ${isPrequel ? "text-text-muted" : "text-ember-glow"}`}>
+                      {isPrequel ? "→" : selectedBook === book.id ? "▼" : "▶"}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
 
-          {/* Special handling for Tale of Modred - it's a multi-page book */}
-          {selectedBookData && selectedBookData.id === "tale_of_modred" && (
+          {/* Modred's Legacy - Short Stories */}
+          {selectedBookData && selectedBookData.id === "modreds_legacy" && (
             <div className="mt-8">
-              <div className="card-glow mb-6">
-                <h3 className="text-2xl font-bold mb-4 text-ember-glow">
-                  {selectedBookData.title}
-                </h3>
-                <p className="text-text-secondary mb-6 leading-relaxed font-serif">
-                  {selectedBookData.description}
-                </p>
-                <Link
-                  href="/books/tale-of-modred?page=1"
-                  className="btn inline-block"
-                >
-                  Start Reading →
-                </Link>
-              </div>
-              
-              {/* Individual stories from this book (if any) */}
-              {selectedBookData.stories.length > 0 && (
+              {selectedBookData.stories.length > 0 ? (
                 <div className="space-y-4">
-                  <h4 className="text-xl font-bold mb-4 text-ember-glow">Related Stories</h4>
+                  <h3 className="text-2xl font-bold mb-4 text-ember-glow">
+                    Short Stories from {selectedBookData.title}
+                  </h3>
                   {selectedBookData.stories.map((story) => (
                     <Link
                       key={story.id}
@@ -149,107 +173,15 @@ export default function StoriesPage() {
                     </Link>
                   ))}
                 </div>
+              ) : (
+                <div className="mt-8 card">
+                  <p className="text-text-muted italic font-serif text-center py-8">
+                    Short stories for {selectedBookData.title} are coming soon. Check back as we expand the narrative.
+                  </p>
+                </div>
               )}
             </div>
           )}
-
-          {/* Selected Book Stories (for other books) */}
-          {selectedBookData && selectedBookData.id !== "tale_of_modred" && selectedBookData.stories.length > 0 && (
-            <div className="mt-8 space-y-4">
-              <h3 className="text-2xl font-bold mb-4 text-ember-glow">
-                Stories from {selectedBookData.title}
-              </h3>
-              {selectedBookData.stories.map((story) => (
-                <Link
-                  key={story.id}
-                  href={`/stories/${story.id}`}
-                  className="card hover:border-ember/50 transition-all block"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="text-xl font-bold mb-2 text-ember-glow">{story.title}</h4>
-                      <p className="text-text-secondary mb-3 leading-relaxed font-serif">
-                        {story.excerpt}
-                      </p>
-                      <div className="flex items-center gap-4 text-sm text-text-muted">
-                        {story.readingTime && (
-                          <span>⏱ {story.readingTime} min read</span>
-                        )}
-                        {story.date && <span>{story.date}</span>}
-                      </div>
-                    </div>
-                    <span className="text-ember-glow ml-4">→</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {/* Empty State */}
-          {selectedBookData && selectedBookData.id !== "tale_of_modred" && selectedBookData.stories.length === 0 && (
-            <div className="mt-8 card">
-              <p className="text-text-muted italic font-serif text-center py-8">
-                Stories for {selectedBookData.title} are coming soon. Check back as we expand the narrative.
-              </p>
-            </div>
-          )}
-        </section>
-
-        {/* Timeline/Relationship Info */}
-        <section className="mb-20">
-          <div className="card-glow">
-            <h2 className="text-2xl font-bold mb-4 text-ember-glow">The Timeline</h2>
-            <div className="space-y-4 font-serif text-text-secondary leading-relaxed">
-              <div>
-                <h3 className="text-lg font-bold text-ember-glow mb-2">The Tale of Modred (Prequel)</h3>
-                <p>
-                  The origin story of <strong className="text-ember-glow">Modred the Shadow-Weaver</strong>, 
-                  who discovered that runes were not mere symbols, but the very alphabet of reality itself. 
-                  This prequel sets the foundation for the world of Magicborn.
-                </p>
-              </div>
-              <div className="border-l-2 border-ember/30 pl-4 ml-4">
-                <h3 className="text-lg font-bold text-ember-glow mb-2">Modred's Legacy (Main Timeline)</h3>
-                <p>
-                  The current era where the game takes place. Stories of oppressed magicborn, military slaves, 
-                  and those who must craft spells to survive. All short stories and game content exist in this timeline, 
-                  building upon Modred's discoveries.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Concept Art Gallery */}
-        <section className="mb-20">
-          <h2 className="text-3xl font-bold mb-8 text-ember-glow">The World of Magicborn</h2>
-          <p className="text-text-secondary mb-12 max-w-2xl font-serif leading-relaxed">
-            Explore the concept art that brings the world of Magicborn to life. Each image tells a story 
-            of oppression, survival, and the power that comes from mastering the runes.
-          </p>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {conceptArt.map((art) => (
-              <div key={art.id} className="card hover:border-ember/50 transition-all group cursor-pointer">
-                <div className="relative w-full h-64 mb-4 rounded-lg overflow-hidden">
-                  <Image
-                    src={art.src}
-                    alt={art.title}
-                    fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <h3 className="text-lg font-bold text-white mb-1">{art.title}</h3>
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold mb-2 text-ember-glow">{art.title}</h3>
-                <p className="text-sm text-text-secondary leading-relaxed font-serif">
-                  {art.description}
-                </p>
-              </div>
-            ))}
-          </div>
         </section>
 
         {/* Join Community CTA */}
