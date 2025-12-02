@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 export default function SidebarNav() {
@@ -17,9 +18,25 @@ export default function SidebarNav() {
     <aside className="fixed left-0 top-0 h-full w-64 z-40">
       <div className="flex flex-col h-full p-6">
         {/* Logo/Brand */}
-        <Link href="/" className="mb-8">
-          <h1 className="text-2xl font-bold text-glow mb-1">Magicborn</h1>
-          <p className="text-xs text-ember-glow italic">Modred's Legacy</p>
+        <Link href="/" className="mb-8 flex flex-col items-center">
+          <div className="relative w-48 h-16 mb-2">
+            <Image
+              src="/images/brand/mb_main.png"
+              alt="Magicborn"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+          <div className="relative w-40 h-8">
+            <Image
+              src="/images/brand/mb_mordreds_legacy.png"
+              alt="Modred's Legacy"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
         </Link>
 
         {/* Navigation Links */}
@@ -58,4 +75,3 @@ export default function SidebarNav() {
     </aside>
   );
 }
-
