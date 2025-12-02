@@ -22,10 +22,22 @@ export default function AboutPage() {
         {/* Header */}
         <div className="mb-16 text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-4 text-white">About Magicborn</h1>
-          <p className="text-xl text-text-secondary max-w-3xl mx-auto leading-relaxed font-serif">
+          <p className="text-xl text-text-secondary max-w-3xl mx-auto leading-relaxed font-serif mb-8">
             A deterministic spell crafting game where power comes from mastery, not levels. 
             Craft spells from runes, build affinity, master familiarity, and evolve your magic.
           </p>
+          
+          {/* Concept Art - New Tarro */}
+          <div className="relative w-full max-w-4xl mx-auto h-96 mb-8 rounded-lg overflow-hidden">
+            <Image
+              src="/images/new_tarro.webp"
+              alt="Magicborn: Modred's Legacy - Concept Art"
+              fill
+              className="object-cover"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          </div>
         </div>
 
         {/* Runes Section - Enhanced */}
