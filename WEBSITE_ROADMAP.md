@@ -2,19 +2,27 @@
 
 ## Current Status ✅
 - Landing page with hero video and logo
-- Sidebar navigation
+- Sidebar navigation with branding
 - Clean, minimal dark fantasy aesthetic
-- Video looping working smoothly
-- Branding in place
+- Video looping working smoothly (no flicker)
+- About page (`/about`) showcasing:
+  - All 26 runes (A-Z) with icons and details
+  - Named spells with full information
+  - Spell effects with categories
+  - Placeholders for creatures, items, weapons
+- Discord community link integrated
+- Changelog and roadmap documentation
 
 ## Phase 1: Foundation & Engagement (Priority)
 
 ### 1.1 Game Overview Section
 **Goal**: Show what the game is like
-- [ ] Add "About the Game" section below hero
-- [ ] Key gameplay features (spell crafting, no levels, deterministic combat)
+- [x] About page (`/about`) created - DONE
+- [x] Runes showcase with icons and details - DONE
+- [x] Named spells display - DONE
+- [x] Spell effects showcase - DONE
 - [ ] Visual showcase with screenshots/gifs
-- [ ] What makes it unique
+- [ ] What makes it unique (expand descriptions)
 
 ### 1.2 Progress Tracker
 **Goal**: Show development progress transparently
@@ -52,10 +60,10 @@
 
 ### 2.2 Community Building
 **Goal**: Build a community
-- [ ] Discord invite link (prominent)
+- [x] Discord invite link (prominent) - DONE
+- [x] "Join the Community" CTA on About page - DONE
 - [ ] Newsletter signup
 - [ ] Email collection for updates
-- [ ] "Join the Community" CTA
 - [ ] Community showcase (fan art, discussions)
 
 ### 2.3 Rewards & Incentives
