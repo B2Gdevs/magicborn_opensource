@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
+import SidebarNav from "@components/SidebarNav";
 import TopNav from "@components/TopNav";
 import { GameProviders } from "./GameProviders";
 
@@ -105,6 +106,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </head>
         <body className="bg-void text-text-primary">
           <GameProviders>
+            <SidebarNav />
             <TopNav />
             {children}
           </GameProviders>

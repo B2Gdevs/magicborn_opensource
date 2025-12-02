@@ -18,36 +18,19 @@ export default function TopNav() {
   }, []);
 
   return (
-    <header className="border-b border-border bg-shadow/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-bold text-glow hover:text-ember-glow transition-colors">
-          Magicborn
-          <span className="text-sm text-ember-glow block">Modred's Legacy</span>
-        </Link>
-        <nav className="flex items-center gap-4">
-          <Link href="/" className="text-text-secondary hover:text-ember-glow transition-colors">
-            Home
-          </Link>
-          <Link href="/players" className="text-text-secondary hover:text-ember-glow transition-colors">
-            Players
-          </Link>
-          <Link href="/crafting" className="text-text-secondary hover:text-ember-glow transition-colors">
-            Crafting
-          </Link>
-          <Link href="/stories" className="text-text-secondary hover:text-shadow-purple-glow transition-colors">
-            Stories
-          </Link>
-          <Link href="/style-guide" className="text-text-secondary hover:text-moss-glow transition-colors">
-            Style Guide
-          </Link>
-          <Link href="/development" className="text-text-secondary hover:text-shadow-purple-glow transition-colors">
-            Development
-          </Link>
-          <span className="text-text-muted mx-2">|</span>
+    <header className="fixed top-0 right-0 left-64 h-16 bg-shadow/80 backdrop-blur-sm border-b-2 border-border z-30">
+      <div className="h-full flex items-center justify-end px-6 gap-4">
+        {active && (
           <span className="text-sm text-text-secondary">
-            Active: {active ? <span className="text-ember-glow font-semibold">{active.name}</span> : <span className="text-text-muted italic">none</span>}
+            Active: <span className="text-ember-glow font-bold">{active.name}</span>
           </span>
-        </nav>
+        )}
+        <Link
+          href="/players/new"
+          className="px-4 py-2 rounded-lg font-bold text-sm border-2 border-ember-glow text-ember-glow hover:bg-ember hover:text-white transition-colors"
+        >
+          Sign Up
+        </Link>
       </div>
     </header>
   );
