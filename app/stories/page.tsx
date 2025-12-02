@@ -103,8 +103,58 @@ export default function StoriesPage() {
             ))}
           </div>
 
-          {/* Selected Book Stories */}
-          {selectedBookData && selectedBookData.stories.length > 0 && (
+          {/* Special handling for Tale of Modred - it's a multi-page book */}
+          {selectedBookData && selectedBookData.id === "tale_of_modred" && (
+            <div className="mt-8">
+              <div className="card-glow mb-6">
+                <h3 className="text-2xl font-bold mb-4 text-ember-glow">
+                  {selectedBookData.title}
+                </h3>
+                <p className="text-text-secondary mb-6 leading-relaxed font-serif">
+                  {selectedBookData.description}
+                </p>
+                <Link
+                  href="/books/tale-of-modred?page=1"
+                  className="btn inline-block"
+                >
+                  Start Reading →
+                </Link>
+              </div>
+              
+              {/* Individual stories from this book (if any) */}
+              {selectedBookData.stories.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="text-xl font-bold mb-4 text-ember-glow">Related Stories</h4>
+                  {selectedBookData.stories.map((story) => (
+                    <Link
+                      key={story.id}
+                      href={`/stories/${story.id}`}
+                      className="card hover:border-ember/50 transition-all block"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-xl font-bold mb-2 text-ember-glow">{story.title}</h4>
+                          <p className="text-text-secondary mb-3 leading-relaxed font-serif">
+                            {story.excerpt}
+                          </p>
+                          <div className="flex items-center gap-4 text-sm text-text-muted">
+                            {story.readingTime && (
+                              <span>⏱ {story.readingTime} min read</span>
+                            )}
+                            {story.date && <span>{story.date}</span>}
+                          </div>
+                        </div>
+                        <span className="text-ember-glow ml-4">→</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Selected Book Stories (for other books) */}
+          {selectedBookData && selectedBookData.id !== "tale_of_modred" && selectedBookData.stories.length > 0 && (
             <div className="mt-8 space-y-4">
               <h3 className="text-2xl font-bold mb-4 text-ember-glow">
                 Stories from {selectedBookData.title}
@@ -136,7 +186,7 @@ export default function StoriesPage() {
           )}
 
           {/* Empty State */}
-          {selectedBookData && selectedBookData.stories.length === 0 && (
+          {selectedBookData && selectedBookData.id !== "tale_of_modred" && selectedBookData.stories.length === 0 && (
             <div className="mt-8 card">
               <p className="text-text-muted italic font-serif text-center py-8">
                 Stories for {selectedBookData.title} are coming soon. Check back as we expand the narrative.

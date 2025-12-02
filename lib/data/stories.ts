@@ -36,17 +36,8 @@ export const BOOKS: Book[] = [
     isPrequel: true,
     order: 1,
     stories: [
-      // Stories will be added here as markdown files are created
-      // Example:
-      // {
-      //   id: "modred_origin",
-      //   bookId: "tale_of_modred",
-      //   title: "The First Discovery",
-      //   excerpt: "How Modred first discovered that runes were more than symbols...",
-      //   contentPath: "/stories/tale_of_modred/modred_origin.md",
-      //   order: 1,
-      //   readingTime: 5,
-      // }
+      // This is a multi-page book - use /books/tale-of-modred route instead
+      // Individual stories from this book can be added here if needed
     ],
   },
   {
