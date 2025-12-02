@@ -2,12 +2,22 @@
 
 import Link from "next/link";
 import HeroVideo from "@components/HeroVideo";
+import { getHeroVideo } from "@lib/config/videos";
 
 export default function LandingPage() {
+  // Get the default hero video
+  const heroVideo = getHeroVideo("new_tarro_teaser") || {
+    id: "new_tarro_teaser",
+    src: "/videos/new_tarro_teaser.mp4",
+    title: "Magicborn: Modred's Legacy",
+    description: "A deterministic spell crafting game",
+    thumbnail: "/images/new_tarro.webp",
+  };
+
   return (
     <main className="min-h-screen bg-void text-text-primary relative">
       {/* Hero Section with Video Background */}
-      <HeroVideo videoSrc="/videos/new_tarro_teaser.mp4">
+      <HeroVideo video={heroVideo}>
         <div className="container mx-auto px-6 text-center">
           <div className="max-w-5xl mx-auto">
             {/* Main Title with Glow Effect */}
@@ -49,61 +59,65 @@ export default function LandingPage() {
       {/* Content Section */}
       <div className="relative z-10 bg-void">
         {/* Features Grid */}
-        <section className="container mx-auto px-6 py-20">
+        <section className="container mx-auto px-6 py-20" itemScope itemType="https://schema.org/VideoGame">
+          <meta itemProp="name" content="Magicborn: Modred's Legacy" />
+          <meta itemProp="description" content="A deterministic, progression-heavy spell crafting game with no character levels. All power comes from crafting spells, building affinity, and evolving magic." />
+          <meta itemProp="genre" content="Spell Crafting, RPG, Strategy" />
+          
           <div className="max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
-            <div className="card-glow group hover:scale-105 transition-transform duration-300">
+            <article className="card-glow group hover:scale-105 transition-transform duration-300" itemScope itemType="https://schema.org/GameFeature">
               <div className="text-5xl mb-4">🧙</div>
-              <h3 className="text-xl font-semibold mb-3 text-ember-glow">Spell Crafting</h3>
-              <p className="text-text-secondary leading-relaxed">
+              <h3 className="text-xl font-semibold mb-3 text-ember-glow" itemProp="name">Spell Crafting</h3>
+              <p className="text-text-secondary leading-relaxed" itemProp="description">
                 Build spells from 26 runes (A-Z). Infuse runes with mana for enhanced effects. 
                 Real-time preview of stats and costs in the shadowy forge.
               </p>
-            </div>
+            </article>
 
-            <div className="card-glow group hover:scale-105 transition-transform duration-300">
+            <article className="card-glow group hover:scale-105 transition-transform duration-300" itemScope itemType="https://schema.org/GameFeature">
               <div className="text-5xl mb-4">⚔️</div>
-              <h3 className="text-xl font-semibold mb-3 text-ember-glow">Deterministic Combat</h3>
-              <p className="text-text-secondary leading-relaxed">
+              <h3 className="text-xl font-semibold mb-3 text-ember-glow" itemProp="name">Deterministic Combat</h3>
+              <p className="text-text-secondary leading-relaxed" itemProp="description">
                 Pure systems-driven gameplay. Damage calculated from runes, affinity, and growth. 
                 No RNG—your choices and mastery determine your power.
               </p>
-            </div>
+            </article>
 
-            <div className="card-glow group hover:scale-105 transition-transform duration-300">
+            <article className="card-glow group hover:scale-105 transition-transform duration-300" itemScope itemType="https://schema.org/GameFeature">
               <div className="text-5xl mb-4">📈</div>
-              <h3 className="text-xl font-semibold mb-3 text-moss-glow">Dual Progression</h3>
-              <p className="text-text-secondary leading-relaxed">
+              <h3 className="text-xl font-semibold mb-3 text-moss-glow" itemProp="name">Dual Progression</h3>
+              <p className="text-text-secondary leading-relaxed" itemProp="description">
                 <strong className="text-ember-glow">Element Affinity:</strong> Master elements through casting.<br/>
                 <strong className="text-moss-glow">Rune Familiarity:</strong> Unlock evolution paths by mastering runes.
               </p>
-            </div>
+            </article>
 
-            <div className="card-glow group hover:scale-105 transition-transform duration-300">
+            <article className="card-glow group hover:scale-105 transition-transform duration-300" itemScope itemType="https://schema.org/GameFeature">
               <div className="text-5xl mb-4">🌱</div>
-              <h3 className="text-xl font-semibold mb-3 text-shadow-purple-glow">Spell Evolution</h3>
-              <p className="text-text-secondary leading-relaxed">
+              <h3 className="text-xl font-semibold mb-3 text-shadow-purple-glow" itemProp="name">Spell Evolution</h3>
+              <p className="text-text-secondary leading-relaxed" itemProp="description">
                 Evolve nameless spells into named blueprints. Unlock higher-tier spells 
                 through familiarity and achievements in Modred's legacy.
               </p>
-            </div>
+            </article>
 
-            <div className="card-glow group hover:scale-105 transition-transform duration-300">
+            <article className="card-glow group hover:scale-105 transition-transform duration-300" itemScope itemType="https://schema.org/GameFeature">
               <div className="text-5xl mb-4">🏰</div>
-              <h3 className="text-xl font-semibold mb-3 text-shadow-purple-glow">Raids & Encounters</h3>
-              <p className="text-text-secondary leading-relaxed">
+              <h3 className="text-xl font-semibold mb-3 text-shadow-purple-glow" itemProp="name">Raids & Encounters</h3>
+              <p className="text-text-secondary leading-relaxed" itemProp="description">
                 Scripted encounters that test your crafted spells. Earn achievements and flags 
                 that unlock new evolution paths in the shadowy depths.
               </p>
-            </div>
+            </article>
 
-            <div className="card-glow group hover:scale-105 transition-transform duration-300">
+            <article className="card-glow group hover:scale-105 transition-transform duration-300" itemScope itemType="https://schema.org/GameFeature">
               <div className="text-5xl mb-4">🎯</div>
-              <h3 className="text-xl font-semibold mb-3 text-ember-glow">Systems-Driven</h3>
-              <p className="text-text-secondary leading-relaxed">
+              <h3 className="text-xl font-semibold mb-3 text-ember-glow" itemProp="name">Systems-Driven</h3>
+              <p className="text-text-secondary leading-relaxed" itemProp="description">
                 Every mechanic is deterministic and transparent. Your skill and strategic choices 
                 determine your power in this organic, shadowy world.
               </p>
-            </div>
+            </article>
           </div>
         </section>
 
