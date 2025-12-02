@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-import ReactPlayer from "react-player" as any;
+import ReactPlayerLib from "react-player";
 import type { HeroVideoConfig } from "@lib/config/videos";
 import { getAllHeroVideos } from "@lib/config/videos";
+
+// Type assertion for react-player (types have issues but works at runtime)
+const ReactPlayer = ReactPlayerLib as any;
 
 interface HeroVideoProps {
   video?: HeroVideoConfig;
