@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,10 +13,11 @@ export default function TaleOfModredPage() {
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
-  const book = getMordredsTaleBook();
+  const book = useMemo(() => getMordredsTaleBook(), []);
   const pageParam = searchParams.get("page");
-  const initialPage = pageParam ? parseInt(pageParam, 10) : 1;
+  const initialPage = useMemo(() => (pageParam ? parseInt(pageParam, 10) : 1), [pageParam]);
 
   useEffect(() => {
     const page = getPageByNumber(book, initialPage);
@@ -27,7 +28,9 @@ export default function TaleOfModredPage() {
 
     setCurrentPage(page);
     setImageError(false);
+    setImageLoaded(false);
     setLoading(true);
+    setContent(""); // Clear previous content
 
     // Load markdown content
     fetch(page.contentPath)
@@ -89,10 +92,10 @@ export default function TaleOfModredPage() {
         </div>
 
         {/* Page Content */}
-        <div className="mb-8">
-          {/* Image */}
+        <div className="mb-8 min-h-[600px]">
+          {/* Image - Fixed height container to prevent layout shift */}
           {currentPage.imagePath && !imageError && (
-            <div className="relative w-full mb-8 rounded-lg overflow-hidden">
+            <div className="relative w-full mb-8 rounded-lg overflow-hidden bg-deep" style={{ minHeight: '600px' }}>
               <Image
                 src={currentPage.imagePath}
                 alt={`Page ${currentPage.pageNumber}`}
@@ -100,24 +103,36 @@ export default function TaleOfModredPage() {
                 height={1600}
                 className="w-full h-auto object-contain"
                 onError={() => setImageError(true)}
+                onLoad={() => setImageLoaded(true)}
                 priority={currentPage.pageNumber <= 3}
+                style={{ 
+                  opacity: imageLoaded ? 1 : 0,
+                  transition: 'opacity 0.3s ease-in-out'
+                }}
               />
+              {!imageLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-text-muted">Loading image...</p>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Text Content */}
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-text-muted">Loading page...</p>
-            </div>
-          ) : (
-            <article className="prose prose-invert prose-lg max-w-none">
-              <div
-                className="story-content font-serif leading-relaxed text-text-secondary"
-                dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
-              />
-            </article>
-          )}
+          {/* Text Content - Fixed container to prevent shift */}
+          <div className="min-h-[200px]">
+            {loading ? (
+              <div className="text-center py-12">
+                <p className="text-text-muted">Loading page...</p>
+              </div>
+            ) : (
+              <article className="prose prose-invert prose-lg max-w-none">
+                <div
+                  className="story-content font-serif leading-relaxed text-text-secondary"
+                  dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
+                />
+              </article>
+            )}
+          </div>
         </div>
 
         {/* Navigation */}
@@ -197,16 +212,18 @@ function parseMarkdown(markdown: string): string {
   // Italic
   html = html.replace(/\*(.*?)\*/g, '<em class="text-text-glow italic">$1</em>');
 
-  // Paragraphs
-  html = html.split('\n\n').map(para => {
-    if (para.trim() && !para.match(/^<[h|div]/)) {
-      return `<p class="mb-6 leading-relaxed">${para.trim()}</p>`;
-    }
-    return para;
-  }).join('\n');
+  // Remove markdown image syntax (we handle images separately)
+  html = html.replace(/!\[.*?\]\(.*?\)/g, '');
 
-  // Line breaks
-  html = html.replace(/\n/g, '<br />');
+  // Paragraphs
+  const paragraphs = html.split('\n\n').filter(p => p.trim());
+  html = paragraphs.map(para => {
+    const trimmed = para.trim();
+    if (trimmed && !trimmed.match(/^<[h|div]/) && !trimmed.match(/^#/)) {
+      return `<p class="mb-6 leading-relaxed">${trimmed}</p>`;
+    }
+    return trimmed;
+  }).join('');
 
   return html;
 }
