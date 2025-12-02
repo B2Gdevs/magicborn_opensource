@@ -19,19 +19,10 @@ export default function SidebarNav() {
       <div className="flex flex-col h-full p-6">
         {/* Logo/Brand */}
         <Link href="/" className="mb-8 flex flex-col items-center">
-          <div className="relative w-48 h-16 mb-2">
+          <div className="relative w-48 h-48">
             <Image
-              src="/images/brand/mb_main.png"
-              alt="Magicborn"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-          <div className="relative w-40 h-8">
-            <Image
-              src="/images/brand/mb_mordreds_legacy.png"
-              alt="Modred's Legacy"
+              src="/logos/magicborn_logo.png"
+              alt="Magicborn: Modred's Legacy"
               fill
               className="object-contain"
               priority
