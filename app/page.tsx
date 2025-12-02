@@ -10,8 +10,8 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen bg-void text-text-primary">
-      {/* Hero Section with Video Background - Full Width */}
-      <div className="ml-64 mt-16">
+      {/* Hero Section with Video Background - Full Screen Behind Nav */}
+      <div className="fixed inset-0 z-0">
         <HeroVideo loopVideos={true}>
           <div className="container mx-auto px-12 text-center">
             <div className="max-w-4xl mx-auto">
@@ -30,7 +30,7 @@ export default function LandingPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="ml-64 mt-16">
+      <div className="relative z-10 ml-64 mt-16">
         <div className="container mx-auto px-12 py-12">
           <div className="max-w-6xl mx-auto">
             {/* Tab Navigation */}

@@ -14,7 +14,7 @@ export default function SidebarNav() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-shadow border-r-2 border-border z-40">
+    <aside className="fixed left-0 top-0 h-full w-64 bg-shadow/20 backdrop-blur-lg border-r-2 border-border/30 z-40">
       <div className="flex flex-col h-full p-6">
         {/* Logo/Brand */}
         <Link href="/" className="mb-8">

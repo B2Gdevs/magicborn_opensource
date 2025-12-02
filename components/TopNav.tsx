@@ -18,7 +18,7 @@ export default function TopNav() {
   }, []);
 
   return (
-    <header className="fixed top-0 right-0 left-64 h-16 bg-shadow/80 backdrop-blur-sm border-b-2 border-border z-30">
+    <header className="fixed top-0 right-0 left-64 h-16 bg-shadow/20 backdrop-blur-lg border-b-2 border-border/30 z-30">
       <div className="h-full flex items-center justify-end px-6 gap-4">
         {active && (
           <span className="text-sm text-text-secondary">
