@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-import ReactPlayerLib from "react-player";
+import { useEffect, useState, useRef } from "react";
 import type { HeroVideoConfig } from "@lib/config/videos";
 import { getAllHeroVideos } from "@lib/config/videos";
-
-// Type assertion for react-player (types have issues but works at runtime)
-const ReactPlayer = ReactPlayerLib as any;
 
 interface HeroVideoProps {
   video?: HeroVideoConfig;
@@ -17,6 +12,7 @@ interface HeroVideoProps {
 }
 
 export default function HeroVideo({ video, children, fallbackImage, loopVideos = true }: HeroVideoProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const allVideos = getAllHeroVideos();
@@ -32,66 +28,91 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
     }
   };
 
-  // Preload next video
   useEffect(() => {
-    if (!loopVideos || allVideos.length <= 1) return;
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
 
-    const nextIndex = (currentVideoIndex + 1) % allVideos.length;
-    const nextVideo = allVideos[nextIndex];
-    const preloadLink = document.createElement('link');
-    preloadLink.rel = 'preload';
-    preloadLink.as = 'video';
-    preloadLink.href = nextVideo.src;
-    document.head.appendChild(preloadLink);
+    let isMounted = true;
 
-    return () => {
-      if (document.head.contains(preloadLink)) {
-        document.head.removeChild(preloadLink);
+    const handleCanPlay = () => {
+      if (isMounted) {
+        setIsReady(true);
+        videoElement.play().catch((err) => {
+          console.warn("Autoplay prevented:", err);
+        });
       }
     };
-  }, [currentVideoIndex, loopVideos, allVideos]);
+
+    const handlePlaying = () => {
+      if (isMounted) {
+        setIsReady(true);
+      }
+    };
+
+    const handleEnded = () => {
+      if (loopVideos && allVideos.length > 1 && isMounted) {
+        setIsReady(false);
+        const nextIndex = (currentVideoIndex + 1) % allVideos.length;
+        setCurrentVideoIndex(nextIndex);
+      }
+    };
+
+    const handleError = (e: Event) => {
+      console.error("Video error:", e);
+    };
+
+    // Set video source
+    if (videoElement.src !== currentVideo.src) {
+      setIsReady(false);
+      videoElement.src = currentVideo.src;
+      videoElement.load();
+    }
+
+    videoElement.addEventListener("canplay", handleCanPlay);
+    videoElement.addEventListener("playing", handlePlaying);
+    videoElement.addEventListener("ended", handleEnded);
+    videoElement.addEventListener("error", handleError);
+
+    videoElement.muted = true;
+    videoElement.playsInline = true;
+    videoElement.preload = "auto";
+
+    // Try to play if already loaded
+    if (videoElement.readyState >= 3) {
+      videoElement.play().catch(() => {
+        // Autoplay prevented
+      });
+    }
+
+    return () => {
+      isMounted = false;
+      videoElement.removeEventListener("canplay", handleCanPlay);
+      videoElement.removeEventListener("playing", handlePlaying);
+      videoElement.removeEventListener("ended", handleEnded);
+      videoElement.removeEventListener("error", handleError);
+    };
+  }, [currentVideo.src, currentVideoIndex, loopVideos, allVideos.length]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black">
-      {/* React Player - handles all video loading smoothly */}
-      <div className="absolute inset-0 w-full h-full">
-        <ReactPlayer
-          key={currentVideo.src}
-          url={currentVideo.src}
-          playing={true}
-          loop={false}
-          muted={true}
-          playsinline={true}
-          width="100%"
-          height="100%"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            objectFit: 'cover',
-          }}
-          onReady={() => {
-            setIsReady(true);
-          }}
-          onStart={() => {
-            setIsReady(true);
-          }}
-          onEnded={handleEnded}
-          onError={(error: unknown) => {
-            console.error("Video error:", error);
-          }}
-          config={{
-            file: {
-              attributes: {
-                controls: false,
-                autoPlay: true,
-                muted: true,
-                playsInline: true,
-              },
-            },
-          }}
-        />
-      </div>
+      {/* Video element */}
+      <video
+        ref={videoRef}
+        key={currentVideo.src}
+        autoPlay
+        muted
+        playsInline
+        loop={!loopVideos || allVideos.length === 1}
+        preload="auto"
+        poster={imageFallback}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+          isReady ? "opacity-100" : "opacity-0"
+        }`}
+        style={{ zIndex: isReady ? 1 : 0 }}
+      >
+        <source src={currentVideo.src} type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
 
       {/* Fallback image - shows until video is ready */}
       {!isReady && (
@@ -99,6 +120,7 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
           className="absolute inset-0 w-full h-full bg-cover bg-center z-10"
           style={{ 
             backgroundImage: `url(${imageFallback})`,
+            zIndex: 1
           }}
         />
       )}
