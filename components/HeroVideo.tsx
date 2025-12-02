@@ -51,27 +51,26 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
     <div className="relative w-full h-screen overflow-hidden bg-black">
       {/* React Player - handles all video loading smoothly */}
       <div className="absolute inset-0 w-full h-full">
+        {/* @ts-expect-error - react-player has type definition issues but works correctly */}
         <ReactPlayer
           key={currentVideo.src}
-          {...({
-            url: currentVideo.src,
-            playing: true,
-            loop: !loopVideos || allVideos.length === 1,
-            muted: true,
-            playsinline: true,
-            width: "100%",
-            height: "100%",
-            style: {
-              position: 'absolute',
-              top: 0,
-              left: 0,
-            },
-            onReady: () => setIsReady(true),
-            onEnded: handleEnded,
-            onError: (error: unknown) => {
-              console.error("Video error:", error);
-            },
-          } as React.ComponentProps<typeof ReactPlayer>)}
+          url={currentVideo.src}
+          playing={true}
+          loop={!loopVideos || allVideos.length === 1}
+          muted={true}
+          playsinline={true}
+          width="100%"
+          height="100%"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+          }}
+          onReady={() => setIsReady(true)}
+          onEnded={handleEnded}
+          onError={(error: unknown) => {
+            console.error("Video error:", error);
+          }}
         />
       </div>
 
