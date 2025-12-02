@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ReactPlayer from "react-player";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import ReactPlayer from "react-player" as any;
 import type { HeroVideoConfig } from "@lib/config/videos";
 import { getAllHeroVideos } from "@lib/config/videos";
 
@@ -51,7 +52,6 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
     <div className="relative w-full h-screen overflow-hidden bg-black">
       {/* React Player - handles all video loading smoothly */}
       <div className="absolute inset-0 w-full h-full">
-        {/* @ts-expect-error - react-player has type definition issues but works correctly */}
         <ReactPlayer
           key={currentVideo.src}
           url={currentVideo.src}
