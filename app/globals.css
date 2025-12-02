@@ -47,6 +47,25 @@
   em, i {
     @apply italic text-text-glow;
   }
+
+  /* Story content styling */
+  .story-content h1,
+  .story-content h2,
+  .story-content h3 {
+    @apply mt-8 mb-4;
+  }
+
+  .story-content p {
+    @apply mb-6 leading-relaxed;
+  }
+
+  .story-content strong {
+    @apply font-bold text-ember-glow;
+  }
+
+  .story-content em {
+    @apply italic text-text-glow;
+  }
 }
 
 @layer components {
