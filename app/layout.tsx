@@ -4,8 +4,8 @@ import TopNav from "@components/TopNav";
 import { GameProviders } from "./GameProviders";
 
 export const metadata = {
-  title: "Rune Crafter",
-  description: "Language-driven crafting prototype"
+  title: "Magicborn - Spell Crafting Game",
+  description: "A deterministic, progression-heavy spell crafting game. No character levels—all power comes from crafting spells, building affinity, and evolving magic."
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <body className="bg-slate-950 text-slate-100">
           <GameProviders>
             <TopNav />
-            <main className="max-w-6xl mx-auto px-4 py-6">{children}</main>
+            {children}
           </GameProviders>
         </body>
       </html>
