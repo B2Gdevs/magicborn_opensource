@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getMordredsTaleBook, getPageByNumber, getNextPage, getPreviousPage, type BookPage } from "@lib/data/books";
+import { getStoriesByBook } from "@lib/data/stories";
+
+type TabType = "book" | "stories";
 
 export default function TaleOfModredPage() {
   const router = useRouter();
@@ -14,15 +17,28 @@ export default function TaleOfModredPage() {
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("book");
 
   const book = useMemo(() => getMordredsTaleBook(), []);
+  const shortStories = useMemo(() => getStoriesByBook("tale_of_modred"), []);
   const pageParam = searchParams.get("page");
+  const tabParam = searchParams.get("tab") as TabType | null;
   const initialPage = useMemo(() => (pageParam ? parseInt(pageParam, 10) : 1), [pageParam]);
 
+  // Set active tab from URL or default to "book"
   useEffect(() => {
+    if (tabParam === "stories" || tabParam === "book") {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  // Load book page content when on book tab
+  useEffect(() => {
+    if (activeTab !== "book") return;
+
     const page = getPageByNumber(book, initialPage);
     if (!page) {
-      router.replace("/books/tale-of-modred?page=1");
+      router.replace("/books/tale-of-modred?page=1&tab=book");
       return;
     }
 
@@ -47,13 +63,13 @@ export default function TaleOfModredPage() {
         setContent("Page content coming soon...");
         setLoading(false);
       });
-  }, [initialPage, book, router]);
+  }, [initialPage, book, router, activeTab]);
 
   const handleNext = () => {
     if (!currentPage) return;
     const next = getNextPage(book, currentPage.pageNumber);
     if (next) {
-      router.push(`/books/tale-of-modred?page=${next.pageNumber}`);
+      router.push(`/books/tale-of-modred?page=${next.pageNumber}&tab=book`);
     }
   };
 
@@ -61,9 +77,99 @@ export default function TaleOfModredPage() {
     if (!currentPage) return;
     const prev = getPreviousPage(book, currentPage.pageNumber);
     if (prev) {
-      router.push(`/books/tale-of-modred?page=${prev.pageNumber}`);
+      router.push(`/books/tale-of-modred?page=${prev.pageNumber}&tab=book`);
     }
   };
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    if (tab === "book") {
+      router.push(`/books/tale-of-modred?page=${initialPage || 1}&tab=book`);
+    } else {
+      router.push(`/books/tale-of-modred?tab=stories`);
+    }
+  };
+
+  if (activeTab === "stories") {
+    return (
+      <main className="ml-64 mt-16 min-h-screen bg-black text-white">
+        <div className="container mx-auto px-12 py-12 max-w-5xl">
+          {/* Header */}
+          <div className="mb-8">
+            <Link
+              href="/stories"
+              className="inline-flex items-center gap-2 text-text-secondary hover:text-ember-glow transition-colors mb-4"
+            >
+              ← Back to Stories
+            </Link>
+            <h1 className="text-4xl md:text-5xl font-bold mb-2 text-white">{book.title}</h1>
+            <p className="text-sm text-text-muted mb-6">
+              Short stories from the world of The Tale of Modred
+            </p>
+          </div>
+
+          {/* Tabs */}
+          <div className="mb-8 flex gap-2 border-b border-border">
+            <button
+              onClick={() => handleTabChange("book")}
+              className={`px-4 py-2 font-bold text-sm transition-colors ${
+                activeTab === "book"
+                  ? "text-ember-glow border-b-2 border-ember-glow"
+                  : "text-text-secondary hover:text-white"
+              }`}
+            >
+              Read Book
+            </button>
+            <button
+              onClick={() => handleTabChange("stories")}
+              className={`px-4 py-2 font-bold text-sm transition-colors ${
+                activeTab === "stories"
+                  ? "text-ember-glow border-b-2 border-ember-glow"
+                  : "text-text-secondary hover:text-white"
+              }`}
+            >
+              Short Stories
+            </button>
+          </div>
+
+          {/* Short Stories List */}
+          {shortStories.length > 0 ? (
+            <div className="space-y-4">
+              {shortStories.map((story) => (
+                <Link
+                  key={story.id}
+                  href={`/stories/${story.id}`}
+                  className="card hover:border-ember/50 transition-all block"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold mb-2 text-ember-glow">{story.title}</h3>
+                      <p className="text-text-secondary mb-3 leading-relaxed font-serif">
+                        {story.excerpt}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm text-text-muted">
+                        {story.readingTime && (
+                          <span>⏱ {story.readingTime} min read</span>
+                        )}
+                        {story.date && <span>{story.date}</span>}
+                      </div>
+                    </div>
+                    <span className="text-ember-glow ml-4">→</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="card">
+              <p className="text-text-muted italic font-serif text-center py-12">
+                Short stories from this time period are coming soon. Check back as we expand the narrative.
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   if (!currentPage) return null;
 
@@ -86,9 +192,33 @@ export default function TaleOfModredPage() {
           {chapter && (
             <p className="text-xl text-ember-glow mb-2">{chapter.displayName}</p>
           )}
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-text-muted mb-6">
             Page {currentPage.pageNumber} of {book.totalPages}
           </p>
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-8 flex gap-2 border-b border-border">
+          <button
+            onClick={() => handleTabChange("book")}
+            className={`px-4 py-2 font-bold text-sm transition-colors ${
+              activeTab === "book"
+                ? "text-ember-glow border-b-2 border-ember-glow"
+                : "text-text-secondary hover:text-white"
+            }`}
+          >
+            Read Book
+          </button>
+          <button
+            onClick={() => handleTabChange("stories")}
+            className={`px-4 py-2 font-bold text-sm transition-colors ${
+              activeTab === "stories"
+                ? "text-ember-glow border-b-2 border-ember-glow"
+                : "text-text-secondary hover:text-white"
+            }`}
+          >
+            Short Stories {shortStories.length > 0 && `(${shortStories.length})`}
+          </button>
         </div>
 
         {/* Page Content */}
@@ -180,7 +310,7 @@ export default function TaleOfModredPage() {
             {book.chapters.map((ch) => (
               <Link
                 key={ch.chapterNumber}
-                href={`/books/tale-of-modred?page=${ch.pages[0].pageNumber}`}
+                href={`/books/tale-of-modred?page=${ch.pages[0].pageNumber}&tab=book`}
                 className={`text-sm p-2 rounded transition-colors ${
                   ch.chapterNumber === currentPage.chapterNumber
                     ? "bg-ember/20 text-ember-glow border border-ember/50"
