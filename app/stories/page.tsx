@@ -120,16 +120,9 @@ export default function StoriesPage() {
                           {pageCount} {pageCount === 1 ? "page" : "pages"}
                         </span>
                       ) : (
-                        <>
-                          <span className="text-sm text-ember-glow">
-                            {book.stories.length} {book.stories.length === 1 ? "story" : "stories"}
-                          </span>
-                          {pageCount > 0 && (
-                            <span className="text-xs text-text-muted">
-                              {pageCount} {pageCount === 1 ? "page" : "pages"} total
-                            </span>
-                          )}
-                        </>
+                        <span className="text-sm text-ember-glow">
+                          {book.stories.length} {book.stories.length === 1 ? "story" : "stories"}
+                        </span>
                       )}
                     </div>
                     <span className={`text-sm ${isPrequel ? "text-text-muted" : "text-ember-glow"}`}>
