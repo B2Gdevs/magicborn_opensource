@@ -14,7 +14,7 @@ export default function SidebarNav() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-shadow/20 backdrop-blur-lg border-r-2 border-border/30 z-40">
+    <aside className="fixed left-0 top-0 h-full w-64 z-40">
       <div className="flex flex-col h-full p-6">
         {/* Logo/Brand */}
         <Link href="/" className="mb-8">
@@ -32,8 +32,8 @@ export default function SidebarNav() {
                 href={item.href}
                 className={`px-4 py-3 rounded-lg font-bold text-sm transition-all ${
                   isActive
-                    ? "bg-ember text-white border-2 border-ember-glow"
-                    : "text-text-secondary hover:text-ember-glow hover:bg-deep"
+                    ? "text-white"
+                    : "text-text-secondary hover:text-white"
                 }`}
               >
                 <span className="mr-2">{item.icon}</span>
@@ -44,12 +44,12 @@ export default function SidebarNav() {
         </nav>
 
         {/* Footer Links */}
-        <div className="mt-auto pt-6 border-t-2 border-border">
+        <div className="mt-auto pt-6">
           <a
             href="https://github.com/B2Gdevs/magicborn_opensource"
             target="_blank"
             rel="noopener noreferrer"
-            className="block px-4 py-2 text-xs text-text-muted hover:text-ember-glow transition-colors"
+            className="block px-4 py-2 text-xs text-text-muted hover:text-white transition-colors"
           >
             GitHub
           </a>

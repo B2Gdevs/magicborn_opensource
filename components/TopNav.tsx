@@ -18,7 +18,7 @@ export default function TopNav() {
   }, []);
 
   return (
-    <header className="fixed top-0 right-0 left-64 h-16 bg-shadow/20 backdrop-blur-lg border-b-2 border-border/30 z-30">
+    <header className="fixed top-0 right-0 left-64 h-16 z-30">
       <div className="h-full flex items-center justify-end px-6 gap-4">
         {active && (
           <span className="text-sm text-text-secondary">
@@ -27,7 +27,7 @@ export default function TopNav() {
         )}
         <Link
           href="/players/new"
-          className="px-4 py-2 rounded-lg font-bold text-sm border-2 border-ember-glow text-ember-glow hover:bg-ember hover:text-white transition-colors"
+          className="px-4 py-2 rounded-full font-bold text-sm bg-white text-black hover:bg-gray-200 transition-colors"
         >
           Sign Up
         </Link>

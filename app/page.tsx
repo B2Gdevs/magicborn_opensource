@@ -15,13 +15,13 @@ export default function LandingPage() {
         <HeroVideo loopVideos={true}>
           <div className="container mx-auto px-12 text-center">
             <div className="max-w-4xl mx-auto">
-              <h1 className="text-7xl md:text-8xl font-bold mb-4 text-glow drop-shadow-2xl animate-fade-in">
+              <h1 className="text-7xl md:text-8xl font-bold mb-4 text-white drop-shadow-2xl animate-fade-in">
                 Magicborn
               </h1>
-              <h2 className="text-3xl md:text-5xl font-bold mb-6 text-ember-glow drop-shadow-lg animate-fade-in-delay">
+              <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white drop-shadow-lg animate-fade-in-delay">
                 <em>Modred's Legacy</em>
               </h2>
-              <p className="text-lg md:text-xl text-text-secondary mb-4 font-light max-w-2xl mx-auto drop-shadow-lg animate-fade-in-delay-2">
+              <p className="text-lg md:text-xl text-white/80 mb-4 font-light max-w-2xl mx-auto drop-shadow-lg animate-fade-in-delay-2">
                 In the shadowy depths where magic flows like blood, spellcrafters forge their destiny
               </p>
             </div>
@@ -213,7 +213,7 @@ export default function LandingPage() {
       </div>
 
       {/* Footer */}
-      <footer className="ml-64 mt-16 bg-abyss border-t-2 border-border py-8">
+      <footer className="relative z-10 ml-64 mt-16 bg-black/80 py-8">
         <div className="container mx-auto px-12">
           <div className="max-w-6xl mx-auto">
             <div className="grid md:grid-cols-2 gap-8">
