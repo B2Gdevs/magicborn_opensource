@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://magicborn.b2gdevs.com/sitemap.xml
+

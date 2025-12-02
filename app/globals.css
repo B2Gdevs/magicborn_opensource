@@ -3,33 +3,179 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  /* Magicborn: Modred's Legacy - Dark Organic Theme */
+  --color-void: #0a0a0f;
+  --color-shadow: #1a1a2e;
+  --color-deep: #16213e;
+  --color-abyss: #0f1419;
+  
+  /* Organic Accents */
+  --color-ember: #c94a2a;
+  --color-ember-glow: #ff6b4a;
+  --color-moss: #2d5a3d;
+  --color-moss-glow: #4a8a5f;
+  --color-shadow-purple: #4a2c5a;
+  --color-shadow-purple-glow: #6b3d7a;
+  
+  /* Text Colors */
+  --color-text-primary: #e8e6e3;
+  --color-text-secondary: #b8b5b0;
+  --color-text-muted: #7a7875;
+  --color-text-glow: #ffd89b;
+  
+  /* Border & Divider */
+  --color-border: #2a2a3e;
+  --color-border-glow: #4a4a6e;
 }
 
-body {
-  @apply bg-bg text-text;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-void text-text-primary antialiased;
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(201, 74, 42, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(75, 44, 90, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 40% 20%, rgba(45, 90, 61, 0.05) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
 }
 
-.container {
-  @apply max-w-5xl mx-auto px-4 py-6;
+@layer components {
+  /* Card with organic shadow */
+  .card {
+    @apply bg-shadow/80 backdrop-blur-sm border border-border rounded-lg p-6;
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  }
+  
+  .card-glow {
+    @apply card;
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2),
+      0 0 20px rgba(201, 74, 42, 0.2),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Organic button styles */
+  .btn {
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200;
+    @apply bg-gradient-to-r from-ember to-ember-glow;
+    @apply text-white shadow-lg;
+    @apply hover:shadow-ember-glow/50 hover:scale-105;
+    @apply active:scale-95;
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200;
+    @apply bg-shadow border border-border;
+    @apply text-text-primary;
+    @apply hover:bg-deep hover:border-border-glow;
+  }
+  
+  /* Badge with organic glow */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+    @apply bg-shadow border border-border;
+    @apply text-text-secondary;
+  }
+  
+  .badge-glow {
+    @apply badge;
+    @apply border-ember/50 bg-ember/10;
+    @apply text-ember-glow;
+    box-shadow: 0 0 10px rgba(201, 74, 42, 0.3);
+  }
+  
+  /* Text with organic glow */
+  .text-glow {
+    @apply text-text-glow;
+    text-shadow: 0 0 10px rgba(255, 216, 155, 0.5);
+  }
+  
+  /* Organic divider */
+  .divider {
+    @apply border-t border-border;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Muted text */
+  .text-muted {
+    @apply text-text-muted;
+  }
 }
 
-.card {
-  @apply bg-panel border border-line rounded-xl p-5;
-}
-
-.badge {
-  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-line text-sm text-muted;
-}
-
-.input {
-  @apply bg-[#1a1a23] text-text border border-line rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent/40;
-}
-
-.btn {
-  @apply inline-flex items-center justify-center rounded-lg px-3 py-2 font-semibold bg-accent text-black hover:bg-accent/90;
-}
-
-.btn-secondary {
-  @apply inline-flex items-center justify-center rounded-lg px-3 py-2 font-semibold bg-[#2b2b36] text-text hover:bg-[#343446];
+@layer utilities {
+  .bg-void {
+    background-color: var(--color-void);
+  }
+  
+  .bg-shadow {
+    background-color: var(--color-shadow);
+  }
+  
+  .bg-deep {
+    background-color: var(--color-deep);
+  }
+  
+  .bg-abyss {
+    background-color: var(--color-abyss);
+  }
+  
+  .bg-ember {
+    background-color: var(--color-ember);
+  }
+  
+  .bg-ember-glow {
+    background-color: var(--color-ember-glow);
+  }
+  
+  .bg-moss {
+    background-color: var(--color-moss);
+  }
+  
+  .bg-moss-glow {
+    background-color: var(--color-moss-glow);
+  }
+  
+  .bg-shadow-purple {
+    background-color: var(--color-shadow-purple);
+  }
+  
+  .bg-shadow-purple-glow {
+    background-color: var(--color-shadow-purple-glow);
+  }
+  
+  .text-text-primary {
+    color: var(--color-text-primary);
+  }
+  
+  .text-text-secondary {
+    color: var(--color-text-secondary);
+  }
+  
+  .text-text-muted {
+    color: var(--color-text-muted);
+  }
+  
+  .text-text-glow {
+    color: var(--color-text-glow);
+  }
+  
+  .border-border {
+    border-color: var(--color-border);
+  }
+  
+  .border-border-glow {
+    border-color: var(--color-border-glow);
+  }
+  
+  .shadow-ember-glow {
+    box-shadow: 0 0 20px rgba(201, 74, 42, 0.4);
+  }
 }

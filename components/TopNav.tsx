@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PlayerLocalRepo } from "@pkg/repo/localRepo";
 import type { Player } from "@core/types";
@@ -17,17 +18,34 @@ export default function TopNav() {
   }, []);
 
   return (
-    <header className="flex items-center justify-between">
-      <h1 className="text-2xl font-bold">Rune Crafter</h1>
-      <nav className="flex items-center gap-3">
-        <a className="badge hover:text-accent" href="/">Home</a>
-        <a className="badge hover:text-accent" href="/players">Players</a>
-        <a className="badge hover:text-accent" href="/players/new">Create Player</a>
-        <span className="hidden sm:inline-block mx-2 text-muted">|</span>
-        <span className="badge">
-          Active: {active ? <b>{active.name}</b> : <i className="text-muted">none</i>}
-        </span>
-      </nav>
+    <header className="border-b border-border bg-shadow/50 backdrop-blur-sm sticky top-0 z-50">
+      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+        <Link href="/" className="text-2xl font-bold text-glow hover:text-ember-glow transition-colors">
+          Magicborn
+          <span className="text-sm text-ember-glow block">Modred's Legacy</span>
+        </Link>
+        <nav className="flex items-center gap-4">
+          <Link href="/" className="text-text-secondary hover:text-ember-glow transition-colors">
+            Home
+          </Link>
+          <Link href="/players" className="text-text-secondary hover:text-ember-glow transition-colors">
+            Players
+          </Link>
+          <Link href="/crafting" className="text-text-secondary hover:text-ember-glow transition-colors">
+            Crafting
+          </Link>
+          <Link href="/stories" className="text-text-secondary hover:text-shadow-purple-glow transition-colors">
+            Stories
+          </Link>
+          <Link href="/style-guide" className="text-text-secondary hover:text-moss-glow transition-colors">
+            Style Guide
+          </Link>
+          <span className="text-text-muted mx-2">|</span>
+          <span className="text-sm text-text-secondary">
+            Active: {active ? <span className="text-ember-glow font-semibold">{active.name}</span> : <span className="text-text-muted italic">none</span>}
+          </span>
+        </nav>
+      </div>
     </header>
   );
 }
