@@ -59,7 +59,7 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
           key={currentVideo.src}
           url={currentVideo.src}
           playing={true}
-          loop={!loopVideos || allVideos.length === 1}
+          loop={false}
           muted={true}
           playsinline={true}
           width="100%"
@@ -68,11 +68,27 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
             position: 'absolute',
             top: 0,
             left: 0,
+            objectFit: 'cover',
           }}
-          onReady={() => setIsReady(true)}
+          onReady={() => {
+            setIsReady(true);
+          }}
+          onStart={() => {
+            setIsReady(true);
+          }}
           onEnded={handleEnded}
           onError={(error: unknown) => {
             console.error("Video error:", error);
+          }}
+          config={{
+            file: {
+              attributes: {
+                controls: false,
+                autoPlay: true,
+                muted: true,
+                playsInline: true,
+              },
+            },
           }}
         />
       </div>
