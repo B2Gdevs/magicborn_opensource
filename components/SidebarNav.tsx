@@ -9,6 +9,7 @@ export default function SidebarNav() {
 
   const navItems = [
     { href: "/", label: "Home", icon: "🏠" },
+    { href: "/about", label: "About", icon: "📚" },
     { href: "/stories", label: "Stories", icon: "📖" },
     { href: "/style-guide", label: "Style Guide", icon: "🎨" },
     { href: "/development", label: "Development", icon: "⚙️" },
@@ -52,7 +53,15 @@ export default function SidebarNav() {
         </nav>
 
         {/* Footer Links */}
-        <div className="mt-auto pt-6">
+        <div className="mt-auto pt-6 space-y-2">
+          <a
+            href="https://discord.gg/JxXHZktcR7"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block px-4 py-2 text-xs text-text-muted hover:text-white transition-colors"
+          >
+            💬 Discord
+          </a>
           <a
             href="https://github.com/B2Gdevs/magicborn_opensource"
             target="_blank"
