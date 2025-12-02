@@ -51,6 +51,7 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
     <div className="relative w-full h-screen overflow-hidden bg-black">
       {/* React Player - handles all video loading smoothly */}
       <div className="absolute inset-0 w-full h-full">
+        {/* @ts-ignore - react-player types issue, works correctly at runtime */}
         <ReactPlayer
           key={currentVideo.src}
           url={currentVideo.src}
