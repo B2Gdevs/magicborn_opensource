@@ -1,9 +1,13 @@
 // lib/packages/evolution/evolutionService.ts
 import type { Player, Spell } from "@core/types";
-import type { NamedSpellBlueprint, NamedSpellId } from "@data/namedSpells";
-import { listNamedBlueprints, getBlueprintById } from "@data/namedSpells";
-import { DamageType } from "@core/enums";
 import type { RuneCode } from "@core/types";
+import { DamageType } from "@core/enums";
+import {
+  listNamedBlueprints,
+  getBlueprintById,
+  type NamedSpellBlueprint,
+  type NamedSpellId,
+} from "@data/namedSpells";
 import { RuneFamiliarityService } from "@pkg/player/RuneFamiliarityService";
 
 /**
@@ -17,6 +21,14 @@ export interface SpellEvolutionOption {
 }
 
 /**
+ * Extra context used for familiarity / flag gating.
+ */
+export interface EvolutionContext {
+  player?: Player;
+  playerFlags?: Set<string>;
+}
+
+/**
  * Sum all damage (burst + full DoT) for a spell.
  * Used for minTotalPower and scoring.
  */
@@ -24,16 +36,13 @@ function totalDamage(spell: Spell): number {
   if (!spell.combat) return 0;
 
   const { burst, dot, dotDurationSec } = spell.combat;
-
-  let burstTotal = 0;
-  let dotTotal = 0;
+  let total = 0;
 
   for (const type of Object.values(DamageType)) {
-    burstTotal += burst[type] ?? 0;
-    dotTotal += (dot[type] ?? 0) * dotDurationSec;
+    total += (burst[type] ?? 0) + (dot[type] ?? 0) * dotDurationSec;
   }
 
-  return burstTotal + dotTotal;
+  return total;
 }
 
 /**
@@ -42,15 +51,14 @@ function totalDamage(spell: Spell): number {
  */
 function damageFocusRatio(spell: Spell, type: DamageType): number {
   if (!spell.combat) return 0;
-  const total = totalDamage(spell);
-  if (total <= 0) return 0;
+  const all = totalDamage(spell);
+  if (all <= 0) return 0;
 
   const { burst, dot, dotDurationSec } = spell.combat;
-  const burstAmount = burst[type] ?? 0;
-  const dotAmount = (dot[type] ?? 0) * dotDurationSec;
-  const contribution = burstAmount + dotAmount;
+  const contrib =
+    (burst[type] ?? 0) + (dot[type] ?? 0) * dotDurationSec;
 
-  return contribution / total;
+  return contrib / all;
 }
 
 /**
@@ -58,15 +66,16 @@ function damageFocusRatio(spell: Spell, type: DamageType): number {
  * (respecting multiplicity when needed).
  */
 function containsAllRunes(spell: Spell, runes: RuneCode[]): boolean {
-  const counts: Record<RuneCode, number> = {} as Record<RuneCode, number>;
+  const counts: Partial<Record<RuneCode, number>> = {};
 
   for (const r of spell.runes) {
     counts[r] = (counts[r] ?? 0) + 1;
   }
 
   for (const r of runes) {
-    if (!counts[r] || counts[r] <= 0) return false;
-    counts[r] -= 1;
+    const have = counts[r] ?? 0;
+    if (have <= 0) return false;
+    counts[r] = have - 1;
   }
 
   return true;
@@ -88,49 +97,186 @@ function extrasOnlyAllowed(
   const reqSet = new Set<RuneCode>(required);
   const allowedSet = new Set<RuneCode>([...required, ...allowed]);
 
-  return spell.runes.every((r) => (reqSet.has(r) ? true : allowedSet.has(r)));
+  return spell.runes.every((r) =>
+    reqSet.has(r) ? true : allowedSet.has(r)
+  );
+}
+
+/**
+ * Familiarity / achievement / named-source gates.
+ */
+function matchesAdditionalRequirements(
+  spell: Spell,
+  bp: NamedSpellBlueprint,
+  ctx?: EvolutionContext
+): boolean {
+  const player = ctx?.player;
+
+  // Named-source requirement (for named → named evolutions).
+  if (bp.requiresNamedSourceId) {
+    const src = getBlueprintById(bp.requiresNamedSourceId);
+    if (!src) return false;
+
+    const ok = spell.name === src.name;
+    if (!ok) {
+      // debug
+      // eslint-disable-next-line no-console
+      console.log(
+        "[Evolution] named-source gate failed",
+        bp.id,
+        "requires",
+        src.name,
+        "but spell.name =",
+        spell.name
+      );
+      return false;
+    }
+  }
+
+  // Rune familiarity gates.
+  if (bp.minRuneFamiliarity || bp.minTotalFamiliarityScore !== undefined) {
+    if (!player) {
+      // eslint-disable-next-line no-console
+      console.log(
+        "[Evolution] familiarity gate failed for",
+        bp.id,
+        "— no player in context"
+      );
+      return false;
+    }
+
+    if (bp.minRuneFamiliarity) {
+      for (const key in bp.minRuneFamiliarity) {
+        const r = key as RuneCode;
+        const needed = bp.minRuneFamiliarity[r] ?? 0;
+        const have = RuneFamiliarityService.getRuneFamiliarity(player, r);
+        if (have < needed) {
+          // eslint-disable-next-line no-console
+          console.log(
+            "[Evolution] minRuneFamiliarity failed for",
+            bp.id,
+            "rune",
+            r,
+            "have=",
+            have,
+            "need=",
+            needed
+          );
+          return false;
+        }
+      }
+    }
+
+    if (bp.minTotalFamiliarityScore !== undefined) {
+      const score = RuneFamiliarityService.getSpellRuneFamiliarityScore(
+        player,
+        spell
+      );
+      if (score < bp.minTotalFamiliarityScore) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[Evolution] minTotalFamiliarityScore failed for",
+          bp.id,
+          "score=",
+          score,
+          "need=",
+          bp.minTotalFamiliarityScore
+        );
+        return false;
+      }
+    }
+  }
+
+  // Achievement / flag gates.
+  if (bp.requiredFlags?.length) {
+    const flags = ctx?.playerFlags ?? new Set<string>();
+    for (const flag of bp.requiredFlags) {
+      if (!flags.has(flag)) {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[Evolution] flag gate failed for",
+          bp.id,
+          "missing flag",
+          flag
+        );
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 /**
  * Check whether a given spell qualifies for a specific named spell blueprint.
  *
- * A spell can match a blueprint when:
- *  - it is currently nameless (no name set),
- *  - it contains all the required runes,
- *  - any extra runes are allowed by the blueprint,
- *  - its damage focus meets the required ratio (if specified),
- *  - its total damage meets the minimum power (if specified).
+ * NOTE: we **do not** blanket-reject spells that already have a name.
+ * Base Ember Ray should still be able to “match” the Ember Ray blueprint,
+ * and tier-2 evolutions use `requiresNamedSourceId` to enforce chains.
  */
 function matchesBlueprint(
   spell: Spell,
   bp: NamedSpellBlueprint,
   ctx?: EvolutionContext
 ): boolean {
-  if (spell.name && !bp.requiresNamedSourceId) {
-    // If spell is already named and this blueprint is meant for
-    // nameless → named, skip.
+  if (!containsAllRunes(spell, bp.requiredRunes)) {
+    if (bp.id === "ember_ray" || bp.id === "searing_ember_ray") {
+      // eslint-disable-next-line no-console
+      console.log("[Evolution] rune requirement failed for", bp.id);
+    }
     return false;
   }
 
-  if (!containsAllRunes(spell, bp.requiredRunes)) return false;
   if (!extrasOnlyAllowed(spell, bp.requiredRunes, bp.allowedExtraRunes)) {
+    if (bp.id === "ember_ray" || bp.id === "searing_ember_ray") {
+      // eslint-disable-next-line no-console
+      console.log("[Evolution] extra runes not allowed for", bp.id);
+    }
     return false;
   }
 
   if (bp.minDamageFocus) {
     const ratio = damageFocusRatio(spell, bp.minDamageFocus.type);
-    if (ratio < bp.minDamageFocus.ratio) return false;
+    if (ratio < bp.minDamageFocus.ratio) {
+      if (bp.id === "ember_ray" || bp.id === "searing_ember_ray") {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[Evolution] damage focus too low for",
+          bp.id,
+          "ratio=",
+          ratio,
+          "need=",
+          bp.minDamageFocus.ratio
+        );
+      }
+      return false;
+    }
   }
 
   if (bp.minTotalPower !== undefined) {
-    if (totalDamage(spell) < bp.minTotalPower) return false;
+    const power = totalDamage(spell);
+    if (power < bp.minTotalPower) {
+      if (bp.id === "ember_ray" || bp.id === "searing_ember_ray") {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[Evolution] total power too low for",
+          bp.id,
+          "power=",
+          power,
+          "need=",
+          bp.minTotalPower
+        );
+      }
+      return false;
+    }
   }
 
-  if (!matchesAdditionalRequirements(spell, bp, ctx)) return false;
+  if (!matchesAdditionalRequirements(spell, bp, ctx)) {
+    return false;
+  }
 
   return true;
 }
-
 
 /**
  * Very simple scoring:
@@ -158,71 +304,41 @@ function scoreMatch(spell: Spell, bp: NamedSpellBlueprint): number {
   return score;
 }
 
-export interface EvolutionContext {
-  playerFlags?: Set<string>;
-  player?: Player; // so we can check rune familiarity
-}
-
-function matchesAdditionalRequirements(
-  spell: Spell,
-  bp: NamedSpellBlueprint,
-  ctx?: EvolutionContext
-): boolean {
-  // named-source requirement (for named → named evolutions)
-  if (bp.requiresNamedSourceId) {
-    if (!spell.name || spell.name !== getBlueprintById(bp.requiresNamedSourceId)?.name) {
-      return false;
-    }
-  }
-
-  // rune familiarity gates
-  if (bp.minRuneFamiliarity || bp.minTotalFamiliarityScore !== undefined) {
-    if (!ctx?.player) return false;
-    const player = ctx.player;
-    const fam = player.affinity ?? {};
-
-    if (bp.minRuneFamiliarity) {
-      for (const key in bp.minRuneFamiliarity) {
-        const r = key as RuneCode;
-        const needed = bp.minRuneFamiliarity[r] ?? 0;
-        const have = fam[r] ?? 0;
-        if (have < needed) return false;
-      }
-    }
-
-    if (bp.minTotalFamiliarityScore !== undefined) {
-      const total = RuneFamiliarityService.getSpellRuneFamiliarityScore(
-        player,
-        spell
-      );
-      if (total < bp.minTotalFamiliarityScore) return false;
-    }
-  }
-
-  // achievement/flag gates
-  if (bp.requiredFlags?.length) {
-    const flags = ctx?.playerFlags ?? new Set<string>();
-    for (const flag of bp.requiredFlags) {
-      if (!flags.has(flag)) return false;
-    }
-  }
-
-  return true;
-}
-
-
 /**
  * EvolutionService:
- * - listPossibleEvolutions: "What named spells could this nameless spell become?"
+ * - listPossibleEvolutions: "What named spells could this spell become?"
  * - evolveSpell: "Evolve into this specific named spell if it qualifies."
  */
 export class EvolutionService {
-  listPossibleEvolutions(spell: Spell): SpellEvolutionOption[] {
+  listPossibleEvolutions(
+    spell: Spell,
+    player?: Player,
+    achievements?: Set<string>
+  ): SpellEvolutionOption[] {
+    const ctx: EvolutionContext | undefined =
+      player || (achievements && achievements.size > 0)
+        ? { player, playerFlags: achievements }
+        : undefined;
+
     const blueprints = listNamedBlueprints();
+
+    // eslint-disable-next-line no-console
+    console.log(
+      "[Evolution] listPossibleEvolutions – spell.name=",
+      spell.name,
+      "runes=",
+      spell.runes.join(""),
+      "blueprints=",
+      blueprints.map((b) => b.id)
+    );
+
     const candidates: SpellEvolutionOption[] = [];
 
     for (const bp of blueprints) {
-      if (matchesBlueprint(spell, bp)) {
+      const ok = matchesBlueprint(spell, bp, ctx);
+      // eslint-disable-next-line no-console
+      console.log("[Evolution] check", bp.id, "=>", ok);
+      if (ok) {
         candidates.push({
           blueprint: bp,
           score: scoreMatch(spell, bp),
@@ -231,19 +347,57 @@ export class EvolutionService {
     }
 
     candidates.sort((a, b) => b.score - a.score);
+
+    // eslint-disable-next-line no-console
+    console.log(
+      "[Evolution] candidates =>",
+      candidates.map((c) => c.blueprint.id)
+    );
+
     return candidates;
   }
 
-  evolveSpell(spell: Spell, blueprintId: NamedSpellId): Spell | null {
+  evolveSpell(
+    spell: Spell,
+    blueprintId: NamedSpellId,
+    player?: Player,
+    achievements?: Set<string>
+  ): Spell | null {
     const bp = getBlueprintById(blueprintId);
     if (!bp) return null;
-    if (!matchesBlueprint(spell, bp)) return null;
 
-    return {
+    const ctx: EvolutionContext | undefined =
+      player || (achievements && achievements.size > 0)
+        ? { player, playerFlags: achievements }
+        : undefined;
+
+    if (!matchesBlueprint(spell, bp, ctx)) {
+      // eslint-disable-next-line no-console
+      console.log(
+        "[Evolution] evolveSpell – matchesBlueprint failed for",
+        blueprintId
+      );
+      return null;
+    }
+
+    const newId = `${spell.id}::${bp.id}`;
+
+    const evolved: Spell = {
       ...spell,
+      id: newId,
       name: bp.name,
       evolvedFrom: spell.id,
-      // No levels in this game; growth/combat remain as-is.
     };
+
+    // eslint-disable-next-line no-console
+    console.log(
+      "[Evolution] evolveSpell – success",
+      "from",
+      spell.id,
+      "to",
+      evolved.id
+    );
+
+    return evolved;
   }
 }
