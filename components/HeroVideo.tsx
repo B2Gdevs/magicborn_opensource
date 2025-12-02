@@ -14,9 +14,8 @@ interface HeroVideoProps {
 
 export default function HeroVideo({ video, children, fallbackImage, loopVideos = true }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const allVideos = getAllHeroVideos();
   const currentVideo = video || allVideos[currentVideoIndex];
@@ -26,35 +25,41 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
+    let isMounted = true;
+
     // Set video source immediately
     if (videoElement.src !== currentVideo.src) {
       videoElement.src = currentVideo.src;
       videoElement.load();
+      setShowVideo(false); // Reset when video source changes
     }
 
-    const handleLoadedData = () => {
-      setIsVideoReady(true);
-      // Try to play, but don't wait for it to show the video
+    const handleCanPlayThrough = () => {
+      if (!isMounted) return;
+      // Video is fully loaded and can play through
       videoElement.play()
         .then(() => {
-          setIsPlaying(true);
+          if (isMounted) {
+            // Small delay to ensure video is actually playing before showing it
+            setTimeout(() => {
+              if (isMounted) {
+                setShowVideo(true);
+              }
+            }, 100);
+          }
         })
         .catch((error) => {
           console.warn("Autoplay prevented:", error);
-          // Still show video even if autoplay fails
-          setIsVideoReady(true);
+          // Still show video even if autoplay fails (user can interact)
+          if (isMounted) {
+            setShowVideo(true);
+          }
         });
     };
 
-    const handleCanPlayThrough = () => {
-      setIsVideoReady(true);
-      if (!isPlaying) {
-        videoElement.play()
-          .then(() => setIsPlaying(true))
-          .catch(() => {
-            // Video is ready even if autoplay fails
-            setIsVideoReady(true);
-          });
+    const handlePlaying = () => {
+      if (isMounted) {
+        setShowVideo(true);
       }
     };
 
@@ -62,48 +67,50 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
       if (loopVideos && allVideos.length > 1) {
         const nextIndex = (currentVideoIndex + 1) % allVideos.length;
         setCurrentVideoIndex(nextIndex);
-        setIsVideoReady(false);
-        setIsPlaying(false);
+        setShowVideo(false);
       }
     };
 
     const handleError = () => {
       console.error("Video failed to load");
-      setHasError(true);
+      if (isMounted) {
+        setHasError(true);
+      }
     };
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-
-    videoElement.addEventListener("loadeddata", handleLoadedData);
+    // Use canplaythrough for better reliability
     videoElement.addEventListener("canplaythrough", handleCanPlayThrough);
+    videoElement.addEventListener("playing", handlePlaying);
     videoElement.addEventListener("ended", handleEnded);
     videoElement.addEventListener("error", handleError);
-    videoElement.addEventListener("play", handlePlay);
-    videoElement.addEventListener("pause", handlePause);
 
     // Preload the video
     videoElement.preload = "auto";
     videoElement.muted = true;
     videoElement.playsInline = true;
 
+    // If video is already loaded, trigger canplaythrough
+    if (videoElement.readyState >= 3) {
+      handleCanPlayThrough();
+    }
+
     return () => {
-      videoElement.removeEventListener("loadeddata", handleLoadedData);
+      isMounted = false;
       videoElement.removeEventListener("canplaythrough", handleCanPlayThrough);
+      videoElement.removeEventListener("playing", handlePlaying);
       videoElement.removeEventListener("ended", handleEnded);
       videoElement.removeEventListener("error", handleError);
-      videoElement.removeEventListener("play", handlePlay);
-      videoElement.removeEventListener("pause", handlePause);
     };
-  }, [currentVideo.src, currentVideoIndex, loopVideos, allVideos.length, isPlaying]);
+  }, [currentVideo.src, currentVideoIndex, loopVideos, allVideos.length]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden">
-      {/* Fallback Image - Always visible, fades out when video is ready */}
+    <div className="relative w-full h-screen overflow-hidden bg-black">
+      {/* Fallback Image - Always visible first, fades out when video is ready */}
       <div 
-        className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${
-          isVideoReady && isPlaying ? "opacity-0" : "opacity-100"
+        className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
+          showVideo && !hasError ? "opacity-0" : "opacity-100"
         }`}
+        style={{ zIndex: showVideo && !hasError ? 0 : 1 }}
       >
         <Image
           src={imageFallback}
@@ -112,10 +119,11 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
           priority
           className="object-cover"
           quality={90}
+          unoptimized={false}
         />
       </div>
 
-      {/* Video Background - Fades in when ready */}
+      {/* Video Background - Hidden until ready, then fades in */}
       {!hasError && (
         <video
           ref={videoRef}
@@ -125,9 +133,10 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
           muted
           playsInline
           preload="auto"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-            isVideoReady && isPlaying ? "opacity-100" : "opacity-0"
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
+            showVideo ? "opacity-100" : "opacity-0"
           }`}
+          style={{ zIndex: showVideo ? 1 : 0 }}
           aria-label={currentVideo.title}
         >
           <source src={currentVideo.src} type="video/mp4" />
@@ -136,10 +145,10 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
       )}
 
       {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 bg-black/40 z-10" />
 
       {/* Content */}
-      <div className="relative z-10 h-full flex items-center justify-center">
+      <div className="relative z-20 h-full flex items-center justify-center">
         {children}
       </div>
     </div>
