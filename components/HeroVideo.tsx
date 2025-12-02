@@ -62,14 +62,6 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
             top: 0,
             left: 0,
           }}
-          config={{
-            file: {
-              attributes: {
-                poster: imageFallback,
-                preload: 'auto',
-              },
-            },
-          }}
           onReady={() => setIsReady(true)}
           onEnded={handleEnded}
           onError={(error) => {
