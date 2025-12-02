@@ -41,7 +41,9 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
     document.head.appendChild(preloadLink);
 
     return () => {
-      document.head.removeChild(preloadLink);
+      if (document.head.contains(preloadLink)) {
+        document.head.removeChild(preloadLink);
+      }
     };
   }, [currentVideoIndex, loopVideos, allVideos]);
 
@@ -50,11 +52,12 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
       {/* React Player - handles all video loading smoothly */}
       <div className="absolute inset-0 w-full h-full">
         <ReactPlayer
+          key={currentVideo.src}
           url={currentVideo.src}
-          playing
+          playing={true}
           loop={!loopVideos || allVideos.length === 1}
-          muted
-          playsinline
+          muted={true}
+          playsinline={true}
           width="100%"
           height="100%"
           style={{
@@ -64,7 +67,7 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
           }}
           onReady={() => setIsReady(true)}
           onEnded={handleEnded}
-          onError={(error) => {
+          onError={(error: unknown) => {
             console.error("Video error:", error);
           }}
         />
