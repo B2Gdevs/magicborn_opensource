@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import ReactPlayer from "react-player";
 import type { HeroVideoConfig } from "@lib/config/videos";
 import { getAllHeroVideos } from "@lib/config/videos";
 
@@ -12,12 +13,20 @@ interface HeroVideoProps {
 }
 
 export default function HeroVideo({ video, children, fallbackImage, loopVideos = true }: HeroVideoProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const allVideos = getAllHeroVideos();
   const currentVideo = video || allVideos[currentVideoIndex];
   const imageFallback = fallbackImage || currentVideo.thumbnail || "/images/new_tarro.webp";
+
+  // Handle video end - switch to next video in loop
+  const handleEnded = () => {
+    if (loopVideos && allVideos.length > 1) {
+      const nextIndex = (currentVideoIndex + 1) % allVideos.length;
+      setCurrentVideoIndex(nextIndex);
+      setIsReady(false);
+    }
+  };
 
   // Preload next video
   useEffect(() => {
@@ -25,125 +34,65 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
 
     const nextIndex = (currentVideoIndex + 1) % allVideos.length;
     const nextVideo = allVideos[nextIndex];
-    const preloadVideo = document.createElement('video');
-    preloadVideo.src = nextVideo.src;
-    preloadVideo.preload = 'auto';
-    preloadVideo.muted = true;
+    const preloadLink = document.createElement('link');
+    preloadLink.rel = 'preload';
+    preloadLink.as = 'video';
+    preloadLink.href = nextVideo.src;
+    document.head.appendChild(preloadLink);
 
     return () => {
-      preloadVideo.src = '';
+      document.head.removeChild(preloadLink);
     };
   }, [currentVideoIndex, loopVideos, allVideos]);
 
-  useEffect(() => {
-    const videoElement = videoRef.current;
-    if (!videoElement) return;
-
-    let isMounted = true;
-
-    const handleLoadedData = () => {
-      if (isMounted) {
-        setIsVideoReady(true);
-      }
-    };
-
-    const handleCanPlayThrough = () => {
-      if (isMounted) {
-        setIsVideoReady(true);
-        // Ensure video plays
-        videoElement.play().catch(() => {
-          // Autoplay prevented, but video is ready
-        });
-      }
-    };
-
-    const handleEnded = () => {
-      if (loopVideos && allVideos.length > 1 && isMounted) {
-        setIsVideoReady(false);
-        const nextIndex = (currentVideoIndex + 1) % allVideos.length;
-        setCurrentVideoIndex(nextIndex);
-      }
-    };
-
-    const handleError = () => {
-      console.error("Video failed to load");
-    };
-
-    // Set video source
-    if (videoElement.src !== currentVideo.src) {
-      setIsVideoReady(false);
-      videoElement.src = currentVideo.src;
-      videoElement.load();
-    }
-
-    videoElement.addEventListener("loadeddata", handleLoadedData);
-    videoElement.addEventListener("canplaythrough", handleCanPlayThrough);
-    videoElement.addEventListener("ended", handleEnded);
-    videoElement.addEventListener("error", handleError);
-
-    videoElement.preload = "auto";
-    videoElement.muted = true;
-    videoElement.playsInline = true;
-
-    // Try to play immediately
-    if (videoElement.readyState >= 3) {
-      videoElement.play().catch(() => {
-        // Autoplay prevented
-      });
-    }
-
-    return () => {
-      isMounted = false;
-      videoElement.removeEventListener("loadeddata", handleLoadedData);
-      videoElement.removeEventListener("canplaythrough", handleCanPlayThrough);
-      videoElement.removeEventListener("ended", handleEnded);
-      videoElement.removeEventListener("error", handleError);
-    };
-  }, [currentVideo.src, currentVideoIndex, loopVideos, allVideos.length]);
-
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black">
-      {/* Video with poster - browser handles the transition natively */}
-      <video
-        ref={videoRef}
-        key={currentVideo.src}
-        autoPlay
-        loop={!loopVideos || allVideos.length === 1}
-        muted
-        playsInline
-        preload="auto"
-        poster={imageFallback}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-          isVideoReady ? "opacity-100" : "opacity-0"
-        }`}
-        style={{ 
-          willChange: 'opacity',
-          backfaceVisibility: 'hidden'
-        }}
-        aria-label={currentVideo.title}
-        onLoadedData={() => setIsVideoReady(true)}
-        onCanPlayThrough={() => setIsVideoReady(true)}
-      >
-        <source src={currentVideo.src} type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+      {/* React Player - handles all video loading smoothly */}
+      <div className="absolute inset-0 w-full h-full">
+        <ReactPlayer
+          url={currentVideo.src}
+          playing
+          loop={!loopVideos || allVideos.length === 1}
+          muted
+          playsinline
+          width="100%"
+          height="100%"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+          }}
+          config={{
+            file: {
+              attributes: {
+                poster: imageFallback,
+                preload: 'auto',
+              },
+            },
+          }}
+          onReady={() => setIsReady(true)}
+          onEnded={handleEnded}
+          onError={(error) => {
+            console.error("Video error:", error);
+          }}
+        />
+      </div>
 
-      {/* Fallback image - shows when video isn't ready */}
-      {!isVideoReady && (
+      {/* Fallback image - shows until video is ready */}
+      {!isReady && (
         <div 
-          className="absolute inset-0 w-full h-full bg-cover bg-center"
+          className="absolute inset-0 w-full h-full bg-cover bg-center z-10"
           style={{ 
             backgroundImage: `url(${imageFallback})`,
-            zIndex: 1
           }}
         />
       )}
 
       {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-black/40 z-10" />
+      <div className="absolute inset-0 bg-black/40 z-20" />
 
       {/* Content */}
-      <div className="relative z-20 h-full flex items-center justify-center">
+      <div className="relative z-30 h-full flex items-center justify-center">
         {children}
       </div>
     </div>
