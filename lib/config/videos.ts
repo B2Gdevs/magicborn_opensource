@@ -18,6 +18,13 @@ export const HERO_VIDEOS: HeroVideoConfig[] = [
     description: "A glimpse into the shadowy world of Magicborn where spellcrafters forge their destiny",
     thumbnail: "/images/new_tarro.webp",
   },
+  {
+    id: "new_tarro_destroyed_teaser",
+    src: "/videos/new_tarro_destroyed_teaser.mp4",
+    title: "Magicborn: Modred's Legacy - Tarro Destroyed",
+    description: "The shadowy depths where Modred's legacy lives on",
+    thumbnail: "/images/new_tarro.webp",
+  },
   // Add more videos here as you create them
 ];
 
@@ -29,3 +36,6 @@ export function getRandomHeroVideo(): HeroVideoConfig {
   return HERO_VIDEOS[Math.floor(Math.random() * HERO_VIDEOS.length)];
 }
 
+export function getAllHeroVideos(): HeroVideoConfig[] {
+  return HERO_VIDEOS;
+}

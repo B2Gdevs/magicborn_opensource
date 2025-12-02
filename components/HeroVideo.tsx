@@ -2,18 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { HeroVideoConfig } from "@lib/config/videos";
+import { getAllHeroVideos } from "@lib/config/videos";
 
 interface HeroVideoProps {
-  video: HeroVideoConfig;
+  video?: HeroVideoConfig;
   children: React.ReactNode;
   fallbackImage?: string;
+  loopVideos?: boolean;
 }
 
-export default function HeroVideo({ video, children, fallbackImage }: HeroVideoProps) {
+export default function HeroVideo({ video, children, fallbackImage, loopVideos = true }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const allVideos = getAllHeroVideos();
+  const currentVideo = video || allVideos[currentVideoIndex];
 
   useEffect(() => {
     const videoElement = videoRef.current;
@@ -31,6 +36,16 @@ export default function HeroVideo({ video, children, fallbackImage }: HeroVideoP
         });
     };
 
+    const handleEnded = () => {
+      if (loopVideos && allVideos.length > 1) {
+        // Move to next video in loop
+        const nextIndex = (currentVideoIndex + 1) % allVideos.length;
+        setCurrentVideoIndex(nextIndex);
+        setIsLoaded(false);
+        setIsPlaying(false);
+      }
+    };
+
     const handleError = () => {
       console.error("Video failed to load");
       setHasError(true);
@@ -40,22 +55,27 @@ export default function HeroVideo({ video, children, fallbackImage }: HeroVideoP
     const handlePause = () => setIsPlaying(false);
 
     videoElement.addEventListener("canplay", handleCanPlay);
+    videoElement.addEventListener("ended", handleEnded);
     videoElement.addEventListener("error", handleError);
     videoElement.addEventListener("play", handlePlay);
     videoElement.addEventListener("pause", handlePause);
 
-    // Try to load the video
-    videoElement.load();
+    // Update video source when currentVideo changes
+    if (videoElement.src !== currentVideo.src) {
+      videoElement.src = currentVideo.src;
+      videoElement.load();
+    }
 
     return () => {
       videoElement.removeEventListener("canplay", handleCanPlay);
+      videoElement.removeEventListener("ended", handleEnded);
       videoElement.removeEventListener("error", handleError);
       videoElement.removeEventListener("play", handlePlay);
       videoElement.removeEventListener("pause", handlePause);
     };
-  }, [video.src]);
+  }, [currentVideo.src, currentVideoIndex, loopVideos, allVideos.length]);
 
-  const imageFallback = fallbackImage || video.thumbnail || "/images/new_tarro.webp";
+  const imageFallback = fallbackImage || currentVideo.thumbnail || "/images/new_tarro.webp";
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
@@ -63,17 +83,18 @@ export default function HeroVideo({ video, children, fallbackImage }: HeroVideoP
       {!hasError && (
         <video
           ref={videoRef}
+          key={currentVideo.src}
           autoPlay
-          loop
+          loop={!loopVideos || allVideos.length === 1}
           muted
           playsInline
           preload="auto"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
             isLoaded && isPlaying ? "opacity-100" : "opacity-0"
           }`}
-          aria-label={video.title}
+          aria-label={currentVideo.title}
         >
-          <source src={video.src} type="video/mp4" />
+          <source src={currentVideo.src} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
       )}
@@ -83,7 +104,7 @@ export default function HeroVideo({ video, children, fallbackImage }: HeroVideoP
         <div 
           className="absolute inset-0 w-full h-full bg-cover bg-center transition-opacity duration-1000"
           style={{ backgroundImage: `url(${imageFallback})` }}
-          aria-label={video.title}
+          aria-label={currentVideo.title}
         />
       )}
 

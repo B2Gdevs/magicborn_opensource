@@ -43,15 +43,24 @@
       radial-gradient(circle at 40% 20%, rgba(61, 40, 23, 0.1) 0%, transparent 50%);
     background-attachment: fixed;
   }
+  
+  /* Typography enhancements */
+  strong, b {
+    @apply font-bold text-ember-glow;
+  }
+  
+  em, i {
+    @apply italic text-text-glow;
+  }
 }
 
 @layer components {
-  /* Neobrutal Card with harsh shadows */
+  /* Compact Card with rounded borders */
   .card {
-    @apply bg-shadow border-2 border-border rounded-none p-6;
+    @apply bg-shadow border-2 border-border rounded-xl p-4;
     box-shadow: 
-      8px 8px 0px 0px rgba(0, 0, 0, 0.8),
-      4px 4px 0px 0px rgba(139, 69, 19, 0.3),
+      0 4px 6px -1px rgba(0, 0, 0, 0.5),
+      0 2px 4px -1px rgba(0, 0, 0, 0.3),
       inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     position: relative;
   }
@@ -64,14 +73,15 @@
     right: 0;
     bottom: 0;
     background: linear-gradient(135deg, rgba(139, 69, 19, 0.05) 0%, transparent 50%);
+    border-radius: inherit;
     pointer-events: none;
   }
   
   .card-glow {
     @apply card;
     box-shadow: 
-      8px 8px 0px 0px rgba(0, 0, 0, 0.8),
-      4px 4px 0px 0px rgba(139, 69, 19, 0.5),
+      0 4px 6px -1px rgba(0, 0, 0, 0.5),
+      0 2px 4px -1px rgba(0, 0, 0, 0.3),
       0 0 20px rgba(139, 69, 19, 0.2),
       inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   }
@@ -80,43 +90,38 @@
     background: linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, transparent 50%);
   }
   
-  /* Neobrutal button styles */
+  /* Compact button styles */
   .btn {
-    @apply px-6 py-3 rounded-none font-bold transition-all duration-200;
+    @apply px-4 py-2 rounded-lg font-bold transition-all duration-200;
     @apply bg-ember border-2 border-ember-glow;
     @apply text-white shadow-lg;
-    @apply hover:shadow-ember-glow/50 hover:translate-x-1 hover:translate-y-1;
-    @apply active:translate-x-2 active:translate-y-2 active:shadow-none;
+    @apply hover:shadow-ember-glow/50 hover:scale-105;
+    @apply active:scale-95;
     box-shadow: 
-      4px 4px 0px 0px rgba(0, 0, 0, 0.8),
-      2px 2px 0px 0px rgba(205, 133, 63, 0.5);
+      0 2px 4px rgba(0, 0, 0, 0.5),
+      0 0 10px rgba(205, 133, 63, 0.3);
   }
   
   .btn-secondary {
-    @apply px-6 py-3 rounded-none font-bold transition-all duration-200;
+    @apply px-4 py-2 rounded-lg font-bold transition-all duration-200;
     @apply bg-deep border-2 border-border;
     @apply text-text-primary;
-    @apply hover:bg-shadow hover:border-border-glow hover:translate-x-1 hover:translate-y-1;
-    box-shadow: 
-      4px 4px 0px 0px rgba(0, 0, 0, 0.8),
-      2px 2px 0px 0px rgba(139, 69, 19, 0.3);
+    @apply hover:bg-shadow hover:border-border-glow hover:scale-105;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   }
   
-  /* Badge with neobrutal style */
+  /* Compact badge */
   .badge {
-    @apply inline-flex items-center px-3 py-1 rounded-none text-xs font-bold;
-    @apply bg-shadow border-2 border-border;
+    @apply inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold;
+    @apply bg-shadow border border-border;
     @apply text-text-secondary;
-    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.8);
   }
   
   .badge-glow {
     @apply badge;
     @apply border-ember bg-earth;
     @apply text-ember-glow;
-    box-shadow: 
-      2px 2px 0px 0px rgba(0, 0, 0, 0.8),
-      0 0 10px rgba(139, 69, 19, 0.4);
+    box-shadow: 0 0 10px rgba(139, 69, 19, 0.4);
   }
   
   /* Text with organic glow */
@@ -129,13 +134,31 @@
   
   /* Organic divider */
   .divider {
-    @apply border-t-2 border-border;
+    @apply border-t-2 border-border rounded-full;
     box-shadow: 0 2px 0 rgba(139, 69, 19, 0.2);
   }
   
   /* Muted text */
   .text-muted {
     @apply text-text-muted;
+  }
+  
+  /* Tab styles */
+  .tab {
+    @apply px-4 py-2 rounded-t-lg font-bold text-sm transition-all;
+    @apply bg-deep border-2 border-b-0 border-border;
+    @apply text-text-secondary;
+    @apply hover:text-ember-glow;
+  }
+  
+  .tab-active {
+    @apply tab;
+    @apply bg-shadow text-ember-glow border-ember;
+    box-shadow: 0 -2px 10px rgba(139, 69, 19, 0.3);
+  }
+  
+  .tab-content {
+    @apply card rounded-t-none;
   }
 }
 
@@ -250,14 +273,5 @@
   .animate-fade-in-delay-4 {
     animation: fade-in 1s ease-out 0.8s forwards;
     opacity: 0;
-  }
-  
-  /* Neobrutal hover effects */
-  .hover-lift {
-    @apply transition-transform duration-200;
-  }
-  
-  .hover-lift:hover {
-    transform: translate(-2px, -2px);
   }
 }
