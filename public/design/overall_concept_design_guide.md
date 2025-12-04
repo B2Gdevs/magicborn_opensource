@@ -18,7 +18,6 @@ Dark fantasy with semi-realistic Elden Ring–inspired art direction
 - The world is bleak, but magic glows in pockets—embers, runes, spores, blue fire, ash
 
 ### 1.2 Core Visual Identity
-
 **Rendering Style:**
 - Painterly, high-detail rendering
 - Firelight as the main magical lighting

@@ -343,13 +343,28 @@
   }
 
   .documentation-content figure {
-    @apply my-8;
+    max-width: 42rem; /* 672px - max-w-2xl equivalent */
+    margin: 1.5rem auto;
+    padding: 0;
   }
 
-  .documentation-content img {
-    @apply w-full rounded-lg border border-border shadow-lg;
+  .documentation-content figure > div {
+    padding: 0;
+    margin: 0;
+    line-height: 0;
+    font-size: 0;
+  }
+
+  .documentation-content figure img {
     max-width: 100%;
     height: auto;
+    max-height: 400px;
+    object-fit: contain;
+    display: block;
+    margin: 0;
+    padding: 0;
+    line-height: 0;
+    font-size: 0;
   }
 
   .documentation-content figcaption {

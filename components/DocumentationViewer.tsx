@@ -322,12 +322,19 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
                     }
                     
                     return (
-                      <figure className="my-8 group">
-                        <div className="relative w-full rounded-lg border border-border shadow-lg overflow-hidden bg-shadow">
+                      <figure className="my-6 group max-w-2xl mx-auto">
+                        <div className="relative inline-block w-full rounded-lg border border-border shadow-lg overflow-hidden">
                           <img 
                             src={imageSrc}
                             alt={props.alt || ''}
-                            className="w-full h-auto object-contain"
+                            className="w-full h-auto max-h-[400px] object-contain block"
+                            style={{ 
+                              maxWidth: '100%',
+                              display: 'block',
+                              margin: 0,
+                              padding: 0,
+                              lineHeight: 0
+                            }}
                             loading="lazy"
                             onError={(e) => {
                               // Fallback if image doesn't exist
@@ -338,7 +345,7 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
                           <div className="absolute inset-0 bg-gradient-to-t from-void/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         </div>
                         {props.alt && (
-                          <figcaption className="text-center text-sm text-text-muted mt-3 italic">
+                          <figcaption className="text-center text-sm text-text-muted mt-2 italic">
                             {props.alt}
                           </figcaption>
                         )}
