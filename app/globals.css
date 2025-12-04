@@ -288,4 +288,71 @@
     animation: fade-in 1s ease-out 0.8s forwards;
     opacity: 0;
   }
+
+  /* Documentation content styling */
+  .documentation-content {
+    @apply text-text-primary;
+  }
+
+  .documentation-content h1 {
+    @apply text-4xl font-bold text-white mt-12 mb-8;
+  }
+
+  .documentation-content h2 {
+    @apply text-3xl font-bold text-glow mt-12 mb-8 border-b border-border pb-4;
+  }
+
+  .documentation-content h3 {
+    @apply text-2xl font-bold text-glow mt-10 mb-6;
+  }
+
+  .documentation-content h4 {
+    @apply text-xl font-semibold text-glow mt-8 mb-4;
+  }
+
+  .documentation-content p {
+    @apply mb-6 leading-relaxed text-text-secondary;
+  }
+
+  .documentation-content ul {
+    @apply list-disc space-y-2 my-4 ml-6;
+  }
+
+  .documentation-content li {
+    @apply text-text-secondary;
+  }
+
+  .documentation-content code {
+    @apply bg-shadow border border-border rounded px-2 py-1 text-ember-glow text-sm;
+  }
+
+  .documentation-content pre {
+    @apply bg-shadow border border-border rounded-lg p-4 overflow-x-auto my-6;
+  }
+
+  .documentation-content pre code {
+    @apply bg-transparent border-0 p-0 text-text-primary;
+  }
+
+  .documentation-content strong {
+    @apply font-bold text-ember-glow;
+  }
+
+  .documentation-content em {
+    @apply italic text-text-glow;
+  }
+
+  .documentation-content figure {
+    @apply my-8;
+  }
+
+  .documentation-content img {
+    @apply w-full rounded-lg border border-border shadow-lg;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .documentation-content figcaption {
+    @apply text-center text-sm text-text-muted mt-2;
+  }
 }
