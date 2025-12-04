@@ -22,7 +22,7 @@
         "@lib/*": ["lib/*"],
         "@core/*": ["lib/core/*"],
         "@pkg/*": ["lib/packages/*"],
-        "@data/*": ["lib/data/*"],
+        "@data/*": ["data/*"],
         "@store/*": ["lib/store/*"]
       },
     "incremental": true,

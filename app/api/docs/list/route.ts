@@ -11,6 +11,14 @@ export interface DocFile {
   children?: DocFile[];
 }
 
+function formatName(name: string): string {
+  // Format snake_case to Title Case
+  return name
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 async function scanDirectory(dirPath: string, basePath: string = ""): Promise<DocFile[]> {
   const items: DocFile[] = [];
   
@@ -35,8 +43,10 @@ async function scanDirectory(dirPath: string, basePath: string = ""): Promise<Do
         // Only include directory if it has markdown files or subdirectories with content
         const hasContent = children.some(c => !c.isDirectory || (c.children && c.children.length > 0));
         if (hasContent) {
+          // Format book folder names (top-level in books/)
+          const displayName = basePath === 'books' ? formatName(entry.name) : entry.name;
           items.push({
-            name: entry.name,
+            name: displayName,
             path: relativePath,
             category: basePath || entry.name,
             isDirectory: true,
@@ -67,10 +77,24 @@ async function scanDirectory(dirPath: string, basePath: string = ""): Promise<Do
 
 export async function GET() {
   try {
-    const designPath = join(process.cwd(), 'public', 'design');
-    const files = await scanDirectory(designPath);
+    const publicPath = join(process.cwd(), 'public');
+    const allFiles: DocFile[] = [];
     
-    return NextResponse.json({ files });
+    // Scan design folder
+    const designPath = join(publicPath, 'design');
+    if (existsSync(designPath)) {
+      const designFiles = await scanDirectory(designPath, 'design');
+      allFiles.push(...designFiles);
+    }
+    
+    // Scan books folder
+    const booksPath = join(publicPath, 'books');
+    if (existsSync(booksPath)) {
+      const booksFiles = await scanDirectory(booksPath, 'books');
+      allFiles.push(...booksFiles);
+    }
+    
+    return NextResponse.json({ files: allFiles });
   } catch (error) {
     console.error('Error listing documentation files:', error);
     return NextResponse.json(

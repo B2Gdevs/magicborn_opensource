@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import DocumentationViewer from "@components/DocumentationViewer";
+import DocumentationViewer, { ViewerMode } from "@components/DocumentationViewer";
 
 export default function StyleGuidePage() {
   const [activeTab, setActiveTab] = useState<"design" | "system">("design");
@@ -41,7 +41,7 @@ export default function StyleGuidePage() {
         {/* Content Area */}
         <div className="flex-1 overflow-hidden min-h-0">
           {activeTab === "design" ? (
-            <DocumentationViewer />
+            <DocumentationViewer mode={ViewerMode.DESIGN} />
           ) : (
             <div className="h-full overflow-y-auto">
               <div className="container mx-auto px-12 py-12 max-w-6xl">

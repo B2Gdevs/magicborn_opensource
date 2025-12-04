@@ -31,7 +31,7 @@ export default function AboutPage() {
           <div className="relative w-full max-w-4xl mx-auto h-96 mb-8 rounded-lg overflow-hidden">
             <Image
               src="/images/new_tarro.webp"
-              alt="Magicborn: Modred's Legacy - Concept Art"
+              alt="Magicborn: Mordred's Legacy - Concept Art"
               fill
               className="object-cover"
               priority

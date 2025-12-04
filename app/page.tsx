@@ -15,7 +15,7 @@ export default function LandingPage() {
               <div className="relative w-64 h-64 mx-auto mb-12 animate-fade-in">
                 <Image
                   src="/logos/magicborn_logo.png"
-                  alt="Magicborn: Modred's Legacy"
+                  alt="Magicborn: Mordred's Legacy"
                   fill
                   className="object-contain drop-shadow-2xl"
                   priority

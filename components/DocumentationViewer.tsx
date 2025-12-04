@@ -13,14 +13,28 @@ import {
   type DocFile,
   type DocCategory 
 } from "@lib/utils/docs-loader";
+import { 
+  getBookPageFromPath,
+  type BookDocument 
+} from "@lib/utils/book-integration";
+import { getNextPage, getPreviousPage, type BookPage } from "@lib/utils/book-scanner";
+import { useRouter } from "next/navigation";
 import MoodBoard from "@components/MoodBoard";
 import FloatingToolbar from "@components/FloatingToolbar";
 
-interface DocumentationViewerProps {
-  initialPath?: string;
+export enum ViewerMode {
+  DESIGN = "design",
+  BOOKS = "books",
+  AUTO = "auto",
 }
 
-export default function DocumentationViewer({ initialPath }: DocumentationViewerProps) {
+interface DocumentationViewerProps {
+  initialPath?: string;
+  mode?: ViewerMode; // DESIGN shows only design docs, BOOKS shows only books, AUTO detects from path
+}
+
+export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUTO }: DocumentationViewerProps) {
+  const router = useRouter();
   const [toc, setToc] = useState<TocItem[]>([]);
   const [markdownContent, setMarkdownContent] = useState<string>("");
   const [rawMarkdownContent, setRawMarkdownContent] = useState<string>("");
@@ -33,6 +47,14 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
   const [categories, setCategories] = useState<DocCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  
+  // Book mode state
+  const [currentBookPage, setCurrentBookPage] = useState<{ book: BookDocument; page: BookPage } | null>(null);
+
+  // Determine actual mode based on prop or path
+  const actualMode: ViewerMode.DESIGN | ViewerMode.BOOKS = mode === ViewerMode.AUTO 
+    ? (initialPath?.startsWith("books/") ? ViewerMode.BOOKS : ViewerMode.DESIGN)
+    : mode;
 
   // Load documentation structure
   useEffect(() => {
@@ -40,7 +62,40 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
       try {
         const files = await loadDocumentationList();
         setDocFiles(files);
-        const organized = organizeByCategory(files);
+        
+        // Filter files based on mode
+        let filteredFiles = files;
+        if (actualMode === ViewerMode.DESIGN) {
+          // Only show design category - filter out books
+          filteredFiles = files.filter(f => {
+            // Keep if it's in design category or path starts with design/
+            if (f.category === "design" || f.path.startsWith("design/")) {
+              return true;
+            }
+            // Remove books category
+            if (f.category === "books" || f.path.startsWith("books/")) {
+              return false;
+            }
+            // Keep other categories (like main)
+            return true;
+          });
+        } else if (actualMode === ViewerMode.BOOKS) {
+          // Only show books category - filter out design
+          filteredFiles = files.filter(f => {
+            // Keep if it's in books category or path starts with books/
+            if (f.category === "books" || f.path.startsWith("books/")) {
+              return true;
+            }
+            // Remove design category
+            if (f.category === "design" || f.path.startsWith("design/")) {
+              return false;
+            }
+            // Remove other categories
+            return false;
+          });
+        }
+        
+        const organized = organizeByCategory(filteredFiles);
         setCategories(organized);
         
         // Expand all categories by default
@@ -52,7 +107,7 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
         setExpandedCategories(allCategoryNames);
         
         // Load default or initial document
-        const docPath = initialPath || getDefaultDocument(files);
+        const docPath = initialPath || getDefaultDocument(filteredFiles);
         if (docPath) {
           await loadDocument(docPath);
         }
@@ -63,12 +118,21 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
       }
     }
     loadDocs();
-  }, [initialPath]);
+  }, [initialPath, actualMode]);
 
   const loadDocument = async (path: string) => {
     try {
       setLoading(true);
       setIsMoodBoardOpen(false); // Close mood board when switching documents
+      
+      // Check if this is a book page
+      const bookPageData = await getBookPageFromPath(path);
+      if (bookPageData) {
+        setCurrentBookPage(bookPageData);
+      } else {
+        setCurrentBookPage(null);
+      }
+      
       const content = await loadDocumentationFile(path);
       setCurrentDoc(path);
       setRawMarkdownContent(content);
@@ -85,8 +149,27 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
       setMarkdownContent("# Error\n\nFailed to load document. Please try again.");
       setRawMarkdownContent("");
       setImages([]);
+      setCurrentBookPage(null);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const handleNextPage = async () => {
+    if (!currentBookPage) return;
+    const next = getNextPage(currentBookPage.book.bookData, currentBookPage.page.pageNumber);
+    if (next) {
+      const nextPath = next.contentPath.replace(/^\/books\//, 'books/').replace(/\.md$/, '');
+      await loadDocument(nextPath);
+    }
+  };
+  
+  const handlePreviousPage = async () => {
+    if (!currentBookPage) return;
+    const prev = getPreviousPage(currentBookPage.book.bookData, currentBookPage.page.pageNumber);
+    if (prev) {
+      const prevPath = prev.contentPath.replace(/^\/books\//, 'books/').replace(/\.md$/, '');
+      await loadDocument(prevPath);
     }
   };
 
@@ -266,7 +349,50 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
               <p className="text-text-muted">Loading document...</p>
             </div>
           ) : (
-            <article className="documentation-content max-w-none">
+            <>
+              {/* Book Page Navigation */}
+              {currentBookPage && (
+                <div className="mb-8 pb-6 border-b border-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h1 className="text-2xl font-bold text-white mb-2">
+                        {currentBookPage.book.bookData.title}
+                      </h1>
+                      {currentBookPage.page.chapterNumber >= 0 && (
+                        <p className="text-lg text-ember-glow">
+                          {currentBookPage.book.bookData.chapters.find(
+                            (ch: { chapterNumber: number }) => ch.chapterNumber === currentBookPage.page.chapterNumber
+                          )?.displayName || `Chapter ${currentBookPage.page.chapterNumber}`}
+                        </p>
+                      )}
+                      <p className="text-sm text-text-muted mt-1">
+                        Page {currentBookPage.page.pageNumber} of {currentBookPage.book.bookData.totalPages}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Navigation Buttons */}
+                  <div className="flex items-center justify-between mt-4">
+                    <button
+                      onClick={() => handlePreviousPage()}
+                      disabled={!getPreviousPage(currentBookPage.book.bookData, currentBookPage.page.pageNumber)}
+                      className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      ← Previous Page
+                    </button>
+                    
+                    <button
+                      onClick={() => handleNextPage()}
+                      disabled={!getNextPage(currentBookPage.book.bookData, currentBookPage.page.pageNumber)}
+                      className="btn disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next Page →
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <article className="documentation-content max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -313,12 +439,38 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
                       // Absolute path from public folder - use as is
                       imageSrc = imageSrc;
                     } else if (imageSrc.startsWith('./')) {
-                      // Relative path starting with ./ - resolve relative to design folder
-                      imageSrc = `/design/${imageSrc.replace(/^\.\//, '')}`;
+                      // Relative path starting with ./ - resolve relative to current document
+                      if (currentBookPage) {
+                        // For book pages, resolve relative to book's images folder
+                        const bookBase = currentBookPage.book.bookData.basePath;
+                        imageSrc = `${bookBase}/images/${imageSrc.replace(/^\.\//, '')}`;
+                      } else if (currentDoc.startsWith('books/')) {
+                        // Extract book path from current doc
+                        const bookMatch = currentDoc.match(/^books\/([^\/]+)/);
+                        if (bookMatch) {
+                          imageSrc = `/books/${bookMatch[1]}/images/${imageSrc.replace(/^\.\//, '')}`;
+                        } else {
+                          imageSrc = `/design/${imageSrc.replace(/^\.\//, '')}`;
+                        }
+                      } else {
+                        // Default to design folder
+                        imageSrc = `/design/${imageSrc.replace(/^\.\//, '')}`;
+                      }
                     } else {
-                      // Relative path - assume it's in design folder or same directory
-                      // Try design folder first, then same directory structure
-                      imageSrc = `/design/${imageSrc}`;
+                      // Relative path - resolve based on current document context
+                      if (currentBookPage) {
+                        const bookBase = currentBookPage.book.bookData.basePath;
+                        imageSrc = `${bookBase}/images/${imageSrc}`;
+                      } else if (currentDoc.startsWith('books/')) {
+                        const bookMatch = currentDoc.match(/^books\/([^\/]+)/);
+                        if (bookMatch) {
+                          imageSrc = `/books/${bookMatch[1]}/images/${imageSrc}`;
+                        } else {
+                          imageSrc = `/design/${imageSrc}`;
+                        }
+                      } else {
+                        imageSrc = `/design/${imageSrc}`;
+                      }
                     }
                     
                     return (
@@ -360,6 +512,7 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
                 {markdownContent}
               </ReactMarkdown>
             </article>
+            </>
           )}
         </div>
       </main>

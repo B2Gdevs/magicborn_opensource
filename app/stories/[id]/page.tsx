@@ -3,47 +3,65 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getStoryById, getAllBooks, type Story } from "@lib/data/stories";
+import { loadBooksFromFileSystem } from "@/lib/utils/book-scanner";
 
 export default function StoryPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const [story, setStory] = useState<Story | null>(null);
+  const [storyPath, setStoryPath] = useState<string | null>(null);
+  const [bookTitle, setBookTitle] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storyId = Array.isArray(params.id) ? params.id[0] : params.id;
-    const foundStory = getStoryById(storyId);
-    
-    if (!foundStory) {
-      router.replace("/stories");
-      return;
+    async function loadStory() {
+      const storyId = Array.isArray(params.id) ? params.id[0] : params.id;
+      
+      // Find story in file system
+      const books = await loadBooksFromFileSystem();
+      let foundStory: { path: string; bookId: string; title: string } | null = null;
+      
+      for (const book of books) {
+        const story = book.stories.find(s => s.id === storyId);
+        if (story) {
+          foundStory = {
+            path: story.path,
+            bookId: book.id,
+            title: story.title,
+          };
+          setBookTitle(book.title);
+          break;
+        }
+      }
+      
+      if (!foundStory) {
+        router.replace("/stories");
+        return;
+      }
+
+      setStoryPath(foundStory.path);
+
+      // Load markdown content
+      const contentPath = `/${foundStory.path}.md`;
+      fetch(contentPath)
+        .then((res) => {
+          if (!res.ok) throw new Error("Story not found");
+          return res.text();
+        })
+        .then((text) => {
+          setContent(text);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("Failed to load story:", err);
+          setContent("Story content coming soon...");
+          setLoading(false);
+        });
     }
-
-    setStory(foundStory);
-
-    // Load markdown content
-    fetch(foundStory.contentPath)
-      .then((res) => {
-        if (!res.ok) throw new Error("Story not found");
-        return res.text();
-      })
-      .then((text) => {
-        setContent(text);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load story:", err);
-        setContent("Story content coming soon...");
-        setLoading(false);
-      });
+    loadStory();
   }, [params.id, router]);
 
-  if (!story) return null;
-
-  const books = getAllBooks();
-  const book = books.find((b) => b.id === story.bookId);
+  if (!storyPath) return null;
 
   return (
     <main className="ml-64 mt-16 min-h-screen bg-black text-white">
@@ -58,27 +76,23 @@ export default function StoryPage() {
 
         {/* Story Header */}
         <div className="mb-12">
-          {book && (
+          {bookTitle && (
             <div className="mb-4">
               <Link
                 href="/stories"
                 className="text-sm text-ember-glow hover:text-ember-glow/80 transition-colors"
               >
-                {book.title}
-                {book.isPrequel && " (Prequel)"}
+                {bookTitle}
               </Link>
             </div>
           )}
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">{story.title}</h1>
-          <p className="text-xl text-text-secondary mb-6 leading-relaxed font-serif">
-            {story.excerpt}
-          </p>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">
+            {storyPath.split('/').pop()?.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Story'}
+          </h1>
           <div className="flex items-center gap-4 text-sm text-text-muted">
-            {story.readingTime && <span>⏱ {story.readingTime} min read</span>}
-            {story.date && <span>{story.date}</span>}
-            {book && (
+            {bookTitle && (
               <span className="badge">
-                {book.isPrequel ? "Prequel" : "Main Timeline"}
+                {bookTitle.includes("Legacy") ? "Main Timeline" : "Prequel"}
               </span>
             )}
           </div>
@@ -107,12 +121,12 @@ export default function StoryPage() {
             >
               ← All Stories
             </Link>
-            {book && (
+            {bookTitle && (
               <Link
                 href="/stories"
                 className="text-text-secondary hover:text-ember-glow transition-colors"
               >
-                More from {book.title} →
+                More from {bookTitle} →
               </Link>
             )}
           </div>

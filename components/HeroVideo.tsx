@@ -17,7 +17,7 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
   const [isReady, setIsReady] = useState(false);
   const allVideos = getAllHeroVideos();
   const currentVideo = video || allVideos[currentVideoIndex];
-  const imageFallback = fallbackImage || currentVideo.thumbnail || "/images/new_tarro.webp";
+  const imageFallback = fallbackImage || currentVideo.thumbnail || "/designimages/new_tarro.webp";
 
   // Handle video end - switch to next video in loop
   const handleEnded = () => {

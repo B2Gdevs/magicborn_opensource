@@ -6,8 +6,8 @@ import TopNav from "@components/TopNav";
 import { GameProviders } from "./GameProviders";
 
 export const metadata: Metadata = {
-  title: "Magicborn: Modred's Legacy - Spell Crafting Game",
-  description: "A deterministic, progression-heavy spell crafting game. No character levels—all power comes from crafting spells from runes (A-Z), building elemental affinity, mastering rune familiarity, and evolving magic through Modred's Legacy. Features deterministic combat, spell evolution, raids, and a shadowy, organic dark fantasy world.",
+  title: "Magicborn: Mordred's Legacy - Spell Crafting Game",
+  description: "A deterministic, progression-heavy spell crafting game. No character levels—all power comes from crafting spells from runes (A-Z), building elemental affinity, mastering rune familiarity, and evolving magic through Mordred's Legacy. Features deterministic combat, spell evolution, raids, and a shadowy, organic dark fantasy world.",
   keywords: [
     "spell crafting game",
     "rune magic",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     "spell evolution",
     "elemental affinity",
     "dark fantasy game",
-    "modred's legacy",
+    "mordred's legacy",
     "magicborn",
     "spellcraft",
     "rune system",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "B2Gdevs" }],
   openGraph: {
-    title: "Magicborn: Modred's Legacy",
+    title: "Magicborn: Mordred's Legacy",
     description: "A deterministic, progression-heavy spell crafting game. Craft spells from runes, build affinity, master familiarity, and evolve your magic.",
     type: "website",
     images: [
@@ -36,13 +36,13 @@ export const metadata: Metadata = {
         url: "/images/new_tarro.webp",
         width: 1200,
         height: 630,
-        alt: "Magicborn: Modred's Legacy - Tarro",
+        alt: "Magicborn: Mordred's Legacy - Tarro",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Magicborn: Modred's Legacy",
+    title: "Magicborn: Mordred's Legacy",
     description: "A deterministic spell crafting game with no character levels—all power from crafting and evolution.",
     images: ["/images/new_tarro.webp"],
   },
@@ -75,7 +75,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               __html: JSON.stringify({
                 "@context": "https://schema.org",
                 "@type": "VideoGame",
-                "name": "Magicborn: Modred's Legacy",
+                "name": "Magicborn: Mordred's Legacy",
                 "description": "A deterministic, progression-heavy spell crafting game with no character levels. All power comes from crafting spells, building affinity, and evolving magic.",
                 "genre": ["Spell Crafting", "RPG", "Strategy", "Dark Fantasy"],
                 "gamePlatform": "Web Browser",
@@ -87,7 +87,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 },
                 "trailer": {
                   "@type": "VideoObject",
-                  "name": "Magicborn: Modred's Legacy - Tarro Teaser",
+                  "name": "Magicborn: Mordred's Legacy - Tarro Teaser",
                   "description": "A glimpse into the shadowy world of Magicborn where spellcrafters forge their destiny",
                   "thumbnailUrl": "https://magicborn.b2gdevs.com/images/new_tarro.webp",
                   "uploadDate": "2024-12-01",

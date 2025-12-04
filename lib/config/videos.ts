@@ -13,17 +13,17 @@ export interface HeroVideoConfig {
 export const HERO_VIDEOS: HeroVideoConfig[] = [
   {
     id: "new_tarro_teaser",
-    src: "/videos/new_tarro_teaser.mp4",
-    title: "Magicborn: Modred's Legacy - Tarro Teaser",
+    src: "design/videos/new_tarro_teaser.mp4",
+    title: "Magicborn: Mordred's Legacy - Tarro Teaser",
     description: "A glimpse into the shadowy world of Magicborn where spellcrafters forge their destiny",
-    thumbnail: "/images/new_tarro.webp",
+    thumbnail: "/design/images/new_tarro.webp",
   },
   {
     id: "new_tarro_destroyed_teaser",
-    src: "/videos/new_tarro_destroyed_teaser.mp4",
+    src: "design/videos/new_tarro_destroyed_teaser.mp4",
     title: "Magicborn: Modred's Legacy - Tarro Destroyed",
     description: "The shadowy depths where Modred's legacy lives on",
-    thumbnail: "/images/new_tarro.webp",
+    thumbnail: "/design/images/new_tarro.webp",
   },
   // Add more videos here as you create them
 ];

@@ -32,9 +32,22 @@ export async function loadDocumentationFile(path: string): Promise<string> {
   try {
     // Handle both with and without .md extension
     const filePath = path.endsWith('.md') ? path : `${path}.md`;
-    const response = await fetch(`/design/${filePath}`);
+    
+    // Determine the base path (design, books, stories, etc.)
+    let fetchPath = filePath;
+    if (!filePath.startsWith('/')) {
+      // If it starts with design/, books/, or stories/, use it directly
+      if (filePath.startsWith('design/') || filePath.startsWith('books/') || filePath.startsWith('stories/')) {
+        fetchPath = `/${filePath}`;
+      } else {
+        // Default to design folder
+        fetchPath = `/design/${filePath}`;
+      }
+    }
+    
+    const response = await fetch(fetchPath);
     if (!response.ok) {
-      throw new Error(`Failed to load documentation file: ${filePath}`);
+      throw new Error(`Failed to load documentation file: ${fetchPath}`);
     }
     return await response.text();
   } catch (error) {
