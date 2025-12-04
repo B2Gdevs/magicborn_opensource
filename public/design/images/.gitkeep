@@ -1,0 +1,19 @@
+# Images Folder
+
+Place design documentation images here.
+
+## Usage in Markdown
+
+Reference images using absolute paths:
+
+```markdown
+![Spellcrafting Scene](/design/images/spellcrafting-scene.png)
+![Character Concept](/design/images/character-concept.webp)
+```
+
+Or use relative paths from your markdown file:
+
+```markdown
+![Local Image](./images/local-image.png)
+```
+

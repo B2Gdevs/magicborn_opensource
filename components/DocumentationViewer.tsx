@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { generateTableOfContents, processMarkdownContent, slugify, type TocItem } from "@lib/utils/markdown-parser";
+import { extractImagesFromMarkdown, type ExtractedImage } from "@lib/utils/image-extractor";
 import { 
   loadDocumentationList, 
   loadDocumentationFile, 
@@ -12,6 +13,8 @@ import {
   type DocFile,
   type DocCategory 
 } from "@lib/utils/docs-loader";
+import MoodBoard from "@components/MoodBoard";
+import FloatingToolbar from "@components/FloatingToolbar";
 
 interface DocumentationViewerProps {
   initialPath?: string;
@@ -20,8 +23,11 @@ interface DocumentationViewerProps {
 export default function DocumentationViewer({ initialPath }: DocumentationViewerProps) {
   const [toc, setToc] = useState<TocItem[]>([]);
   const [markdownContent, setMarkdownContent] = useState<string>("");
+  const [rawMarkdownContent, setRawMarkdownContent] = useState<string>("");
+  const [images, setImages] = useState<ExtractedImage[]>([]);
   const [activeSection, setActiveSection] = useState<string>("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMoodBoardOpen, setIsMoodBoardOpen] = useState(false);
   const [currentDoc, setCurrentDoc] = useState<string>("");
   const [docFiles, setDocFiles] = useState<DocFile[]>([]);
   const [categories, setCategories] = useState<DocCategory[]>([]);
@@ -62,15 +68,23 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
   const loadDocument = async (path: string) => {
     try {
       setLoading(true);
+      setIsMoodBoardOpen(false); // Close mood board when switching documents
       const content = await loadDocumentationFile(path);
       setCurrentDoc(path);
+      setRawMarkdownContent(content);
       const processed = processMarkdownContent(content);
       setMarkdownContent(processed);
       const generatedToc = generateTableOfContents(content);
       setToc(generatedToc);
+      
+      // Extract images from markdown
+      const extractedImages = extractImagesFromMarkdown(content);
+      setImages(extractedImages);
     } catch (error) {
       console.error("Failed to load document:", error);
       setMarkdownContent("# Error\n\nFailed to load document. Please try again.");
+      setRawMarkdownContent("");
+      setImages([]);
     } finally {
       setLoading(false);
     }
@@ -236,7 +250,7 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-void relative h-full">
+      <main className="flex-1 overflow-y-auto bg-void relative h-full documentation-scroll-area">
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
@@ -288,21 +302,49 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
                   blockquote: ({ node, ...props }) => (
                     <blockquote className="border-l-4 border-ember-glow pl-4 my-6 italic text-text-secondary" {...props} />
                   ),
-                  img: ({ node, ...props }: any) => (
-                    <figure className="my-8">
-                      <img 
-                        src={props.src?.startsWith('/') || props.src?.startsWith('http') ? props.src : `/design/${props.src}`}
-                        alt={props.alt || ''}
-                        className="w-full rounded-lg border border-border shadow-lg"
-                        {...props}
-                      />
-                      {props.alt && (
-                        <figcaption className="text-center text-sm text-text-muted mt-2">
-                          {props.alt}
-                        </figcaption>
-                      )}
-                    </figure>
-                  ),
+                  img: ({ node, ...props }: any) => {
+                    let imageSrc = props.src || '';
+                    
+                    // Handle different path types
+                    if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
+                      // Full URL - use as is
+                      imageSrc = imageSrc;
+                    } else if (imageSrc.startsWith('/')) {
+                      // Absolute path from public folder - use as is
+                      imageSrc = imageSrc;
+                    } else if (imageSrc.startsWith('./')) {
+                      // Relative path starting with ./ - resolve relative to design folder
+                      imageSrc = `/design/${imageSrc.replace(/^\.\//, '')}`;
+                    } else {
+                      // Relative path - assume it's in design folder or same directory
+                      // Try design folder first, then same directory structure
+                      imageSrc = `/design/${imageSrc}`;
+                    }
+                    
+                    return (
+                      <figure className="my-8 group">
+                        <div className="relative w-full rounded-lg border border-border shadow-lg overflow-hidden bg-shadow">
+                          <img 
+                            src={imageSrc}
+                            alt={props.alt || ''}
+                            className="w-full h-auto object-contain"
+                            loading="lazy"
+                            onError={(e) => {
+                              // Fallback if image doesn't exist
+                              console.warn(`Image not found: ${imageSrc}`);
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-void/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                        </div>
+                        {props.alt && (
+                          <figcaption className="text-center text-sm text-text-muted mt-3 italic">
+                            {props.alt}
+                          </figcaption>
+                        )}
+                      </figure>
+                    );
+                  },
                   strong: ({ node, ...props }) => <strong className="text-ember-glow font-bold" {...props} />,
                   em: ({ node, ...props }) => <em className="text-text-glow italic" {...props} />,
                   hr: ({ node, ...props }) => <hr className="my-8 border-border" {...props} />,
@@ -314,6 +356,20 @@ export default function DocumentationViewer({ initialPath }: DocumentationViewer
           )}
         </div>
       </main>
+
+      {/* Floating Toolbar */}
+      <FloatingToolbar
+        imageCount={images.length}
+        isMoodBoardOpen={isMoodBoardOpen}
+        onToggleMoodBoard={() => setIsMoodBoardOpen(!isMoodBoardOpen)}
+      />
+
+      {/* Mood Board */}
+      <MoodBoard
+        images={images}
+        isOpen={isMoodBoardOpen}
+        onClose={() => setIsMoodBoardOpen(false)}
+      />
     </div>
   );
 }

@@ -19,10 +19,48 @@ This folder contains all design documentation for Magicborn: Modred's Legacy.
 
 1. Create a markdown file (`.md`) in the appropriate category folder
 2. Use standard markdown syntax
-3. Images should be placed in the same folder or a subfolder, and referenced relatively:
-   - `![Alt text](./image.png)` - Image in same folder
-   - `![Alt text](../images/image.png)` - Image in parent images folder
-   - `![Alt text](/design/category/image.png)` - Absolute path from public folder
+3. Images should be placed in the `public/design/` folder structure and referenced in markdown
+
+### Image Paths
+
+Images can be referenced in several ways:
+
+**Absolute paths (recommended):**
+```markdown
+![Description](/design/images/spellcrafting-scene.png)
+![Character Design](/design/characters/protagonist-concept.png)
+```
+
+**Relative paths:**
+```markdown
+![Description](./images/local-image.png)
+![Description](../shared/concept-art.png)
+```
+
+**From public root:**
+```markdown
+![Game Art](/images/game_scenes.webp)
+```
+
+### Recommended Image Structure
+
+```
+public/
+├── design/
+│   ├── images/          # General design images
+│   ├── characters/      # Character design images
+│   ├── creatures/       # Creature design images
+│   ├── spells/          # Spell/combat images
+│   ├── environments/    # Environment concept art
+│   └── ui/              # UI/interface images
+```
+
+### Image Best Practices
+
+- Use **WebP** format for best compression and quality
+- Keep images optimized (recommended max width: 1920px for documentation)
+- Include descriptive alt text for accessibility
+- Group related images in subfolders by category
 
 ## Markdown Features
 
