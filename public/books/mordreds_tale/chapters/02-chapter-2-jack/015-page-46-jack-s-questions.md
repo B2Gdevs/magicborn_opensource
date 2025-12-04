@@ -1,3 +1,5 @@
+![Page 15](/books/mordreds_tale/images/ch02-p015.png)
+
 # Page 46 — Jack’s Questions
 
 Jack leaned forward, elbows on his knees, eyes never leaving the pendant. His tongue darted over his lips before he finally spoke. “So… what’s it do?”

@@ -1,3 +1,5 @@
+![Page 8](/books/mordreds_tale/images/ch01-p008.png)
+
 # Page 19 - Echoes of Splendor
 
 The passage opened into a chamber Morgana knew too well. The Hall of Hollow Pilgrims. She had stood here once before immortality, when her kingdom was on the brink of conquest. She remembered the banners of Kairon, Velstrem, and Elderhaven hung high on these walls — kingdoms broken by the Pantheon’s will. Her own kingdom should have joined them. Instead, she had bent the knee, sworn herself to the gods, and lain in Merlin’s bed. Her people were spared, not by strength, but by her surrender.

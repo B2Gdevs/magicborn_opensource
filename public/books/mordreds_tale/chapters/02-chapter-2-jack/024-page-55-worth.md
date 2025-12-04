@@ -1,3 +1,5 @@
+![Page 24](/books/mordreds_tale/images/ch02-p024.png)
+
 # Page 55 — Worth
 
 The silence stretched between them, filled only by the storm's voice. Jack's jaw worked, but no words came. He could still feel the weight of those lost coins, the way they'd clinked against the table at the Barrel, the way Corin had laughed when Jack had bet too much on a bad roll.

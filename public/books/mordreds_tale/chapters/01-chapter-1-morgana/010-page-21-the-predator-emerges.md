@@ -1,3 +1,5 @@
+![Page 10](/books/mordreds_tale/images/ch01-p010.png)
+
 # Page 21 — The Predator Emerges
 
 She turned toward the sound. The scrape came again — steady, rhythmic. Not a corpse settling. Alive.

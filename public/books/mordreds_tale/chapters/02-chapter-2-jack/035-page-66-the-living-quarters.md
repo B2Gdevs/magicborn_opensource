@@ -1,3 +1,5 @@
+![Page 35](/books/mordreds_tale/images/ch02-p035.png)
+
 # Page 66 — The Living Quarters
 
 The world became a chaos of splintering wood and falling debris. Jack felt the sickening lurch of free fall, saw the creature's surprised roar as they both plunged through rotted flooring into darkness below.

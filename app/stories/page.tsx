@@ -35,9 +35,19 @@ export default function StoriesPage() {
   }, [bookParam, initialPage, pageParam]);
 
   return (
-    <main className="ml-64 mt-16 h-[calc(100vh-4rem)] bg-void text-text-primary">
+    <main className="ml-64 mt-16 h-[calc(100vh-4rem)] bg-void text-text-primary overflow-hidden">
       <div className="h-full flex flex-col">
-        <DocumentationViewer initialPath={initialPath} mode={ViewerMode.BOOKS} />
+        {/* Header */}
+        <div className="border-b border-border bg-shadow px-8 py-4 flex-shrink-0">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-glow">Stories & Books</h1>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-hidden min-h-0">
+          <DocumentationViewer initialPath={initialPath} mode={ViewerMode.BOOKS} />
+        </div>
       </div>
     </main>
   );

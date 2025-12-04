@@ -1,3 +1,5 @@
+![Page 17](/books/mordreds_tale/images/ch02-p017.png)
+
 # Page 48 — The Value of Hope
 
 

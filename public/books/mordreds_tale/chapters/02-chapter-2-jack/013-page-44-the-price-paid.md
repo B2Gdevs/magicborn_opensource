@@ -1,3 +1,5 @@
+![Page 13](/books/mordreds_tale/images/ch02-p013.png)
+
 # Page 44 — The Price Paid
 
 Corin leaned back, arms folded across his chest, pendant still clutched tight. “Cost me more than any of you lot ever scraped together in one night of dice,” he said. “And I’d pay it again.”

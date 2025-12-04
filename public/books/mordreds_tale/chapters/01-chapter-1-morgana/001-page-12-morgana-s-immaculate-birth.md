@@ -1,6 +1,6 @@
-# Page 12 - Morgana’s Immaculate Birth
+![Page 1](/books/mordreds_tale/images/ch01-p001.png)
 
-![Cover image](../../images/ch01-p001.png)
+# Page 12 - Morgana’s Immaculate Birth
 
 Morgana’s eyes opened to the quiet stillness of her chamber.
 

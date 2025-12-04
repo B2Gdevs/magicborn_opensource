@@ -1,3 +1,5 @@
+![Page 29](/books/mordreds_tale/images/ch02-p029.png)
+
 # Page 60 - Discovery
 
 Jack woke to voices.

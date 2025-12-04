@@ -1,3 +1,5 @@
+![Page 37](/books/mordreds_tale/images/ch02-p037.png)
+
 # Page 69 - Night of Sleeping Beauty
 
 Jack slipped the pendant into a small pouch he'd found, fastening it to his belt. Then he turned his attention to the bed—and the woman sleeping in it.

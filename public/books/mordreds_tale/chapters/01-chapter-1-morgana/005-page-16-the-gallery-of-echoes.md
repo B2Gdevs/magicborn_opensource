@@ -1,8 +1,6 @@
+![Page 5](/books/mordreds_tale/images/ch01-p005.png)
+
 # Page 16 — The Gallery of Echoes
-
-![Cover image](../../images/ch01-p005.png)
-
-
 
 Morgana ascended the vine-slick stairs, her torch casting shadows up the carved wood that bent ever so slightly, as if curling away from the light. As the corridor opened, she stepped into a massive vaulted chamber — once known as the Gallery of Echoes.
 

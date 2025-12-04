@@ -1,3 +1,5 @@
+![Page 15](/books/mordreds_tale/images/ch01-p015.png)
+
 # Page 26 — The Weight of the Hall
 
 The Hall of Hollow Pilgrims stood vast and empty around her, its silence broken only by her own breathing. Morgana walked slowly, each step echoing along the stripped stone floors. She remembered this place as it had been: throngs of supplicants from conquered kingdoms kneeling in lines that stretched to the dais. Nobles of Cyrane, the proud generals of Andovar, the priests of Thestrel — all had come here to bend knee or be broken.

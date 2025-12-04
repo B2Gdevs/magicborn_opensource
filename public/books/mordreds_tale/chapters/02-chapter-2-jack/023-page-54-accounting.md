@@ -1,3 +1,5 @@
+![Page 23](/books/mordreds_tale/images/ch02-p023.png)
+
 # Page 54 — Accounting
 
 The storm hammered the broken roof with fists of water. Rain poured through the gaping wound where timbers had snapped under the weight, cascading in silver sheets that turned their home into a drowning box. Jack stood in the doorway, cloak dripping, and stared at the ruin.

@@ -1,3 +1,5 @@
+![Page 6](/books/mordreds_tale/images/ch02-p006.png)
+
 # Page 38 — The Empty Barrel
 
 The Empty Barrel breathed heat and smoke. The door swung wide on a roar of laughter, and Jack slipped in, the air immediately thick with ale, sweat, and lamp-oil haze. Every table groaned with elbows, cups, and scattered coins. But above all, it was the dice — clattering, rolling, biting against wood — that owned the room.

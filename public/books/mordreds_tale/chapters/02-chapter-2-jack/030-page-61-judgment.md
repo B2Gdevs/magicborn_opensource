@@ -1,3 +1,5 @@
+![Page 30](/books/mordreds_tale/images/ch02-p030.png)
+
 # Page 61 — Judgment
 
 The Council Hall was built from stone blocks older than the Fall, its high windows letting in weak morning light that fell across the curved table where seven figures sat. Jack knelt in chains before them, the pendant burning in his stomach like a coal, while guards flanked him on either side.

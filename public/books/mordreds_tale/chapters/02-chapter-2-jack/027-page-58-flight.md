@@ -1,3 +1,5 @@
+![Page 27](/books/mordreds_tale/images/ch02-p027.png)
+
 # Page 58 - Flight
 
 The streets of Tarro were rivers. Water rushed through the gutters, spilled over cobblestones, turned every low place into a temporary lake. Jack splashed through it all, head down, cloak pulled tight. The rain was so heavy he could barely see ten feet ahead, which was good—it meant no one could see him either.

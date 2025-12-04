@@ -1,3 +1,5 @@
+![Page 19](/books/mordreds_tale/images/ch01-p019.png)
+
 # Page 30 — Unfamiliar Truths
 
 The guards braced as Morgana drew closer, but neither struck. Their eyes lingered on the child she carried, as if he unsettled them more than her presence.

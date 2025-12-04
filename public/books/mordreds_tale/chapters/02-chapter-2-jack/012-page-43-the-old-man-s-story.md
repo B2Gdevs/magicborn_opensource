@@ -1,3 +1,5 @@
+![Page 12](/books/mordreds_tale/images/ch02-p012.png)
+
 # Page 43 — The Old Man’s Story
 
 Derrick finally spoke, voice louder than the storm. “The man who sold it—he was there. At the Fall. Said the whole place was crawling with beasts, people screaming, running. The gods? Frozen like statues. Maliphant sat on his throne, stiff as stone. Less than a man.”

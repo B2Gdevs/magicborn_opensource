@@ -1,3 +1,5 @@
+![Page 26](/books/mordreds_tale/images/ch02-p026.png)
+
 # Page 57 - What He’d Done
 
 The storm was the only sound.

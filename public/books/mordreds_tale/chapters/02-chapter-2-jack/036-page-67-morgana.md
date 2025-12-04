@@ -1,3 +1,5 @@
+![Page 36](/books/mordreds_tale/images/ch02-p036.png)
+
 # Page 67 — Morgana
 
 The chamber was magnificent. Even through his pain-blurred vision, Jack could see it—a massive bed dominating the center, layered with embroidered blankets thick with dust. The ceiling carved with constellations that seemed to shift and move in the faint glow. Wardrobes of living wood stood open, revealing garments that shimmered with residual magic.

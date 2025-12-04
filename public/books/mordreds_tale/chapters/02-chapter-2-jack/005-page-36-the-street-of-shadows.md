@@ -1,3 +1,5 @@
+![Page 5](/books/mordreds_tale/images/ch02-p005.png)
+
 # Page 36 — The Street of Shadows
 
 Jack cut through Taro’s narrow lanes, boots scuffing stone worn by generations. People pressed past him — humans, dwarves, goblins — all moving with the weary rhythm of survival. A dwarf stooped under the weight of a timber beam, sweat streaking his copper-wired beard. Goblins squabbled at a fish cart, their rasping voices sharp as knives. Nobody stared at them. Why would they? Everyone in Taro bore some trace of the Pantheon’s cruelty. Some more obvious than others.

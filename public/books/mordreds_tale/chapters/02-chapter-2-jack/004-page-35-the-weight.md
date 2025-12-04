@@ -1,3 +1,5 @@
+![Page 4](/books/mordreds_tale/images/ch02-p004.png)
+
 # Page 35 — The Weight
 
 The door’s quiet shut left the room full of small sounds: the drip in the basin, the settle of ash in the hearth, a fly tapping against the window seam. Jack stood, stretched, and eyed the ladder. The yoke leaned where she’d left it, a patient burden waiting for a back.

@@ -1,3 +1,5 @@
+![Page 33](/books/mordreds_tale/images/ch02-p033.png)
+
 # Page 64 — Deeper
 
 Jack stumbled through the gallery, his breath coming in ragged gasps. Behind him, somewhere in the twisted corridors, something hunted. He'd heard it from the moment the guards had sealed the entrance—scraping. Rhythmic and deliberate. Claws on wood.

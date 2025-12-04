@@ -1,54 +1,73 @@
 import { NextResponse } from "next/server";
-import { readdir, stat } from "fs/promises";
+import { readdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 
+/**
+ * Book structure scanned from file system
+ * Scans public/books/ directory for book folders containing chapters and stories
+ */
 export interface ScannedBook {
   id: string;
   title: string;
   description: string;
   basePath: string;
-  chapters: Array<{
-    chapterNumber: number;
-    chapterName: string;
-    displayName: string;
-    pages: Array<{
-      chapterNumber: number;
-      chapterName: string;
-      pageNumber: number;
-      fileName: string;
-      contentPath: string;
-      imagePath?: string;
-    }>;
-  }>;
-  stories: Array<{
-    id: string;
-    title: string;
-    path: string;
-  }>;
+  chapters: Chapter[];
+  stories: Story[];
   totalPages: number;
 }
 
-function getImagePath(basePath: string, chapterNumber: number, pageInChapter: number): string {
-  const chapterStr = chapterNumber.toString().padStart(2, '0');
-  const pageStr = pageInChapter.toString().padStart(3, '0');
-  return `${basePath}/images/ch${chapterStr}-p${pageStr}.png`;
+interface Chapter {
+  chapterNumber: number;
+  chapterName: string;
+  displayName: string;
+  pages: Page[];
 }
 
+interface Page {
+  chapterNumber: number;
+  chapterName: string;
+  pageNumber: number;
+  fileName: string;
+  contentPath: string;
+  imagePath: string;
+}
+
+interface Story {
+  id: string;
+  title: string;
+  path: string;
+}
+
+/**
+ * Generate image path for a page
+ * Format: /books/{bookId}/images/ch{chapterNumber}-p{pageNumber}.png
+ * Example: /books/mordreds_tale/images/ch00-p001.png
+ */
+function getImagePath(bookId: string, chapterNumber: number, pageInChapter: number): string {
+  const chapterStr = chapterNumber.toString().padStart(2, '0');
+  const pageStr = pageInChapter.toString().padStart(3, '0');
+  return `/books/${bookId}/images/ch${chapterStr}-p${pageStr}.png`;
+}
+
+/**
+ * Parse chapter folder name to extract chapter info
+ * Format: "00-prologue", "01-chapter-1-morgana", etc.
+ */
 function parseChapterFolder(folderName: string): { chapterNumber: number; chapterName: string; displayName: string } | null {
-  // Format: "00-prologue", "01-chapter-1-morgana", etc.
   const match = folderName.match(/^(\d+)-(.+)$/);
   if (!match) return null;
   
   const chapterNum = parseInt(match[1], 10);
   const name = match[2];
   
-  // Generate display name
+  // Generate display name from folder name
   let displayName = name
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
   
+  // Special case for prologue
   if (chapterNum === 0) {
     displayName = "Prologue";
   } else {
@@ -62,82 +81,104 @@ function parseChapterFolder(folderName: string): { chapterNumber: number; chapte
   };
 }
 
+/**
+ * Format book title from folder name
+ * Example: "mordreds_tale" -> "Mordreds Tale"
+ */
+function formatBookTitle(folderName: string): string {
+  return folderName
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * Scan a single book folder for chapters and stories
+ */
 async function scanBookFolder(bookId: string, bookPath: string): Promise<ScannedBook | null> {
   const chaptersPath = join(bookPath, 'chapters');
-  const storiesPath = join(bookPath, 'images');
   const storiesFolderPath = join(bookPath, 'stories');
   
-  const chapters: ScannedBook['chapters'] = [];
-  const stories: ScannedBook['stories'] = [];
+  const chapters: Chapter[] = [];
+  const stories: Story[] = [];
   
-  // Scan chapters
+  // Scan chapters folder
   if (existsSync(chaptersPath)) {
     const chapterFolders = await readdir(chaptersPath, { withFileTypes: true });
-    const sortedChapters = chapterFolders
+    
+    // Parse and sort chapter folders
+    const parsedChapters = chapterFolders
       .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
       .map(entry => {
         const parsed = parseChapterFolder(entry.name);
-        if (!parsed) return null;
-        return { ...parsed, folderName: entry.name };
+        return parsed ? { ...parsed, folderName: entry.name } : null;
       })
       .filter((c): c is NonNullable<typeof c> => c !== null)
       .sort((a, b) => a.chapterNumber - b.chapterNumber);
     
-    for (const chapter of sortedChapters) {
-      const chapterPath = join(chaptersPath, chapter.folderName);
+    // Process each chapter folder
+    for (const chapterInfo of parsedChapters) {
+      const chapterPath = join(chaptersPath, chapterInfo.folderName);
       const files = await readdir(chapterPath);
+      
+      // Get all markdown files and sort them
       const mdFiles = files
         .filter(f => f.endsWith('.md'))
-        .sort(); // Sort alphabetically (should be numbered)
+        .sort();
       
-      const pages = mdFiles.map((fileName, index) => {
-        // Try to extract page number from filename (e.g., "001-page-1.md" -> 1)
-        const pageMatch = fileName.match(/(\d+)/);
-        const pageNum = pageMatch ? parseInt(pageMatch[1], 10) : index + 1;
+      // Create page entries for each markdown file
+      const pages: Page[] = mdFiles.map((fileName, index) => {
+        // Page number within chapter (1-indexed)
+        const pageInChapter = index + 1;
+        
+        // Extract page number from filename if possible (e.g., "001-page-12.md" -> 12)
+        // Otherwise use the position in the sorted list
+        const pageMatch = fileName.match(/page-(\d+)/);
+        const pageNumber = pageMatch ? parseInt(pageMatch[1], 10) : pageInChapter;
         
         return {
-          chapterNumber: chapter.chapterNumber,
-          chapterName: chapter.chapterName,
-          pageNumber: pageNum,
+          chapterNumber: chapterInfo.chapterNumber,
+          chapterName: chapterInfo.chapterName,
+          pageNumber,
           fileName,
-          contentPath: `/books/${bookId}/chapters/${chapter.folderName}/${fileName}`,
-          imagePath: getImagePath(`/books/${bookId}`, chapter.chapterNumber, index + 1),
+          contentPath: `/books/${bookId}/chapters/${chapterInfo.folderName}/${fileName}`,
+          imagePath: getImagePath(bookId, chapterInfo.chapterNumber, pageInChapter),
         };
       });
       
       if (pages.length > 0) {
         chapters.push({
-          chapterNumber: chapter.chapterNumber,
-          chapterName: chapter.chapterName,
-          displayName: chapter.displayName,
+          chapterNumber: chapterInfo.chapterNumber,
+          chapterName: chapterInfo.chapterName,
+          displayName: chapterInfo.displayName,
           pages,
         });
       }
     }
   }
   
-  // Scan stories
+  // Scan stories folder
   if (existsSync(storiesFolderPath)) {
     const storyFiles = await readdir(storiesFolderPath);
     const mdStories = storyFiles.filter(f => f.endsWith('.md'));
     
     for (const storyFile of mdStories) {
       const storyId = storyFile.replace('.md', '');
+      const title = storyId
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      
       stories.push({
         id: storyId,
-        title: storyId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        title,
         path: `books/${bookId}/stories/${storyId}`,
       });
     }
   }
   
   const totalPages = chapters.reduce((sum, ch) => sum + ch.pages.length, 0);
-  
-  // Generate book title from folder name
-  const title = bookId
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  const title = formatBookTitle(bookId);
   
   return {
     id: bookId,
@@ -150,20 +191,25 @@ async function scanBookFolder(bookId: string, bookPath: string): Promise<Scanned
   };
 }
 
+/**
+ * API endpoint to scan all books from public/books/ directory
+ * Returns array of ScannedBook objects with chapters, pages, and stories
+ */
 export async function GET() {
   try {
-    const publicPath = join(process.cwd(), 'public', 'books');
+    const publicBooksPath = join(process.cwd(), 'public', 'books');
     
-    if (!existsSync(publicPath)) {
+    if (!existsSync(publicBooksPath)) {
       return NextResponse.json({ books: [] });
     }
     
-    const bookFolders = await readdir(publicPath, { withFileTypes: true });
+    const bookFolders = await readdir(publicBooksPath, { withFileTypes: true });
     const books: ScannedBook[] = [];
     
+    // Scan each book folder
     for (const entry of bookFolders) {
       if (entry.isDirectory() && !entry.name.startsWith('.')) {
-        const bookPath = join(publicPath, entry.name);
+        const bookPath = join(publicBooksPath, entry.name);
         const book = await scanBookFolder(entry.name, bookPath);
         if (book) {
           books.push(book);
@@ -180,4 +226,3 @@ export async function GET() {
     );
   }
 }
-

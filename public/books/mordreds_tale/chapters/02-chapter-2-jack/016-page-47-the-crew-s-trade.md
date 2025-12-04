@@ -1,3 +1,5 @@
+![Page 16](/books/mordreds_tale/images/ch02-p016.png)
+
 # Page 47 - The Crew’s Trade
 
 Corin tucked the pendant back into his coat, grin sharp as a blade. "Thing is, boy, this ain't just about the pendant. This is what we do."

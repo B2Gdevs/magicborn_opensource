@@ -1,6 +1,6 @@
-# Page 13 - The birth of Morgana’s Descendants
+![Page 2](/books/mordreds_tale/images/ch01-p002.png)
 
-![Cover image](../../images/ch01-p002.png)
+# Page 13 - The birth of Morgana’s Descendants
 
 The room was too quiet.
 

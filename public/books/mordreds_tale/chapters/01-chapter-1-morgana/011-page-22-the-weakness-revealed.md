@@ -1,3 +1,5 @@
+![Page 11](/books/mordreds_tale/images/ch01-p011.png)
+
 # Page 22 - The Weakness Revealed
 
 The lycanthrope prowled closer, muscles bunching with each step. Morgana, with the child pressed to her chest, rose into the air again — weightless, sure-footed. She swept across the benches with ease, her strength surging as if her very veins carried fire. The beast roared in frustration, claws gouging deep grooves into the floor where she had stood.

@@ -1,3 +1,5 @@
+![Page 7](/books/mordreds_tale/images/ch01-p007.png)
+
 # Page 18 - Chamber of Entwined Relics Part 2
 
 The corridor leading upward was rimmed with curving roots. No straight lines remained. It felt like walking through a throat.

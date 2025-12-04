@@ -1,3 +1,5 @@
+![Page 10](/books/mordreds_tale/images/ch02-p010.png)
+
 # Page 41 — The Back Room
 
 The Barrel’s rear chamber was smaller, its air thicker. Smoke curled low, lanterns guttered against walls scarred by years of knife games and private dealings. The laughter from the front dulled to a muffled roar, leaving the table here a quiet stage.

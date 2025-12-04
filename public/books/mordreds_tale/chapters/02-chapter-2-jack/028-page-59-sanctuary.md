@@ -1,3 +1,5 @@
+![Page 28](/books/mordreds_tale/images/ch02-p028.png)
+
 # Page 59 - Sanctuary
 
 The barn loomed out of the rain like a ghost, its outline barely visible against the black sky. Jack circled it once, checking for lights, for signs of occupation. Nothing. The main doors were barred from outside, but there was a smaller side entrance that gave when he shoved it.

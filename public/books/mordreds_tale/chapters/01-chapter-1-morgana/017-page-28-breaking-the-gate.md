@@ -1,3 +1,5 @@
+![Page 17](/books/mordreds_tale/images/ch01-p017.png)
+
 # Page 28 — Breaking the Gate
 
 Morgana halted before the seal. The wood loomed over her, pale heartwood bound in iron, scarred with deep grooves and splintered edges. Men had struck it with blades, beasts had hurled themselves against it, claws and steel alike had tried to cut a path through — all had failed. The evidence lay strewn across the stones at her feet.

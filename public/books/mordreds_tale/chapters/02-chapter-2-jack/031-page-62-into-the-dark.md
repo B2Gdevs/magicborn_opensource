@@ -1,3 +1,5 @@
+![Page 31](/books/mordreds_tale/images/ch02-p031.png)
+
 # Page 62 — Into the Dark
 
 The guards marched Jack from the Council Hall straight to the Lair's entrance. No holding cell. No time to prepare. Gruff's words echoed in his mind: You will depart immediately.

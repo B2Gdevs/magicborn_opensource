@@ -1,3 +1,5 @@
+![Page 20](/books/mordreds_tale/images/ch02-p020.png)
+
 # Page 51 — Invitation in the Storm
 
 The rain battered the shutters, rattling them in their frames. The storm made the room feel small, the air close, as if the world outside had disappeared.

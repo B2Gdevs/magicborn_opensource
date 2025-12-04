@@ -1,3 +1,5 @@
+![Page 32](/books/mordreds_tale/images/ch02-p032.png)
+
 # Page 63 — The First Level
 
 The corridor stretched ahead, doors lining both sides. Some hung open, revealing chambers thick with dust and debris. Others were sealed tight, their surfaces marked with deep scratches—something had tried to get in. Or out.

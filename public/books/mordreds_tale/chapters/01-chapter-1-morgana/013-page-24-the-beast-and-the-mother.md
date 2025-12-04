@@ -1,3 +1,5 @@
+![Page 13](/books/mordreds_tale/images/ch01-p013.png)
+
 # Page 24 — The Beast and the Mother
 
 The lycanthrope’s breath rattled, its chest heaving in furious rhythm. Bloodied gums bared, it feinted left, then snapped right — probing, watching her responses. This was no mindless monster. It had fought before, learned before.

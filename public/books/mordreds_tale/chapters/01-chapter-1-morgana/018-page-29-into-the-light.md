@@ -1,3 +1,5 @@
+![Page 18](/books/mordreds_tale/images/ch01-p018.png)
+
 # Page 29 — Into the Light
 
 The gate’s ruin yawned wide behind her, splintered wood and snapped iron scattered like bones. Morgana stepped out, boots pressing into scorched soil. The air was harsh, wind carrying the scent of smoke and char. Her eyes narrowed against the glare. After the suffocating weight of the lair, the daylight seemed too sharp, too empty.

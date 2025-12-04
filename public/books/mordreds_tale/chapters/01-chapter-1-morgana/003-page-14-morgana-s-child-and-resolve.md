@@ -1,6 +1,6 @@
-# Page 14 - Morgana’s child and resolve
+![Page 3](/books/mordreds_tale/images/ch01-p003.png)
 
-![Cover image](../../images/ch01-p003.png)
+# Page 14 - Morgana’s child and resolve
 
 The chamber was still.
 

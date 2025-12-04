@@ -1,3 +1,5 @@
+![Page 1](/books/mordreds_tale/images/ch03-p001.png)
+
 # Page 72 - The Changed World
 
 The palisade gates opened to reveal a settlement transformed.

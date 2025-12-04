@@ -1,3 +1,5 @@
+![Page 9](/books/mordreds_tale/images/ch01-p009.png)
+
 # Page 20 - Pilgrims of Dust
 
 Morgana stepped among the ruins. Where once foreign envoys had bowed, corpses now slumped. Adventurers, thieves, the desperate — all drawn here long after the Pantheon’s fall. Their armor was cracked, their swords scattered. None bore battle wounds. They had not died fighting. They had died waiting.

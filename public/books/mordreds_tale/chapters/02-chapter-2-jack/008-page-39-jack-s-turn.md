@@ -1,3 +1,5 @@
+![Page 8](/books/mordreds_tale/images/ch02-p008.png)
+
 # Page 39 — Jack’s Turn
 
 “Your throw,” Derrick said, pushing the dice toward him.

@@ -1,3 +1,5 @@
+![Page 16](/books/mordreds_tale/images/ch01-p016.png)
+
 # Page 27 — The Seal
 
 The further Morgana walked, the heavier the air became. Not with silence — but with stench. The Hall of Hollow Pilgrims reeked of rot and iron, a foul musk that caught in her throat. The gods had once filled this place with ceremony; now it had become a midden for the dead.
