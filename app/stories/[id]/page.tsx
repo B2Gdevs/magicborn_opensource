@@ -13,6 +13,7 @@ export default function StoryPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [storyPath, setStoryPath] = useState<string | null>(null);
+  const [storyTitle, setStoryTitle] = useState<string>("");
   const [bookTitle, setBookTitle] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(true);

@@ -22,7 +22,7 @@ const SpellPreview: React.FC<SpellPreviewProps> = ({ spell }) => {
     );
   }
 
-  const { name, level, runes, combat, lastEval } = s;
+  const { name, runes, combat, lastEval } = s;
 
   const totalBurst = combat
     ? Object.values(combat.burst).reduce((a, b) => a + b, 0)
@@ -42,7 +42,7 @@ const SpellPreview: React.FC<SpellPreviewProps> = ({ spell }) => {
             {name ?? "Nameless Spell"}
           </div>
           <div className="text-xs text-slate-400">
-            Level {level ?? 1}
+            {runes.length} Rune{runes.length !== 1 ? 's' : ''}
           </div>
         </div>
         {totalPower > 0 && (

@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { listNamedBlueprints } from "@data/namedSpells";
-import { EFFECT_DEFS } from "@data/effects";
+import { listNamedBlueprints } from "@/lib/data/namedSpells";
+import { EFFECT_DEFS } from "@/lib/data/effects";
 import { RUNES, listRunes } from "@pkg/runes";
 import type { RuneCode } from "@core/types";
 

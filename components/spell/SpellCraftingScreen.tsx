@@ -32,8 +32,8 @@ export const SpellCraftingScreen: React.FC = () => {
                 {currentSpell.name ?? "(nameless spell)"}
               </div>
               <div>
-                <span className="font-semibold">Level:</span>{" "}
-                {currentSpell.level}
+                <span className="font-semibold">Runes Count:</span>{" "}
+                {currentSpell.runes.length}
               </div>
               <div>
                 <span className="font-semibold">Runes:</span>{" "}

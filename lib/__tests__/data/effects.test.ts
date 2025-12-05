@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { EffectType } from "@core/enums";
-import { EFFECT_DEFS } from "@data/effects";
+import { EFFECT_DEFS } from "@/lib/data/effects";
 import { RUNES } from "@pkg/runes";
 
 describe("Effect definitions – enum coverage", () => {

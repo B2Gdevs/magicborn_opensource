@@ -94,6 +94,13 @@ export async function GET() {
       allFiles.push(...booksFiles);
     }
     
+    // Scan developer folder
+    const developerPath = join(publicPath, 'developer');
+    if (existsSync(developerPath)) {
+      const developerFiles = await scanDirectory(developerPath, 'developer');
+      allFiles.push(...developerFiles);
+    }
+    
     return NextResponse.json({ files: allFiles });
   } catch (error) {
     console.error('Error listing documentation files:', error);

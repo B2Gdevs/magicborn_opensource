@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { generateTableOfContents, processMarkdownContent, slugify, type TocItem } from "@lib/utils/markdown-parser";
@@ -26,6 +26,7 @@ import VideoPlayer from "@components/VideoPlayer";
 export enum ViewerMode {
   DESIGN = "design",
   BOOKS = "books",
+  DEVELOPER = "developer",
   AUTO = "auto",
 }
 
@@ -48,13 +49,14 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
   const [categories, setCategories] = useState<DocCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const mainContentRef = useRef<HTMLElement>(null);
   
   // Book mode state
   const [currentBookPage, setCurrentBookPage] = useState<{ book: BookDocument; page: BookPage } | null>(null);
 
   // Determine actual mode based on prop or path
-  const actualMode: ViewerMode.DESIGN | ViewerMode.BOOKS = mode === ViewerMode.AUTO 
-    ? (initialPath?.startsWith("books/") ? ViewerMode.BOOKS : ViewerMode.DESIGN)
+  const actualMode: ViewerMode.DESIGN | ViewerMode.BOOKS | ViewerMode.DEVELOPER = mode === ViewerMode.AUTO 
+    ? (initialPath?.startsWith("books/") ? ViewerMode.BOOKS : initialPath?.startsWith("developer/") ? ViewerMode.DEVELOPER : ViewerMode.DESIGN)
     : mode;
 
   // Load documentation structure
@@ -67,28 +69,45 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
         // Filter files based on mode
         let filteredFiles = files;
         if (actualMode === ViewerMode.DESIGN) {
-          // Only show design category - filter out books
+          // Only show design category - filter out books and developer
           filteredFiles = files.filter(f => {
             // Keep if it's in design category or path starts with design/
             if (f.category === "design" || f.path.startsWith("design/")) {
               return true;
             }
-            // Remove books category
-            if (f.category === "books" || f.path.startsWith("books/")) {
+            // Remove books and developer categories
+            if (f.category === "books" || f.path.startsWith("books/") ||
+                f.category === "developer" || f.path.startsWith("developer/")) {
               return false;
             }
             // Keep other categories (like main)
             return true;
           });
         } else if (actualMode === ViewerMode.BOOKS) {
-          // Only show books category - filter out design
+          // Only show books category - filter out design and developer
           filteredFiles = files.filter(f => {
             // Keep if it's in books category or path starts with books/
             if (f.category === "books" || f.path.startsWith("books/")) {
               return true;
             }
-            // Remove design category
-            if (f.category === "design" || f.path.startsWith("design/")) {
+            // Remove design and developer categories
+            if (f.category === "design" || f.path.startsWith("design/") ||
+                f.category === "developer" || f.path.startsWith("developer/")) {
+              return false;
+            }
+            // Remove other categories
+            return false;
+          });
+        } else if (actualMode === ViewerMode.DEVELOPER) {
+          // Only show developer category - filter out design and books
+          filteredFiles = files.filter(f => {
+            // Keep if it's in developer category or path starts with developer/
+            if (f.category === "developer" || f.path.startsWith("developer/")) {
+              return true;
+            }
+            // Remove design and books categories
+            if (f.category === "design" || f.path.startsWith("design/") ||
+                f.category === "books" || f.path.startsWith("books/")) {
               return false;
             }
             // Remove other categories
@@ -108,7 +127,11 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
         setExpandedCategories(allCategoryNames);
         
         // Load default or initial document
-        const docPath = initialPath || getDefaultDocument(filteredFiles);
+        let docPath = initialPath;
+        if (!docPath || docPath.endsWith('/')) {
+          // If no path or path ends with /, use default document
+          docPath = getDefaultDocument(filteredFiles, 'README') || undefined;
+        }
         if (docPath) {
           await loadDocument(docPath);
         }
@@ -175,6 +198,9 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
   };
 
   useEffect(() => {
+    const scrollContainer = mainContentRef.current;
+    if (!scrollContainer) return;
+
     const handleScroll = () => {
       const headings = document.querySelectorAll("h1, h2, h3, h4");
       let current = "";
@@ -189,25 +215,28 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
       setActiveSection(current);
     };
 
-    window.addEventListener("scroll", handleScroll);
+    scrollContainer.addEventListener("scroll", handleScroll);
     handleScroll();
 
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, [markdownContent]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
-    if (element) {
-      const offset = 100;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - offset;
+    const scrollContainer = mainContentRef.current;
+    if (!element || !scrollContainer) return;
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth",
-      });
-      setActiveSection(id);
-    }
+    const offset = 100;
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+    const scrollTop = scrollContainer.scrollTop;
+    const offsetPosition = elementRect.top - containerRect.top + scrollTop - offset;
+
+    scrollContainer.scrollTo({
+      top: offsetPosition,
+      behavior: "smooth",
+    });
+    setActiveSection(id);
   };
 
   const toggleCategory = (categoryPath: string) => {
@@ -334,7 +363,7 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-void relative h-full documentation-scroll-area">
+      <main ref={mainContentRef} className="flex-1 overflow-y-auto bg-void relative h-full documentation-scroll-area">
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}

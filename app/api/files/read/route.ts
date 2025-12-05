@@ -3,6 +3,9 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 
+// Force dynamic rendering since we use request.url
+export const dynamic = 'force-dynamic';
+
 /**
  * API endpoint to read file content
  * Query params: path (relative to public folder)

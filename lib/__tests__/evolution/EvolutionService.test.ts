@@ -5,7 +5,7 @@ import { DamageType } from "@core/enums";
 import {
   EMBER_RAY_BLUEPRINT,
   NamedSpellId,
-} from "@data/namedSpells";
+} from "@/lib/data/namedSpells";
 import { EvolutionService } from "@pkg/evolution/evolutionService";
 import { makeCombatStats } from "@/lib/test/testFactories";
 import { makeTestSpell } from "@/lib/test/testFactories";

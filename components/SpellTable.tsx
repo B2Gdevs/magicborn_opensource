@@ -19,7 +19,6 @@ export default function SpellTable(props: {
               <tr className="text-left text-sm text-muted">
                 <th className="py-2">Name</th>
                 <th className="py-2">Runes</th>
-                <th className="py-2">Lvl</th>
                 <th className="py-2">Growth</th>
                 <th className="py-2">Last Eval</th>
                 <th className="py-2">Actions</th>
@@ -30,7 +29,6 @@ export default function SpellTable(props: {
                 <tr key={s.id} className="border-b border-line">
                   <td className="py-2 align-top">{s.name ?? <span className="badge">Nameless</span>}</td>
                   <td className="py-2 align-top">{s.runes.join("")}</td>
-                  <td className="py-2 align-top tabular-nums">{s.level}</td>
                   <td className="py-2 align-top">
                     <div className="flex flex-wrap gap-2">
                       <span className="badge">P:{Math.round(s.growth.power)}</span>

@@ -162,10 +162,10 @@ export default function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                       <fieldset
                         data-group="checkboxes"
                         className="formkit-6797"
-                        group="field"
-                        type="Custom"
-                        order="1"
-                        save-as="Tag"
+                        data-group-type="field"
+                        data-type="Custom"
+                        data-order="1"
+                        data-save-as="Tag"
                       >
                         <div
                           className="formkit-checkboxes"

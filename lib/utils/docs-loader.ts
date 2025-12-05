@@ -33,11 +33,11 @@ export async function loadDocumentationFile(path: string): Promise<string> {
     // Handle both with and without .md extension
     const filePath = path.endsWith('.md') ? path : `${path}.md`;
     
-    // Determine the base path (design, books, stories, etc.)
+    // Determine the base path (design, books, stories, developer, etc.)
     let fetchPath = filePath;
     if (!filePath.startsWith('/')) {
-      // If it starts with design/, books/, or stories/, use it directly
-      if (filePath.startsWith('design/') || filePath.startsWith('books/') || filePath.startsWith('stories/')) {
+      // If it starts with design/, books/, stories/, or developer/, use it directly
+      if (filePath.startsWith('design/') || filePath.startsWith('books/') || filePath.startsWith('stories/') || filePath.startsWith('developer/')) {
         fetchPath = `/${filePath}`;
       } else {
         // Default to design folder
@@ -143,8 +143,8 @@ export function organizeByCategory(files: DocFile[]): DocCategory[] {
     }));
 }
 
-export function getDefaultDocument(files: DocFile[]): string | null {
-  // Look for overall_concept_design_guide.md first
+export function getDefaultDocument(files: DocFile[], preferredName?: string): string | null {
+  // Look for a preferred document first (e.g., README)
   function findDoc(files: DocFile[], targetName: string): string | null {
     for (const file of files) {
       if (file.isDirectory && file.children) {
@@ -159,7 +159,17 @@ export function getDefaultDocument(files: DocFile[]): string | null {
     return null;
   }
   
-  // Try to find the main design guide
+  // If preferred name is provided, try to find it first
+  if (preferredName) {
+    const preferredDoc = findDoc(files, preferredName);
+    if (preferredDoc) return preferredDoc;
+  }
+  
+  // Try to find README.md first
+  const readmeDoc = findDoc(files, 'README');
+  if (readmeDoc) return readmeDoc;
+  
+  // Try to find the main design guide (for design mode)
   const mainDoc = findDoc(files, 'overall_concept_design_guide');
   if (mainDoc) return mainDoc;
   

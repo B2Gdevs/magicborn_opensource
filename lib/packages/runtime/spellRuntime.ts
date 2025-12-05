@@ -3,7 +3,7 @@ import type { Player, Spell } from "@core/types";
 import { EncounterService, type CombatActor, type SpellHitResult } from "@pkg/combat/EncounterService";
 import { EvolutionService } from "@pkg/evolution/evolutionService";
 import type { SpellEvolutionOption } from "@pkg/evolution/evolutionService";
-import type { NamedSpellId } from "@data/namedSpells";
+import type { NamedSpellId } from "@/lib/data/namedSpells";
 
 /**
  * SpellRuntime is a thin façade used by the game / UI layer.

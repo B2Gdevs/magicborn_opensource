@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Player, Spell } from "@core/types";
-import type { NamedSpellId } from "@data/namedSpells";
+import type { NamedSpellId } from "@/lib/data/namedSpells";
 import { EvolutionService } from "@pkg/evolution/evolutionService";
 
 const evoService = new EvolutionService();

@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import DocumentationViewer, { ViewerMode } from "@components/DocumentationViewer";
 import { getBookById, getPageByNumber } from "@/lib/utils/book-scanner";
 
-export default function StoriesPage() {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+function StoriesPageContent() {
   const searchParams = useSearchParams();
   const pageParam = searchParams.get("page");
   const bookParam = searchParams.get("book") || "mordreds_tale"; // Default to first book
@@ -50,5 +53,19 @@ export default function StoriesPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function StoriesPage() {
+  return (
+    <Suspense fallback={
+      <main className="ml-64 mt-16 h-[calc(100vh-4rem)] bg-void text-text-primary overflow-hidden">
+        <div className="h-full flex items-center justify-center">
+          <div className="text-text-secondary">Loading...</div>
+        </div>
+      </main>
+    }>
+      <StoriesPageContent />
+    </Suspense>
   );
 }

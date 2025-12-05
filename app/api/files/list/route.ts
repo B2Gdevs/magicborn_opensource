@@ -3,6 +3,9 @@ import { readdir, stat } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 
+// Force dynamic rendering since we use request.url
+export const dynamic = 'force-dynamic';
+
 export interface FileItem {
   name: string;
   path: string;

@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
 import type { Spell } from "@core/types";
-import type { NamedSpellId } from "@data/namedSpells";
+import type { NamedSpellId } from "@/lib/data/namedSpells";
 import { EvolutionService } from "@pkg/evolution/evolutionService";
 
 const evolutionService = new EvolutionService();

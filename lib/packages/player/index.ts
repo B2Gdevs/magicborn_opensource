@@ -9,7 +9,12 @@ export class PlayerService {
       mana: 100,
       maxMana: 100,
       controlBonus: 0,
-      costEfficiency: 0
+      costEfficiency: 0,
+      hp: 100,
+      maxHp: 100,
+      effects: [],
+      elementXp: {},
+      elementAffinity: {},
     };
   }
 

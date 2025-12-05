@@ -2,8 +2,8 @@
 import { describe, it, expect } from "vitest";
 import type { Spell } from "@core/types";
 import { DamageType } from "@core/enums";
-import { EMBER_RAY_BLUEPRINT } from "@data/namedSpells";
-import type { NamedSpellId } from "@data/namedSpells";
+import { EMBER_RAY_BLUEPRINT } from "@/lib/data/namedSpells";
+import type { NamedSpellId } from "@/lib/data/namedSpells";
 import { EvolutionService } from "@pkg/evolution/evolutionService";
 import {
   makeCombatStats,

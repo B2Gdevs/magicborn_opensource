@@ -29,19 +29,20 @@ export default function PlayerDetailPage() {
       <div className="max-w-4xl mx-auto">
         <div className="grid gap-4">
           <div className="card">
-        <h2 className="text-xl font-semibold">Player: {player.name}</h2>
-        <p className="text-muted">ID: {player.id}</p>
-      </div>
+            <h2 className="text-xl font-semibold">Player: {player.name}</h2>
+            <p className="text-muted">ID: {player.id}</p>
+          </div>
 
-      <div className="card">
-        <h3 className="font-semibold mb-2">Affinity</h3>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(player.affinity)
-            .filter(([, v]) => v && v > 0)
-            .map(([k, v]) => (
-              <span className="badge" key={k}>{k}:{(v as number).toFixed(2)}</span>
-            ))}
-        </div>
+          <div className="card">
+            <h3 className="font-semibold mb-2">Affinity</h3>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(player.affinity)
+                .filter(([, v]) => v && v > 0)
+                .map(([k, v]) => (
+                  <span className="badge" key={k}>{k}:{(v as number).toFixed(2)}</span>
+                ))}
+            </div>
+          </div>
         </div>
       </div>
     </main>

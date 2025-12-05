@@ -7,7 +7,7 @@ import {
   getBlueprintById,
   type NamedSpellBlueprint,
   type NamedSpellId,
-} from "@data/namedSpells";
+} from "@/lib/data/namedSpells";
 import { RuneFamiliarityService } from "@pkg/player/RuneFamiliarityService";
 
 /**

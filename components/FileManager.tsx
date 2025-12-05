@@ -520,7 +520,7 @@ export default function FileManager({ initialPath = "" }: FileManagerProps) {
             />
             <div className="flex gap-2">
               <button
-                onClick={handleUpload}
+                onClick={() => handleUpload()}
                 disabled={!uploadFile}
                 className="btn flex-1 disabled:opacity-50"
               >

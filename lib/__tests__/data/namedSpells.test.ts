@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   NAMED_SPELL_BLUEPRINTS,
   getBlueprintById,
-} from "@data/namedSpells";
+} from "@/lib/data/namedSpells";
 
 describe("Named spell blueprints – sanity", () => {
   it("all NamedSpellIds are unique and resolvable via getBlueprintById", () => {

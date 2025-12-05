@@ -6,6 +6,7 @@ import TopNav from "@components/TopNav";
 import { GameProviders } from "./GameProviders";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://magicborn.b2gdevs.com'),
   title: "Magicborn: Mordred's Legacy - Spell Crafting Game",
   description: "A deterministic, progression-heavy spell crafting game. No character levels—all power comes from crafting spells from runes (A-Z), building elemental affinity, mastering rune familiarity, and evolving magic through Mordred's Legacy. Features deterministic combat, spell evolution, raids, and a shadowy, organic dark fantasy world.",
   keywords: [
@@ -31,6 +32,8 @@ export const metadata: Metadata = {
     title: "Magicborn: Mordred's Legacy",
     description: "A deterministic, progression-heavy spell crafting game. Craft spells from runes, build affinity, master familiarity, and evolve your magic.",
     type: "website",
+    url: "https://magicborn.b2gdevs.com",
+    siteName: "Magicborn: Mordred's Legacy",
     images: [
       {
         url: "/images/new_tarro.webp",

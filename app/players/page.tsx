@@ -18,15 +18,15 @@ export default function PlayersPage() {
       <div className="max-w-6xl mx-auto">
         <div className="grid gap-4">
           <div className="card">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Players</h2>
-          <a className="btn" href="/players/new">
-            Create Player
-          </a>
-        </div>
-      </div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Players</h2>
+              <a className="btn" href="/players/new">
+                Create Player
+              </a>
+            </div>
+          </div>
 
-      <div className="card">
+          <div className="card">
         {players.length === 0 ? (
           <p className="text-muted">No players yet. Create one.</p>
         ) : (
@@ -96,6 +96,7 @@ export default function PlayersPage() {
             </table>
           </div>
         )}
+          </div>
         </div>
       </div>
     </main>
