@@ -194,9 +194,9 @@ export default function SpellEditor() {
         }
       } catch (error) {
         console.error("Failed to load spells:", error);
-        setSpells(NAMED_SPELL_BLUEPRINTS);
+    setSpells(NAMED_SPELL_BLUEPRINTS);
       } finally {
-        setLoading(false);
+    setLoading(false);
       }
     }
     loadSpells();
@@ -225,7 +225,7 @@ export default function SpellEditor() {
         setSpells(data.spells || []);
       }
       
-      setIsEditing(false);
+    setIsEditing(false);
     } catch (error) {
       console.error("Error saving spell:", error);
       alert(`Failed to save spell: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -255,8 +255,8 @@ export default function SpellEditor() {
         setSpells(data.spells || []);
       }
       
-      if (selectedSpell?.id === spell.id) {
-        setSelectedSpell(null);
+    if (selectedSpell?.id === spell.id) {
+      setSelectedSpell(null);
       }
     } catch (error) {
       console.error("Error deleting spell:", error);
@@ -316,8 +316,9 @@ export default function SpellEditor() {
 
       <div className="flex h-full gap-4 overflow-hidden">
         {/* Spell List */}
-        <div className="w-1/3 border-r border-border bg-shadow p-4 overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
+        <div className="w-1/3 border-r border-border bg-shadow flex flex-col overflow-hidden">
+          {/* Fixed Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
           <h2 className="text-xl font-bold text-glow">Named Spells</h2>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -326,6 +327,8 @@ export default function SpellEditor() {
             + New Spell
           </button>
         </div>
+          {/* Scrollable List */}
+          <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-2">
           {spells.map((spell) => (
             <div
@@ -369,6 +372,7 @@ export default function SpellEditor() {
               </div>
             </div>
           ))}
+            </div>
         </div>
         </div>
 
@@ -663,8 +667,32 @@ function CreateSpellModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-shadow border border-border rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <h3 className="text-xl font-bold text-glow mb-4">Create New Spell</h3>
+      <div className="bg-shadow border border-border rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-glow">Create New Spell</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="text-text-muted hover:text-text-primary transition-colors p-1 hover:bg-deep rounded"
+            aria-label="Close"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -1032,7 +1060,7 @@ function CreateSpellModal({
             </button>
           </div>
         </form>
-      </div>
+        </div>
     </div>
   );
 }

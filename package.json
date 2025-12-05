@@ -10,12 +10,18 @@
         "lint": "next lint",
         "test": "vitest",
         "test:run": "vitest run",
-        "migrate:spells": "tsx scripts/migrate-spells-to-db.ts"
+        "migrate:spells": "tsx scripts/migrate-spells-to-db.ts",
+        "db:generate": "drizzle-kit generate",
+        "db:migrate": "drizzle-kit migrate",
+        "db:push": "drizzle-kit push",
+        "db:studio": "drizzle-kit studio"
     },
     "dependencies": {
         "@types/better-sqlite3": "^7.6.13",
         "better-sqlite3": "^12.5.0",
         "clsx": "^2.1.1",
+        "drizzle-kit": "^0.31.8",
+        "drizzle-orm": "^0.45.0",
         "framer-motion": "^12.23.25",
         "next": "14.2.15",
         "react": "18.3.1",
