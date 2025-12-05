@@ -18,6 +18,11 @@ export interface EffectDefinition {
   maxStacks?: number;
   isBuff: boolean;
   iconKey?: string;
+  /**
+   * Path to the effect's image in public/game-content/effects/
+   * Example: "/game-content/effects/burn.png"
+   */
+  imagePath?: string;
 }
 
 export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {

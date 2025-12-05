@@ -58,6 +58,10 @@ function rowToBlueprint(row: typeof namedSpells.$inferSelect): NamedSpellBluepri
     blueprint.effects = JSON.parse(row.effects) as EffectBlueprint[];
   }
 
+  if (row.imagePath) {
+    blueprint.imagePath = row.imagePath;
+  }
+
   return blueprint;
 }
 
@@ -83,6 +87,7 @@ function blueprintToRow(spell: NamedSpellBlueprint): typeof namedSpells.$inferIn
     minTotalFamiliarityScore: spell.minTotalFamiliarityScore ?? null,
     requiredFlags: spell.requiredFlags ? JSON.stringify(spell.requiredFlags) : null,
     effects: spell.effects ? JSON.stringify(spell.effects) : null,
+    imagePath: spell.imagePath || null,
   };
 }
 

@@ -31,7 +31,7 @@ export function TabButton({
       {...rest}
     >
       <span className="flex items-center gap-2">
-        {icon && <span>{icon}</span>}
+        {icon && <span className="flex items-center">{icon}</span>}
         <span>{children}</span>
       </span>
     </button>

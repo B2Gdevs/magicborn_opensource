@@ -36,6 +36,9 @@ export const namedSpells = sqliteTable("named_spells", {
   // Effects (JSON)
   effects: text("effects"), // JSON array of EffectBlueprint
   
+  // Image
+  imagePath: text("image_path"), // Path to image in public/game-content/spells/
+  
   // Metadata
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),

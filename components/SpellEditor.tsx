@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
+import { Trash2, Edit, ImageIcon } from "lucide-react";
 import type { NamedSpellBlueprint } from "@/lib/data/namedSpells";
 import { NAMED_SPELL_BLUEPRINTS } from "@/lib/data/namedSpells";
 import { RC } from "@pkg/runes";
 import { EFFECT_DEFS } from "@/lib/data/effects";
 import { SpellForm } from "@components/spell/SpellForm";
+import { spellClient } from "@/lib/api/clients";
 
 export default function SpellEditor() {
   const [spells, setSpells] = useState<NamedSpellBlueprint[]>([]);
@@ -18,19 +21,14 @@ export default function SpellEditor() {
   useEffect(() => {
     async function loadSpells() {
       try {
-        const response = await fetch("/api/spells");
-        if (response.ok) {
-          const data = await response.json();
-          setSpells(data.spells || []);
-        } else {
-          // Fallback to hardcoded data
-          setSpells(NAMED_SPELL_BLUEPRINTS);
-        }
+        const loadedSpells = await spellClient.list();
+        setSpells(loadedSpells);
       } catch (error) {
         console.error("Failed to load spells:", error);
-    setSpells(NAMED_SPELL_BLUEPRINTS);
+        // Fallback to hardcoded data
+        setSpells(NAMED_SPELL_BLUEPRINTS);
       } finally {
-    setLoading(false);
+        setLoading(false);
       }
     }
     loadSpells();
@@ -39,24 +37,12 @@ export default function SpellEditor() {
   const handleUpdate = async (updatedSpell: NamedSpellBlueprint) => {
     setSaving(true);
     try {
-      const response = await fetch("/api/spells", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spell: updatedSpell }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to update spell");
-      }
+      await spellClient.update(updatedSpell);
       
       // Refresh the list
-      const listResponse = await fetch("/api/spells");
-      if (listResponse.ok) {
-        const data = await listResponse.json();
-        setSpells(data.spells || []);
-        setSelectedSpell(updatedSpell);
-      }
+      const refreshedSpells = await spellClient.list();
+      setSpells(refreshedSpells);
+      setSelectedSpell(updatedSpell);
       
       setShowEditModal(false);
     } catch (error) {
@@ -72,24 +58,14 @@ export default function SpellEditor() {
     
     setSaving(true);
     try {
-      const response = await fetch(`/api/spells?id=${encodeURIComponent(spell.id)}`, {
-        method: "DELETE",
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to delete spell");
-      }
+      await spellClient.delete(spell.id);
       
       // Refresh the list
-      const listResponse = await fetch("/api/spells");
-      if (listResponse.ok) {
-        const data = await listResponse.json();
-        setSpells(data.spells || []);
-      }
+      const refreshedSpells = await spellClient.list();
+      setSpells(refreshedSpells);
       
-    if (selectedSpell?.id === spell.id) {
-      setSelectedSpell(null);
+      if (selectedSpell?.id === spell.id) {
+        setSelectedSpell(null);
       }
     } catch (error) {
       console.error("Error deleting spell:", error);
@@ -102,23 +78,11 @@ export default function SpellEditor() {
   const handleCreate = async (newSpell: NamedSpellBlueprint) => {
     setSaving(true);
     try {
-      const response = await fetch("/api/spells", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spell: newSpell }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create spell");
-      }
+      await spellClient.create(newSpell);
       
       // Refresh the list
-      const listResponse = await fetch("/api/spells");
-      if (listResponse.ok) {
-        const data = await listResponse.json();
-        setSpells(data.spells || []);
-      }
+      const refreshedSpells = await spellClient.list();
+      setSpells(refreshedSpells);
       
       setShowCreateModal(false);
       setSelectedSpell(newSpell);
@@ -165,32 +129,54 @@ export default function SpellEditor() {
                 setSelectedSpell(spell);
               }}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-ember-glow">{spell.name}</h3>
-                  <p className="text-sm text-text-secondary line-clamp-1">
-                    {spell.description}
-                  </p>
-                  <div className="flex gap-1 mt-1">
-                    {spell.tags.slice(0, 2).map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-xs bg-ember/20 text-ember-glow px-2 py-0.5 rounded"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+              <div className="flex items-center gap-3">
+                {/* Image thumbnail */}
+                <div className="relative w-16 h-16 flex-shrink-0 rounded border border-border overflow-hidden bg-deep">
+                  {spell.imagePath ? (
+                    <Image
+                      src={spell.imagePath}
+                      alt={spell.name}
+                      fill
+                      className="object-cover"
+                      sizes="64px"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-text-muted" />
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-ember-glow">{spell.name}</h3>
+                      <p className="text-sm text-text-secondary line-clamp-1">
+                        {spell.description}
+                      </p>
+                      <div className="flex gap-1 mt-1">
+                        {spell.tags.slice(0, 2).map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-xs bg-ember/20 text-ember-glow px-2 py-0.5 rounded"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(spell);
+                      }}
+                      className="text-text-muted hover:text-red-500 transition-colors p-1"
+                      aria-label="Delete spell"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(spell);
-                  }}
-                  className="text-text-muted hover:text-red-500"
-                >
-                  🗑️
-                </button>
               </div>
             </div>
           ))}
@@ -204,9 +190,28 @@ export default function SpellEditor() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-glow">{selectedSpell.name}</h2>
-              <button onClick={() => setShowEditModal(true)} className="btn">
-                ✏️ Edit
+              <button onClick={() => setShowEditModal(true)} className="btn flex items-center gap-2">
+                <Edit className="w-4 h-4" />
+                Edit
               </button>
+            </div>
+
+            {/* Image display */}
+            <div className="relative w-full aspect-video rounded-lg border border-border overflow-hidden bg-deep">
+              {selectedSpell.imagePath ? (
+                <Image
+                  src={selectedSpell.imagePath}
+                  alt={selectedSpell.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 800px"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
+                  <ImageIcon className="w-16 h-16 mb-2 opacity-50" />
+                  <p className="text-sm">No image uploaded</p>
+                </div>
+              )}
             </div>
 
             <div className="card space-y-4">

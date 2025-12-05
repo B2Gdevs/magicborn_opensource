@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { NamedSpellBlueprint } from "@/lib/data/namedSpells";
 import { SpellTag, DamageType, EffectType } from "@core/enums";
 import type { RuneCode } from "@core/types";
@@ -14,6 +14,8 @@ import { RuneSelector } from "@components/ui/RuneSelector";
 import { TagSelector } from "@components/ui/TagSelector";
 import { MultiSelectDropdown } from "@components/ui/MultiSelectDropdown";
 import { RuneFamiliarityEditor } from "@components/ui/RuneFamiliarityEditor";
+import { ImageUpload } from "@components/ui/ImageUpload";
+import { idClient } from "@/lib/api/clients";
 
 interface SpellFormProps {
   initialValues?: Partial<NamedSpellBlueprint>;
@@ -51,13 +53,63 @@ export function SpellForm({
   const [minRuneFamiliarity, setMinRuneFamiliarity] = useState<Partial<Record<RuneCode, number>>>(initialValues.minRuneFamiliarity || {});
   const [requiredFlags, setRequiredFlags] = useState<AchievementFlag[]>(initialValues.requiredFlags || []);
   const [effects, setEffects] = useState<EffectBlueprint[]>(initialValues.effects || []);
+  const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
+  const [idValidation, setIdValidation] = useState<{
+    isUnique: boolean;
+    conflictingTypes: string[];
+  } | null>(null);
+  const [validatingId, setValidatingId] = useState(false);
+  const [lastValidatedId, setLastValidatedId] = useState<string | null>(null);
 
   const allTags = Object.values(SpellTag);
   const allDamageTypes = Object.values(DamageType);
   const allFlags = Object.values(AchievementFlag);
   const allEffectTypes = Object.values(EffectType);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Validate ID uniqueness when name changes (for create mode) - debounced
+  useEffect(() => {
+    if (!isEdit && name.trim()) {
+      const id = nameToId(name);
+      if (id) {
+        // Only validate if the ID has changed from what we last validated
+        if (id === lastValidatedId) {
+          return; // Already validated this ID, no need to check again
+        }
+
+        // Debounce: wait 500ms after user stops typing
+        const timeoutId = setTimeout(() => {
+          // Double-check the ID hasn't changed during the debounce
+          const currentId = nameToId(name);
+          if (currentId === id && currentId !== lastValidatedId) {
+            setValidatingId(true);
+            idClient
+              .checkIdUniqueness(id, "spells")
+              .then((result) => {
+                setIdValidation(result);
+                setLastValidatedId(id);
+              })
+              .catch((error) => {
+                console.error("Error validating ID:", error);
+                setIdValidation(null);
+              })
+              .finally(() => {
+                setValidatingId(false);
+              });
+          }
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+      } else {
+        setIdValidation(null);
+        setLastValidatedId(null);
+      }
+    } else {
+      setIdValidation(null);
+      setLastValidatedId(null);
+    }
+  }, [name, isEdit, lastValidatedId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name.trim()) {
@@ -67,8 +119,17 @@ export function SpellForm({
     
     if (!isEdit) {
       const id = nameToId(name);
-      if (existingIds.includes(id)) {
-        alert(`A spell with ID "${id}" already exists. Please choose a different name.`);
+      
+      // Final validation check
+      const validation = await idClient.checkIdUniqueness(id, "spells");
+      if (!validation.isUnique) {
+        const conflictList = validation.conflictingTypes
+          .map(type => type.charAt(0).toUpperCase() + type.slice(1))
+          .join(", ");
+        alert(
+          `ID "${id}" already exists in: ${conflictList}.\n\n` +
+          `Please choose a different name to generate a unique ID.`
+        );
         return;
       }
     }
@@ -106,6 +167,7 @@ export function SpellForm({
       minTotalFamiliarityScore,
       requiredFlags: requiredFlags.length > 0 ? requiredFlags : undefined,
       effects: effects.length > 0 ? effects : undefined,
+      imagePath: imagePath || undefined,
       hidden,
       hint: hint.trim() || "Try experimenting with different rune combinations.",
     };
@@ -141,6 +203,15 @@ export function SpellForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <ImageUpload
+        currentImagePath={imagePath}
+        contentType="spells"
+        entityId={isEdit ? (initialValues as NamedSpellBlueprint).id : nameToId(name)}
+        onImageUploaded={setImagePath}
+        label="Spell Image"
+        disabled={saving}
+      />
+
       <div>
         <label className="block text-sm font-semibold text-text-secondary mb-1">
           Name *
@@ -154,9 +225,22 @@ export function SpellForm({
           required
         />
         {name && !isEdit && (
-          <p className="text-xs text-text-muted mt-1">
-            ID: <code className="text-ember-glow">{nameToId(name)}</code>
-          </p>
+          <div className="mt-1">
+            <p className="text-xs text-text-muted">
+              ID: <code className="text-ember-glow">{nameToId(name)}</code>
+              {validatingId && <span className="ml-2 text-text-muted">(checking...)</span>}
+            </p>
+            {idValidation && !idValidation.isUnique && (
+              <p className="text-xs text-red-400 mt-1">
+                ⚠️ ID already exists in: {idValidation.conflictingTypes
+                  .map(type => type.charAt(0).toUpperCase() + type.slice(1))
+                  .join(", ")}
+              </p>
+            )}
+            {idValidation && idValidation.isUnique && nameToId(name) && (
+              <p className="text-xs text-moss-glow mt-1">✓ ID is unique</p>
+            )}
+          </div>
         )}
         {isEdit && (
           <p className="text-xs text-text-muted mt-1">

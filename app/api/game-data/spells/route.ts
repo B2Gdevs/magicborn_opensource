@@ -1,51 +1,87 @@
-import { NextResponse } from "next/server";
-import { readFile, writeFile } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
+// app/api/game-data/spells/route.ts
+// API routes for named spells CRUD operations
 
-/**
- * API routes for managing named spells game data
- */
+import { NextResponse } from "next/server";
+import { getSpellsRepository } from "@/lib/data/spellsRepository";
+import type { NamedSpellBlueprint } from "@/lib/data/namedSpells";
 
 export async function GET() {
   try {
-    const filePath = join(process.cwd(), "lib", "data", "namedSpells.ts");
-    if (!existsSync(filePath)) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
-    }
-    const content = await readFile(filePath, "utf-8");
-    return NextResponse.json({ content });
+    const repo = getSpellsRepository();
+    const spells = repo.listAll();
+    return NextResponse.json({ spells });
   } catch (error) {
-    console.error("Error reading spells:", error);
-    return NextResponse.json(
-      { error: "Failed to read spells" },
-      { status: 500 }
-    );
+    console.error("Error fetching spells:", error);
+    return NextResponse.json({ error: "Failed to fetch spells" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { content } = body;
-    
-    if (!content) {
-      return NextResponse.json(
-        { error: "Content is required" },
-        { status: 400 }
-      );
+    const spell = body.spell as NamedSpellBlueprint;
+
+    if (!spell || !spell.id || !spell.name) {
+      return NextResponse.json({ error: "Invalid spell data" }, { status: 400 });
     }
-    
-    const filePath = join(process.cwd(), "lib", "data", "namedSpells.ts");
-    await writeFile(filePath, content, "utf-8");
-    
+
+    const repo = getSpellsRepository();
+
+    if (repo.exists(spell.id)) {
+      return NextResponse.json({ error: "Spell with this ID already exists" }, { status: 409 });
+    }
+
+    repo.create(spell);
+    return NextResponse.json({ success: true, spell });
+  } catch (error) {
+    console.error("Error creating spell:", error);
+    return NextResponse.json({ error: "Failed to create spell" }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const spell = body.spell as NamedSpellBlueprint;
+
+    if (!spell || !spell.id) {
+      return NextResponse.json({ error: "Invalid spell data" }, { status: 400 });
+    }
+
+    const repo = getSpellsRepository();
+
+    if (!repo.exists(spell.id)) {
+      return NextResponse.json({ error: "Spell not found" }, { status: 404 });
+    }
+
+    repo.update(spell);
+    return NextResponse.json({ success: true, spell });
+  } catch (error) {
+    console.error("Error updating spell:", error);
+    return NextResponse.json({ error: "Failed to update spell" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Spell ID is required" }, { status: 400 });
+    }
+
+    const repo = getSpellsRepository();
+
+    if (!repo.exists(id)) {
+      return NextResponse.json({ error: "Spell not found" }, { status: 404 });
+    }
+
+    repo.delete(id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error writing spells:", error);
-    return NextResponse.json(
-      { error: "Failed to write spells" },
-      { status: 500 }
-    );
+    console.error("Error deleting spell:", error);
+    return NextResponse.json({ error: "Failed to delete spell" }, { status: 500 });
   }
 }
 

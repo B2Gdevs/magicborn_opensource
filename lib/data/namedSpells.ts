@@ -76,6 +76,12 @@ export interface NamedSpellBlueprint {
    * These are in addition to any effects derived from runes.
    */
   effects?: EffectBlueprint[];
+
+  /**
+   * Path to the spell's image in public/game-content/spells/
+   * Example: "/game-content/spells/ember_ray.png"
+   */
+  imagePath?: string;
 }
 
 /** 🔥 Ember Ray – base named Fire ray */
