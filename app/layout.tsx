@@ -68,6 +68,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <html lang="en">
         <head>
           <link rel="canonical" href="https://magicborn.b2gdevs.com" />
+          {/* ConvertKit Form Script */}
+          <script src="https://f.convertkit.com/ckjs/ck.5.js"></script>
           {/* Structured Data for Video SEO */}
           <script
             type="application/ld+json"

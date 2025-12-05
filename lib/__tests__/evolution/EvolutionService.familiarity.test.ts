@@ -12,7 +12,8 @@ import { RC } from "@pkg/runes";
 import {
   EMBER_RAY_BLUEPRINT,
   SEARING_EMBER_RAY_BLUEPRINT,
-} from "@data/namedSpells";
+} from "@/lib/data/namedSpells";
+import { AchievementFlag } from "@/lib/data/achievements";
 
 describe("EvolutionService – familiarity-gated evolution", () => {
   const evolution = new EvolutionService();
@@ -36,13 +37,8 @@ describe("EvolutionService – familiarity-gated evolution", () => {
       },
     });
 
+    // Ensure combat stats exist so totalPower / focus checks behave consistently.
     statsService.derive(spell, player);
-
-    // eslint-disable-next-line no-console
-    console.log(
-      "[Test] makeEmberRayLikeSpellForPlayer – spell",
-      { name: spell.name, runes: spell.runes, combat: spell.combat }
-    );
 
     return { player, spell };
   }
@@ -51,19 +47,19 @@ describe("EvolutionService – familiarity-gated evolution", () => {
     const player = makeTestPlayer();
     const { spell } = makeEmberRayLikeSpellForPlayer(player.id);
 
-    const achievements = new Set<string>();
+    const achievements = new Set<AchievementFlag>(); // no boss kill yet
 
     const options: SpellEvolutionOption[] = evolution.listPossibleEvolutions(
       spell,
       player,
       achievements
     );
+
     const ids = options.map((opt) => opt.blueprint.id);
 
-    // eslint-disable-next-line no-console
-    console.log("[Test] options before familiarity", ids);
-
+    // base Ember Ray line should still be a valid named evolution
     expect(ids).toContain("ember_ray");
+    // tier-2 Searing Ember Ray should be locked
     expect(ids).not.toContain("searing_ember_ray");
   });
 
@@ -71,21 +67,15 @@ describe("EvolutionService – familiarity-gated evolution", () => {
     const player = makeTestPlayer();
     const { spell } = makeEmberRayLikeSpellForPlayer(player.id);
 
+    // simulate the player spamming Ember Ray a bunch of times
     for (let i = 0; i < 80; i++) {
       RuneFamiliarityService.recordSpellCast(player, spell);
     }
 
-    const fireFam = RuneFamiliarityService.getRuneFamiliarity(player, RC.Fire);
-    const airFam = RuneFamiliarityService.getRuneFamiliarity(player, RC.Air);
-    const rayFam = RuneFamiliarityService.getRuneFamiliarity(player, RC.Ray);
-
-    // eslint-disable-next-line no-console
-    console.log(
-      "[Test] familiarity after 80 casts",
-      { fireFam, airFam, rayFam }
-    );
-
-    const achievements = new Set<string>(["boss_fire_1_defeated"]);
+    // mark the boss defeat achievement
+    const achievements = new Set<AchievementFlag>([
+      AchievementFlag.BossFire1Defeated,
+    ]);
 
     const options: SpellEvolutionOption[] = evolution.listPossibleEvolutions(
       spell,
@@ -93,9 +83,6 @@ describe("EvolutionService – familiarity-gated evolution", () => {
       achievements
     );
     const ids = options.map((opt) => opt.blueprint.id);
-
-    // eslint-disable-next-line no-console
-    console.log("[Test] options after familiarity + flag", ids);
 
     expect(ids).toContain("searing_ember_ray");
   });
@@ -104,10 +91,13 @@ describe("EvolutionService – familiarity-gated evolution", () => {
     const player = makeTestPlayer();
     const { spell } = makeEmberRayLikeSpellForPlayer(player.id);
 
+    // boost familiarity + unlock achievement
     for (let i = 0; i < 80; i++) {
       RuneFamiliarityService.recordSpellCast(player, spell);
     }
-    const achievements = new Set<string>(["boss_fire_1_defeated"]);
+    const achievements = new Set<AchievementFlag>([
+      AchievementFlag.BossFire1Defeated,
+    ]);
 
     const evolved = evolution.evolveSpell(
       spell,
@@ -116,16 +106,17 @@ describe("EvolutionService – familiarity-gated evolution", () => {
       achievements
     );
 
-    // eslint-disable-next-line no-console
-    console.log("[Test] evolved spell", evolved);
-
     expect(evolved).not.toBeNull();
     if (!evolved) return;
 
     expect(evolved.id).not.toBe(spell.id);
     expect(evolved.evolvedFrom).toBe(spell.id);
     expect(evolved.name).toBe(SEARING_EMBER_RAY_BLUEPRINT.name);
+
+    // sanity: core pattern should be preserved
     expect(evolved.runes).toEqual(spell.runes);
+
+    // growth / combat should not reset to nonsense
     expect(evolved.growth.power).toBeGreaterThanOrEqual(spell.growth.power);
   });
 });

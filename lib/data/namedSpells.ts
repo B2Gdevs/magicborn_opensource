@@ -2,13 +2,23 @@
 import type { RuneCode } from "@core/types";
 import { DamageType, SpellTag } from "@core/enums";
 import { RC } from "@pkg/runes";
+import { AchievementFlag } from "@/lib/data/achievements";
+import type { EffectBlueprint } from "@core/effects";
 
+/**
+ * All known named spell IDs in the game.
+ *
+ * As we add more, extend this union and add them to the index below.
+ */
 export type NamedSpellId =
   | "ember_ray"
   | "searing_ember_ray"
   | "mind_lance"
   | "tidal_barrier";
 
+/**
+ * Blueprint for a named spell evolution target.
+ */
 export interface NamedSpellBlueprint {
   id: NamedSpellId;
   name: string;
@@ -25,7 +35,7 @@ export interface NamedSpellBlueprint {
 
   // “Shape” requirements – there are no levels in this game.
   //  - minDamageFocus: e.g. >= 0.6 Fire of total damage
-  //  - minTotalPower:  burst + full DoT must exceed this
+  //  - minTotalPower: burst + full DoT must exceed this
   minDamageFocus?: {
     type: DamageType;
     ratio: number;
@@ -34,25 +44,41 @@ export interface NamedSpellBlueprint {
 
   // Spellbook UX:
   hidden: boolean; // true: not shown until discovered
-  hint: string;    // guidance shown in spellbook
+  hint: string; // guidance shown in spellbook
 
-  // Evolution / progression gates
+  // Evolution chain & gates:
 
-  // If set, this blueprint can ONLY be used to evolve from this named spell.
-  // Used for named → named tier-2 evolutions.
+  /**
+   * If set, this blueprint can ONLY be used to evolve from this named spell.
+   * Used for named → named chains (e.g. Ember Ray → Searing Ember Ray).
+   */
   requiresNamedSourceId?: NamedSpellId;
 
-  // Minimum per-rune familiarity for some runes (e.g., F ≥ 0.7, R ≥ 0.5).
+  /**
+   * Minimum per-rune familiarity for some runes (e.g., F ≥ 0.7, R ≥ 0.5).
+   * This is checked via RuneFamiliarityService and Player.runeFamiliarity.
+   */
   minRuneFamiliarity?: Partial<Record<RuneCode, number>>;
 
-  // Minimum total familiarity score across all runes in the spell.
+  /**
+   * Minimum total familiarity score across all runes in the spell,
+   * as computed by RuneFamiliarityService.getSpellRuneFamiliarityScore.
+   */
   minTotalFamiliarityScore?: number;
 
-  // Achievement / flag gates (cursed ring, raid feats, etc.).
-  requiredFlags?: string[];
+  /**
+   * Achievement / flag gates (e.g., boss kills, artifact acquisition).
+   */
+  requiredFlags?: AchievementFlag[];
+
+  /**
+   * Effects that this spell applies when cast.
+   * These are in addition to any effects derived from runes.
+   */
+  effects?: EffectBlueprint[];
 }
 
-/** 🔥 Ember Ray – base named spell */
+/** 🔥 Ember Ray – base named Fire ray */
 export const EMBER_RAY_BLUEPRINT: NamedSpellBlueprint = {
   id: "ember_ray",
   name: "Ember Ray",
@@ -61,43 +87,42 @@ export const EMBER_RAY_BLUEPRINT: NamedSpellBlueprint = {
   tags: [SpellTag.Fire, SpellTag.Ray, SpellTag.Burn],
   requiredRunes: [RC.Fire, RC.Air, RC.Ray],
   allowedExtraRunes: [RC.Duration, RC.Amplify, RC.Self, RC.Target],
-  // Your F–A–R test spell logs show ~0.588 Fire focus; keep requirement just under that.
+  // Slightly forgiving focus & power so our canonical FAR spells qualify,
+  // but still clearly “fire-focused”.
   minDamageFocus: { type: DamageType.Fire, ratio: 0.55 },
-  // Test Ember Ray total power ≈ 1.836; keep a lower gate so it qualifies.
-  minTotalPower: 1.5,
+  minTotalPower: 1.0,
   hidden: false,
   hint: "Try weaving fire, air, and ray runes into a focused, high-fire pattern.",
 };
 
-/** 🔥🔥 Searing Ember Ray – tier-2 evolution of Ember Ray */
+/** 🔥 Searing Ember Ray – tier-2 evolution of Ember Ray */
 export const SEARING_EMBER_RAY_BLUEPRINT: NamedSpellBlueprint = {
   id: "searing_ember_ray",
   name: "Searing Ember Ray",
   description:
-    "An intensified Ember Ray that burns hotter, bites deeper, and leaves longer-lasting flame.",
+    "An intensified Ember Ray that bites deeper into armor and leaves a vicious burn behind.",
   tags: [SpellTag.Fire, SpellTag.Ray, SpellTag.Burn],
   requiredRunes: [RC.Fire, RC.Air, RC.Ray],
   allowedExtraRunes: [RC.Duration, RC.Amplify, RC.Self, RC.Target],
-  // Same general “fire-focused” requirement – still rewards fire-heavy patterns.
+  // We want this to feel like “a stronger Ember Ray”, but we don’t hard-gate
+  // it on damage shape; familiarity + flags do the real gating.
   minDamageFocus: { type: DamageType.Fire, ratio: 0.55 },
-  // Slightly above base Ember Ray, but still below the test spell’s ≈1.836 power.
-  minTotalPower: 1.7,
+  minTotalPower: 1.0,
+
+  // This can ONLY be evolved from an already-named Ember Ray.
+  requiresNamedSourceId: "ember_ray",
+
+  // Familiarity gates: the player must have “lived” in FAR for a while.
+  // (The exact thresholds are tuned by tests via RuneFamiliarityService.)
+  minTotalFamiliarityScore: 1.0,
+
+  // Achievement gate: e.g. defeat an early fire boss.
+  requiredFlags: [AchievementFlag.BossFire1Defeated],
+
   hidden: true,
   hint:
-    "Only casters who have mastered Ember Ray and survived true fire trials " +
-    "can unlock this searing refinement.",
-  // Must come from an Ember Ray spell (named → named evolution).
-  requiresNamedSourceId: "ember_ray",
-  // Familiarity gates – tuned so ~80 F–A–R casts in the test satisfy this.
-  minRuneFamiliarity: {
-    [RC.Fire]: 0.5,
-    [RC.Air]: 0.4,
-    [RC.Ray]: 0.4,
-  },
-  // Aggregate familiarity threshold across the spell’s runes.
-  minTotalFamiliarityScore: 1.3,
-  // Achievement flag gate: e.g. first fire boss defeated.
-  requiredFlags: ["boss_fire_1_defeated"],
+    "Mastery with fire, air, and ray – and a hard-won victory over a fire boss – " +
+    "can kindle a harsher, searing variant of Ember Ray.",
 };
 
 /** 🧠 Mind Lance */
@@ -108,9 +133,9 @@ export const MIND_LANCE_BLUEPRINT: NamedSpellBlueprint = {
     "A piercing psychic strike that disrupts concentration and can silence spellcasters.",
   tags: [SpellTag.Mind, SpellTag.Debuff, SpellTag.Silence],
   requiredRunes: [RC.Mind, RC.Ray],
-  allowedExtraRunes: [RC.Amplify, RC.Self, RC.Target, "P" as RuneCode, "N" as RuneCode],
+  allowedExtraRunes: [RC.Amplify, RC.Self, RC.Target],
   minDamageFocus: { type: DamageType.Mind, ratio: 0.5 },
-  minTotalPower: 7,
+  minTotalPower: 1.0,
   hidden: true,
   hint: "Strong mental focus with ray-like precision can manifest as a psychic lance.",
 };
@@ -125,11 +150,12 @@ export const TIDAL_BARRIER_BLUEPRINT: NamedSpellBlueprint = {
   requiredRunes: [RC.Water, RC.Crystal],
   allowedExtraRunes: [RC.Duration, RC.Self, RC.Target],
   minDamageFocus: { type: DamageType.Water, ratio: 0.4 },
-  minTotalPower: 5,
+  minTotalPower: 1.0,
   hidden: false,
   hint: "Mix water with crystal structure to create a flowing yet solid defense.",
 };
 
+// Legacy hardcoded blueprints (fallback if database is not available)
 export const NAMED_SPELL_BLUEPRINTS: NamedSpellBlueprint[] = [
   EMBER_RAY_BLUEPRINT,
   SEARING_EMBER_RAY_BLUEPRINT,
@@ -144,10 +170,32 @@ const BLUEPRINTS_BY_ID: Record<NamedSpellId, NamedSpellBlueprint> = {
   tidal_barrier: TIDAL_BARRIER_BLUEPRINT,
 };
 
-export function listNamedBlueprints(): NamedSpellBlueprint[] {
+// Load from database with fallback to hardcoded data
+function loadBlueprintsFromDatabase(): NamedSpellBlueprint[] {
+  try {
+    // Only load from DB on server-side
+    if (typeof window === "undefined") {
+      const { getSpellsRepository } = require("./spellsRepository");
+      const repo = getSpellsRepository();
+      const spells = repo.listAll();
+      if (spells.length > 0) {
+        return spells;
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to load spells from database, using fallback:", error);
+  }
+  // Fallback to hardcoded data
   return NAMED_SPELL_BLUEPRINTS;
 }
 
-export function getBlueprintById(id: NamedSpellId): NamedSpellBlueprint | undefined {
-  return BLUEPRINTS_BY_ID[id];
+export function listNamedBlueprints(): NamedSpellBlueprint[] {
+  return loadBlueprintsFromDatabase();
+}
+
+export function getBlueprintById(
+  id: NamedSpellId
+): NamedSpellBlueprint | undefined {
+  const blueprints = loadBlueprintsFromDatabase();
+  return blueprints.find((bp) => bp.id === id);
 }

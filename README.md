@@ -140,6 +140,39 @@ The project uses:
 - Vitest for fast, reliable testing
 - Next.js App Router for modern React patterns
 
+### Waitlist Setup
+
+To enable the "Join Waitlist" button in the navigation, create a `.env.local` file in the root directory:
+
+```bash
+NEXT_PUBLIC_WAITLIST_URL=https://your-waitlist-form-url.com
+```
+
+**Recommended services for waitlist + content distribution:**
+
+1. **ConvertKit** (Best for creators)
+   - Free tier: Up to 1,000 subscribers
+   - Easy content distribution (stories, updates, newsletters)
+   - Perfect for sending game stories and updates
+   - Website: https://convertkit.com
+
+2. **Mailchimp** (Good free tier)
+   - Free tier: Up to 500 contacts
+   - Newsletter and content distribution
+   - Website: https://mailchimp.com
+
+3. **Buttondown** (Simple, creator-friendly)
+   - Free tier: Up to 1,000 subscribers
+   - Built for content creators
+   - Website: https://buttondown.email
+
+4. **Substack** (Content-first)
+   - Free to use, takes % of paid subscriptions
+   - Perfect for story distribution and serialized content
+   - Website: https://substack.com
+
+The waitlist button will only appear when `NEXT_PUBLIC_WAITLIST_URL` is configured.
+
 ## 🎯 Current Status
 
 ### ✅ Implemented & Tested

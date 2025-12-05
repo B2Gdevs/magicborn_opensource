@@ -27,7 +27,9 @@ export default function ResourceDocumentation({
             {sourcePath}
           </code>
           <p className="text-text-muted mt-1 ml-4 text-xs">
-            Data is read from this file when the editor loads
+            {sourcePath.endsWith('.db') 
+              ? 'Data is read from this database when the editor loads'
+              : 'Data is read from this file when the editor loads'}
           </p>
         </div>
         <div>
@@ -36,7 +38,9 @@ export default function ResourceDocumentation({
             {outputPath}
           </code>
           <p className="text-text-muted mt-1 ml-4 text-xs">
-            Changes are written back to this file when you save
+            {outputPath.endsWith('.db')
+              ? 'Changes are written to this database when you save'
+              : 'Changes are written back to this file when you save'}
           </p>
         </div>
         {mergeStrategy && (
