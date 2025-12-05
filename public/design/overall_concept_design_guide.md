@@ -3,7 +3,7 @@
 **A Dark Fantasy RPG About Survival, Servitude, and Spellcrafting**
 
 ---
-![Game Art](/images/new_tarro.webp)
+![Game Art](/design/images/new_tarro.webp)
 ## 1. VISUAL OVERVIEW OF THE GAME
 
 ### 1.1 Tone & Genre

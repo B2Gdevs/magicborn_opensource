@@ -1,6 +1,6 @@
 SHORT STORY — “The Breath Between Footsteps”
 (Act I: The Leaving)
-
+[Watch the scene](./the-breath-between-footsteps.mp4)
 Kael didn’t expect the world outside Tarro to feel so empty.
 
 One moment he had walls towering behind him—strict, warm-lit battlements humming with mageglass lamps—and the next, nothing but open wilderness and cold that seemed to sharpen the further he walked.

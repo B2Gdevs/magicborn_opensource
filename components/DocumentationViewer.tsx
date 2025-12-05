@@ -21,6 +21,7 @@ import { getNextPage, getPreviousPage, type BookPage } from "@lib/utils/book-sca
 import { useRouter } from "next/navigation";
 import MoodBoard from "@components/MoodBoard";
 import FloatingToolbar from "@components/FloatingToolbar";
+import VideoPlayer from "@components/VideoPlayer";
 
 export enum ViewerMode {
   DESIGN = "design",
@@ -507,6 +508,70 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
                   strong: ({ node, ...props }) => <strong className="text-ember-glow font-bold" {...props} />,
                   em: ({ node, ...props }) => <em className="text-text-glow italic" {...props} />,
                   hr: ({ node, ...props }) => <hr className="my-8 border-border" {...props} />,
+                  a: ({ node, ...props }: any) => {
+                    const href = props.href || '';
+                    const children = props.children || '';
+                    
+                    // Check if link points to a video file
+                    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
+                    const isVideoLink = videoExtensions.some(ext => href.toLowerCase().endsWith(ext));
+                    
+                    if (isVideoLink) {
+                      let videoSrc = href;
+                      
+                      // Resolve video path similar to images
+                      if (videoSrc.startsWith('http://') || videoSrc.startsWith('https://')) {
+                        // Full URL - use as is
+                        videoSrc = videoSrc;
+                      } else if (videoSrc.startsWith('/')) {
+                        // Absolute path from public folder - use as is
+                        videoSrc = videoSrc;
+                      } else if (videoSrc.startsWith('./')) {
+                        // Relative path starting with ./ - resolve relative to current document
+                        if (currentBookPage) {
+                          const bookBase = currentBookPage.book.bookData.basePath;
+                          videoSrc = `${bookBase}/videos/${videoSrc.replace(/^\.\//, '')}`;
+                        } else if (currentDoc.startsWith('books/')) {
+                          const bookMatch = currentDoc.match(/^books\/([^\/]+)/);
+                          if (bookMatch) {
+                            videoSrc = `/books/${bookMatch[1]}/videos/${videoSrc.replace(/^\.\//, '')}`;
+                          } else {
+                            videoSrc = `/design/${videoSrc.replace(/^\.\//, '')}`;
+                          }
+                        } else {
+                          videoSrc = `/design/${videoSrc.replace(/^\.\//, '')}`;
+                        }
+                      } else {
+                        // Relative path - resolve based on current document context
+                        if (currentBookPage) {
+                          const bookBase = currentBookPage.book.bookData.basePath;
+                          videoSrc = `${bookBase}/videos/${videoSrc}`;
+                        } else if (currentDoc.startsWith('books/')) {
+                          const bookMatch = currentDoc.match(/^books\/([^\/]+)/);
+                          if (bookMatch) {
+                            videoSrc = `/books/${bookMatch[1]}/videos/${videoSrc}`;
+                          } else {
+                            videoSrc = `/design/${videoSrc}`;
+                          }
+                        } else {
+                          videoSrc = `/design/${videoSrc}`;
+                        }
+                      }
+                      
+                      return <VideoPlayer src={videoSrc} alt={typeof children === 'string' ? children : undefined} />;
+                    }
+                    
+                    // Regular link
+                    return (
+                      <a
+                        href={href}
+                        className="text-ember-glow hover:text-ember underline"
+                        target={href.startsWith('http') ? '_blank' : undefined}
+                        rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                        {...props}
+                      />
+                    );
+                  },
                 }}
               >
                 {markdownContent}
