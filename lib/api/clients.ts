@@ -37,6 +37,7 @@ export const idClient = {
       effects: string[];
       characters: string[];
       creatures: string[];
+      runes: string[];
     };
     idMap: Record<string, string[]>; // ID -> content types that use it
   }> {
@@ -46,6 +47,7 @@ export const idClient = {
         effects: string[];
         characters: string[];
         creatures: string[];
+        runes: string[];
       };
       idMap: Record<string, string[]>;
     }>("/api/game-data/ids");
@@ -53,7 +55,7 @@ export const idClient = {
 
   async checkIdUniqueness(
     id: string,
-    currentContentType: "spells" | "effects" | "characters" | "creatures",
+    currentContentType: "spells" | "effects" | "characters" | "creatures" | "runes",
     currentId?: string // For edit mode - exclude current item's ID
   ): Promise<{
     isUnique: boolean;

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { RuneDef } from "@/lib/packages/runes";
 import type { RuneCode } from "@core/types";
 import { RuneTag, CrowdControlTag, DamageType, EffectType } from "@core/enums";
@@ -12,6 +12,7 @@ import type { EffectBlueprint } from "@core/effects";
 import { ImageUpload } from "@components/ui/ImageUpload";
 import { TagSelector } from "@components/ui/TagSelector";
 import { MultiSelectDropdown } from "@components/ui/MultiSelectDropdown";
+import { IdInput } from "@components/ui/IdInput";
 import { EFFECT_DEFS } from "@/lib/data/effects";
 
 interface RuneFormProps {
@@ -161,10 +162,8 @@ export function RuneForm({
       return;
     }
 
-    if (!isEdit && existingRunes.some(r => r.code === code)) {
-      alert(`Rune with code "${code}" already exists`);
-      return;
-    }
+    // ID validation is handled by validation state
+    // ID validation is handled by IdInput component
 
     const rune: RuneDef = {
       code,
@@ -197,18 +196,21 @@ export function RuneForm({
         disabled={saving}
       />
 
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          Code (Rune Letter) *
-        </label>
-        {isEdit ? (
-          <input
-            type="text"
-            value={code}
-            disabled
-            className="w-full px-3 py-2 bg-deep/50 border border-border rounded text-text-muted cursor-not-allowed"
-          />
-        ) : (
+      {isEdit ? (
+        <IdInput
+          value={code}
+          onChange={() => {}} // Read-only in edit mode
+          contentType="runes"
+          isEdit={true}
+          placeholder="Rune Code"
+          label="Code (Rune Letter)"
+          disabled={true}
+        />
+      ) : (
+        <div>
+          <label className="block text-sm font-semibold text-text-secondary mb-1">
+            Code (Rune Letter) *
+          </label>
           <select
             value={code}
             onChange={(e) => setCode(e.target.value as RuneCode)}
@@ -222,8 +224,21 @@ export function RuneForm({
               </option>
             ))}
           </select>
-        )}
-      </div>
+          {/* Use IdInput for validation feedback - hidden input, visible validation */}
+          {code && (
+            <IdInput
+              value={code}
+              onChange={(id) => setCode(id as RuneCode)}
+              contentType="runes"
+              isEdit={false}
+              placeholder=""
+              label=""
+              disabled={false}
+              className="hidden"
+            />
+          )}
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-semibold text-text-secondary mb-1">
@@ -384,9 +399,8 @@ export function RuneForm({
         </label>
         <MultiSelectDropdown
           selected={ccInstant}
-          options={allCCTags}
-          onChange={setCcInstant}
-          getLabel={(tag) => tag}
+          options={allCCTags.map(tag => ({ value: tag, label: tag }))}
+          onChange={(selected) => setCcInstant(selected as CrowdControlTag[])}
           placeholder="Select CC tags"
         />
       </div>

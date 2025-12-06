@@ -6,6 +6,7 @@ import { getSpellsRepository } from "@/lib/data/spellsRepository";
 import { getEffectsRepository } from "@/lib/data/effectsRepository";
 import { getCharactersRepository } from "@/lib/data/charactersRepository";
 import { getCreaturesRepository } from "@/lib/data/creaturesRepository";
+import { getRunesRepository } from "@/lib/data/runesRepository";
 
 export async function GET() {
   try {
@@ -13,20 +14,23 @@ export async function GET() {
     const effectsRepo = getEffectsRepository();
     const charactersRepo = getCharactersRepository();
     const creaturesRepo = getCreaturesRepository();
+    const runesRepo = getRunesRepository();
     
     const spells = spellsRepo.listAll();
     const effects = effectsRepo.listAll();
     const characters = charactersRepo.listAll();
     const creatures = creaturesRepo.listAll();
+    const runes = runesRepo.listAll();
     
     // Get all IDs grouped by content type
+    // Note: Runes use 'code' as their identifier, but we treat it as an ID for uniqueness checking
     const allIds = {
       spells: spells.map(s => s.id),
       effects: effects.map(e => e.id),
       characters: characters.map(c => c.id),
       creatures: creatures.map(c => c.id),
+      runes: runes.map(r => r.code), // Runes use code as their unique identifier
       // TODO: Add other content types as they're implemented
-      // runes: runes.map(r => r.code), // Runes use code, not id
       // environments: environments.map(e => e.id),
     };
     

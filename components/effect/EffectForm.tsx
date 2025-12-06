@@ -9,7 +9,7 @@ import { EffectCategory } from "@/lib/data/effects";
 import { EffectType } from "@core/enums";
 import type { EffectBlueprint } from "@core/effects";
 import { ImageUpload } from "@components/ui/ImageUpload";
-import { idClient } from "@/lib/api/clients";
+import { IdInput } from "@components/ui/IdInput";
 
 interface EffectFormProps {
   initialValues?: Partial<EffectDefinition>;
@@ -45,52 +45,10 @@ export function EffectForm({
   const [baseDurationSec, setBaseDurationSec] = useState(initialValues.blueprint?.baseDurationSec || 0);
   const [self, setSelf] = useState(initialValues.blueprint?.self || false);
   const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
-  const [idValidation, setIdValidation] = useState<{
-    isUnique: boolean;
-    conflictingTypes: string[];
-  } | null>(null);
-  const [validatingId, setValidatingId] = useState(false);
-  const [lastValidatedId, setLastValidatedId] = useState<string | null>(null);
 
   const allCategories = Object.values(EffectCategory);
   const allEffectTypes = Object.values(EffectType);
   const availableEffectTypes = allEffectTypes.filter(type => !existingIds.includes(type));
-
-  // Validate ID uniqueness when ID changes - debounced
-  useEffect(() => {
-    if (id.trim()) {
-      // Only validate if the ID has changed from what we last validated
-      if (id === lastValidatedId) {
-        return; // Already validated this ID, no need to check again
-      }
-
-      // Debounce: wait 500ms after user stops typing
-      const timeoutId = setTimeout(() => {
-        // Double-check the ID hasn't changed during the debounce
-        if (id !== lastValidatedId) {
-          setValidatingId(true);
-          idClient
-            .checkIdUniqueness(id, "effects", isEdit ? (initialValues as EffectDefinition).id : undefined)
-            .then((result) => {
-              setIdValidation(result);
-              setLastValidatedId(id);
-            })
-            .catch((error) => {
-              console.error("Error validating ID:", error);
-              setIdValidation(null);
-            })
-            .finally(() => {
-              setValidatingId(false);
-            });
-        }
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
-    } else {
-      setIdValidation(null);
-      setLastValidatedId(null);
-    }
-  }, [id, isEdit, initialValues, lastValidatedId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,22 +63,7 @@ export function EffectForm({
       return;
     }
     
-    // Final validation check
-    const validation = await idClient.checkIdUniqueness(
-      id,
-      "effects",
-      isEdit ? (initialValues as EffectDefinition).id : undefined
-    );
-    if (!validation.isUnique) {
-      const conflictList = validation.conflictingTypes
-        .map(type => type.charAt(0).toUpperCase() + type.slice(1))
-        .join(", ");
-      alert(
-        `ID "${id}" already exists in: ${conflictList}.\n\n` +
-        `Please choose a different ID.`
-      );
-      return;
-    }
+    // ID validation is handled by IdInput component
     
     if (baseMagnitude <= 0) {
       alert("Base magnitude must be greater than 0");
@@ -174,76 +117,61 @@ export function EffectForm({
         disabled={saving}
       />
 
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          ID (Effect Type) *
-        </label>
-        {isEdit ? (
-          <input
-            type="text"
-            value={id}
-            disabled
-            className="w-full px-3 py-2 bg-deep/50 border border-border rounded text-text-muted cursor-not-allowed"
-          />
-        ) : (
-          <div className="space-y-2">
-            {availableEffectTypes.length > 0 ? (
-              <select
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-              >
-                <option value="">Or type a custom ID below</option>
-                {availableEffectTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-            <input
-              type="text"
+      {isEdit ? (
+        <IdInput
+          value={id}
+          onChange={() => {}} // Read-only in edit mode
+          contentType="effects"
+          isEdit={true}
+          placeholder="Effect Type ID"
+          label="ID (Effect Type)"
+          disabled={true}
+        />
+      ) : (
+        <div>
+          <label className="block text-sm font-semibold text-text-secondary mb-1">
+            ID (Effect Type) *
+          </label>
+          {availableEffectTypes.length > 0 && (
+            <select
               value={id}
               onChange={(e) => setId(e.target.value)}
-              className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-              placeholder={availableEffectTypes.length > 0 ? "Or enter a custom effect type ID (e.g., freeze, curse)" : "Enter effect type ID (e.g., burn, freeze, curse)"}
-              required
-            />
-          </div>
-        )}
-        {id && (
-          <div className="mt-1">
-            <p className="text-xs text-text-muted">
-              ID: <code className="text-ember-glow">{id}</code>
-              {validatingId && <span className="ml-2 text-text-muted">(checking...)</span>}
+              className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary mb-2"
+            >
+              <option value="">Or type a custom ID below</option>
+              {availableEffectTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          )}
+          <IdInput
+            value={id}
+            onChange={setId}
+            contentType="effects"
+            isEdit={false}
+            placeholder={availableEffectTypes.length > 0 ? "Or enter a custom effect type ID (e.g., freeze, curse)" : "Enter effect type ID (e.g., burn, freeze, curse)"}
+            label={availableEffectTypes.length > 0 ? "Custom ID" : "ID (Effect Type)"}
+            autoGenerateFrom={name}
+            disabled={saving}
+          />
+          {name && !isEdit && (
+            <p className="text-xs text-text-secondary mt-1">
+              (Auto-generate from name: <button
+                type="button"
+                onClick={() => setId(nameToId(name))}
+                className="text-ember-glow hover:underline"
+              >
+                {nameToId(name)}
+              </button>)
             </p>
-            {idValidation && !idValidation.isUnique && (
-              <p className="text-xs text-red-400 mt-1">
-                ⚠️ ID already exists in: {idValidation.conflictingTypes
-                  .map(type => type.charAt(0).toUpperCase() + type.slice(1))
-                  .join(", ")}
-              </p>
-            )}
-            {idValidation && idValidation.isUnique && id && (
-              <p className="text-xs text-moss-glow mt-1">✓ ID is unique</p>
-            )}
-            {name && !isEdit && (
-              <p className="text-xs text-text-secondary mt-1">
-                (Auto-generate from name: <button
-                  type="button"
-                  onClick={() => setId(nameToId(name))}
-                  className="text-ember-glow hover:underline"
-                >
-                  {nameToId(name)}
-                </button>)
-              </p>
-            )}
-          </div>
-        )}
-        <p className="text-xs text-text-muted mt-1">
-          The effect type ID is a unique identifier used in the game code (e.g., "burn", "freeze", "shield"). Use lowercase with underscores.
-        </p>
-      </div>
+          )}
+          <p className="text-xs text-text-muted mt-1">
+            The effect type ID is a unique identifier used in the game code (e.g., "burn", "freeze", "shield"). Use lowercase with underscores.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-semibold text-text-secondary mb-1">

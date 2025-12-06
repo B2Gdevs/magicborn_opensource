@@ -8,6 +8,8 @@ import { CharacterForm } from "@components/character/CharacterForm";
 import { CharacterStoriesManager } from "@components/character/CharacterStoriesManager";
 import { characterClient } from "@/lib/api/clients";
 import { Tooltip } from "@components/ui/Tooltip";
+import { Modal } from "@components/ui/Modal";
+import { CharacterFormFooter } from "@components/character/CharacterForm";
 
 export default function CharacterEditor() {
   const [characters, setCharacters] = useState<CharacterDefinition[]>([]);
@@ -97,52 +99,64 @@ export default function CharacterEditor() {
   return (
     <div className="flex flex-col h-full">
       {/* Modals */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-void border border-border rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
-            <Tooltip content="Close">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="absolute top-4 right-4 text-text-muted hover:text-text-primary"
-                aria-label="Close modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </Tooltip>
-            <h2 className="text-2xl font-bold text-glow mb-4">Create New Character</h2>
-            <CharacterForm
-              existingCharacters={characters}
-              onSubmit={handleCreate}
-              onCancel={() => setShowCreateModal(false)}
-              saving={saving}
-            />
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Character"
+        footer={
+          <CharacterFormFooter
+            isEdit={false}
+            saving={saving}
+            onCancel={() => setShowCreateModal(false)}
+            onSubmit={() => {
+              const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
+              if (form?.submitForm) {
+                form.submitForm();
+              } else {
+                form?.requestSubmit();
+              }
+            }}
+          />
+        }
+      >
+        <CharacterForm
+          existingCharacters={characters}
+          onSubmit={handleCreate}
+          onCancel={() => setShowCreateModal(false)}
+          saving={saving}
+        />
+      </Modal>
 
-      {showEditModal && selectedCharacter && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-void border border-border rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
-            <Tooltip content="Close">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="absolute top-4 right-4 text-text-muted hover:text-text-primary"
-                aria-label="Close modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </Tooltip>
-            <h2 className="text-2xl font-bold text-glow mb-4">Edit Character</h2>
-            <CharacterForm
-              initialValues={selectedCharacter}
-              existingCharacters={characters}
+      {selectedCharacter && (
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title={`Edit ${selectedCharacter.name}`}
+          footer={
+            <CharacterFormFooter
               isEdit={true}
-              onSubmit={handleUpdate}
-              onCancel={() => setShowEditModal(false)}
               saving={saving}
+              onCancel={() => setShowEditModal(false)}
+              onSubmit={() => {
+                const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
+                if (form?.submitForm) {
+                  form.submitForm();
+                } else {
+                  form?.requestSubmit();
+                }
+              }}
             />
-          </div>
-        </div>
+          }
+        >
+          <CharacterForm
+            initialValues={selectedCharacter}
+            existingCharacters={characters}
+            isEdit={true}
+            onSubmit={handleUpdate}
+            onCancel={() => setShowEditModal(false)}
+            saving={saving}
+          />
+        </Modal>
       )}
 
       <div className="flex h-full gap-4 overflow-hidden">
