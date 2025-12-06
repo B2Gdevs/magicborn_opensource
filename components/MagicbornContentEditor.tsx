@@ -24,6 +24,7 @@ import CharacterEditor from "@components/CharacterEditor";
 import ResourcePlaceholder from "@components/ResourcePlaceholder";
 import { TabButton } from "@components/ui/TabButton";
 import DocumentationDrawer, { type WorkbenchTab } from "@components/DocumentationDrawer";
+import { Tooltip } from "@components/ui/Tooltip";
 
 export type EditorType =
   | "files"
@@ -126,24 +127,24 @@ export function MagicbornContentEditor({
       <div className="border-b border-border bg-shadow px-8 py-4 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold text-glow">Content Editor</h1>
-          <button
-            onClick={() => setIsDocDrawerOpen(true)}
-            className="px-4 py-2 rounded-lg font-semibold text-sm bg-deep text-text-secondary hover:text-ember-glow border-2 border-border hover:border-ember/50 transition-all flex items-center gap-2"
-          >
-            <Terminal className="w-4 h-4" />
-            Workbench
-          </button>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {tabs.map((tab) => (
-            <TabButton
-              key={tab.id}
-              active={activeTab === tab.id}
-              icon={tab.icon}
-              onClick={() => onTabChange(tab.id)}
+          <Tooltip content="Developer Workbench">
+            <button
+              onClick={() => setIsDocDrawerOpen(true)}
+              className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
             >
-              {tab.label}
-            </TabButton>
+              <Terminal className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {tabs.map((tab) => (
+            <Tooltip key={tab.id} content={tab.label}>
+              <TabButton
+                active={activeTab === tab.id}
+                icon={tab.icon}
+                onClick={() => onTabChange(tab.id)}
+              />
+            </Tooltip>
           ))}
         </div>
       </div>
