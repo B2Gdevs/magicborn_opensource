@@ -3,6 +3,9 @@
 
 import type { NamedSpellBlueprint } from "@/lib/data/namedSpells";
 import type { EffectDefinition } from "@/lib/data/effects";
+import type { RuneDef } from "@/lib/packages/runes";
+import type { RuneCode } from "@core/types";
+import type { CharacterDefinition } from "@/lib/data/characters";
 
 // Base API client with error handling
 async function apiRequest<T>(
@@ -31,6 +34,7 @@ export const idClient = {
     allIds: {
       spells: string[];
       effects: string[];
+      characters: string[];
     };
     idMap: Record<string, string[]>; // ID -> content types that use it
   }> {
@@ -38,6 +42,7 @@ export const idClient = {
       allIds: {
         spells: string[];
         effects: string[];
+        characters: string[];
       };
       idMap: Record<string, string[]>;
     }>("/api/game-data/ids");
@@ -45,7 +50,7 @@ export const idClient = {
 
   async checkIdUniqueness(
     id: string,
-    currentContentType: "spells" | "effects",
+    currentContentType: "spells" | "effects" | "characters",
     currentId?: string // For edit mode - exclude current item's ID
   ): Promise<{
     isUnique: boolean;
@@ -133,6 +138,84 @@ export const effectClient = {
     await apiRequest<void>(`/api/game-data/effects?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
+  },
+};
+
+// Rune API Client
+export const runeClient = {
+  async list(): Promise<RuneDef[]> {
+    const result = await apiRequest<{ runes: RuneDef[] }>("/api/game-data/runes");
+    return result.runes;
+  },
+
+  async get(code: RuneCode): Promise<RuneDef> {
+    const result = await apiRequest<{ rune: RuneDef }>(`/api/game-data/runes?code=${encodeURIComponent(code)}`);
+    return result.rune;
+  },
+
+  async create(rune: RuneDef): Promise<RuneDef> {
+    const result = await apiRequest<{ rune: RuneDef }>("/api/game-data/runes", {
+      method: "POST",
+      body: JSON.stringify(rune),
+    });
+    return result.rune;
+  },
+
+  async update(rune: RuneDef): Promise<RuneDef> {
+    const result = await apiRequest<{ rune: RuneDef }>("/api/game-data/runes", {
+      method: "PUT",
+      body: JSON.stringify(rune),
+    });
+    return result.rune;
+  },
+
+  async delete(code: RuneCode): Promise<void> {
+    await apiRequest<void>(`/api/game-data/runes?code=${encodeURIComponent(code)}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+// Character API Client
+export const characterClient = {
+  async list(): Promise<CharacterDefinition[]> {
+    const result = await apiRequest<{ characters: CharacterDefinition[] }>("/api/game-data/characters");
+    return result.characters;
+  },
+
+  async get(id: string): Promise<CharacterDefinition> {
+    const result = await apiRequest<{ character: CharacterDefinition }>(`/api/game-data/characters?id=${encodeURIComponent(id)}`);
+    return result.character;
+  },
+
+  async create(character: CharacterDefinition): Promise<CharacterDefinition> {
+    const result = await apiRequest<{ character: CharacterDefinition }>("/api/game-data/characters", {
+      method: "POST",
+      body: JSON.stringify({ character }),
+    });
+    return result.character;
+  },
+
+  async update(character: CharacterDefinition): Promise<CharacterDefinition> {
+    const result = await apiRequest<{ character: CharacterDefinition }>("/api/game-data/characters", {
+      method: "PUT",
+      body: JSON.stringify({ character }),
+    });
+    return result.character;
+  },
+
+  async delete(id: string): Promise<void> {
+    await apiRequest<void>(`/api/game-data/characters?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+// Stories API Client
+export const storiesClient = {
+  async list(): Promise<string[]> {
+    const result = await apiRequest<{ stories: string[] }>("/api/game-data/stories/list");
+    return result.stories;
   },
 };
 

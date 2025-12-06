@@ -7,6 +7,7 @@ import { EFFECT_DEFS } from "@/lib/data/effects";
 import type { EffectDefinition } from "@/lib/data/effects";
 import { EffectForm } from "@components/effect/EffectForm";
 import { effectClient } from "@/lib/api/clients";
+import { Tooltip } from "@components/ui/Tooltip";
 
 export default function EffectEditor() {
   const [effects, setEffects] = useState<EffectDefinition[]>([]);
@@ -164,16 +165,18 @@ export default function EffectEditor() {
                             </span>
                           </div>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(effect);
-                          }}
-                          className="text-text-muted hover:text-red-500 transition-colors p-1"
-                          aria-label="Delete effect"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <Tooltip content="Delete effect">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(effect);
+                            }}
+                            className="text-text-muted hover:text-red-500 transition-colors p-1"
+                            aria-label="Delete effect"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>
@@ -184,16 +187,25 @@ export default function EffectEditor() {
         </div>
 
         {/* Effect Viewer */}
-        <div className="flex-1 p-4 overflow-y-auto">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {selectedEffect ? (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-glow">{selectedEffect.name}</h2>
-                <button onClick={() => setShowEditModal(true)} className="btn flex items-center gap-2">
-                  <Edit className="w-4 h-4" />
-                  Edit
-                </button>
+            <div className="flex flex-col h-full">
+              {/* Minimal Toolbar */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-shadow/50 flex-shrink-0">
+                <h2 className="text-xl font-semibold text-glow">{selectedEffect.name}</h2>
+                <Tooltip content="Edit effect">
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                </Tooltip>
               </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-6">
 
               {/* Image display */}
               <div className="relative w-full aspect-video rounded-lg border border-border overflow-hidden bg-deep">
@@ -259,6 +271,8 @@ export default function EffectEditor() {
                   </pre>
                 </div>
               </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-text-muted">
@@ -311,28 +325,30 @@ function EditEffectModal({
       <div className="bg-shadow border border-border rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold text-glow">Edit Effect</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="text-text-muted hover:text-text-primary transition-colors p-1 hover:bg-deep rounded"
-            aria-label="Close"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <Tooltip content="Close">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="text-text-muted hover:text-text-primary transition-colors p-1 hover:bg-deep rounded"
+              aria-label="Close"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </Tooltip>
         </div>
         
         <EffectForm
@@ -366,28 +382,30 @@ function CreateEffectModal({
       <div className="bg-shadow border border-border rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold text-glow">Create New Effect</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="text-text-muted hover:text-text-primary transition-colors p-1 hover:bg-deep rounded"
-            aria-label="Close"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <Tooltip content="Close">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="text-text-muted hover:text-text-primary transition-colors p-1 hover:bg-deep rounded"
+              aria-label="Close"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </Tooltip>
         </div>
         
         <EffectForm

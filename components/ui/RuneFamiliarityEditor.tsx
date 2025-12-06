@@ -24,32 +24,35 @@ export function RuneFamiliarityEditor({
   const allRunes = Object.values(RC);
   const [expandedRunes, setExpandedRunes] = useState<Set<RuneCode>>(new Set());
 
+  // Ensure value is always an object
+  const safeValue = value || {};
+
   const toggleRune = (rune: RuneCode) => {
     if (expandedRunes.has(rune)) {
       setExpandedRunes(new Set([...expandedRunes].filter((r) => r !== rune)));
       // Remove from value if it exists
-      const newValue = { ...value };
+      const newValue = { ...safeValue };
       delete newValue[rune];
       onChange(newValue);
     } else {
       setExpandedRunes(new Set([...expandedRunes, rune]));
       // Add with default value of 0.5
-      onChange({ ...value, [rune]: value[rune] ?? 0.5 });
+      onChange({ ...safeValue, [rune]: safeValue[rune] ?? 0.5 });
     }
   };
 
   const updateFamiliarity = (rune: RuneCode, familiarity: number) => {
     if (familiarity <= 0) {
-      const newValue = { ...value };
+      const newValue = { ...safeValue };
       delete newValue[rune];
       onChange(newValue);
       setExpandedRunes(new Set([...expandedRunes].filter((r) => r !== rune)));
     } else {
-      onChange({ ...value, [rune]: familiarity });
+      onChange({ ...safeValue, [rune]: familiarity });
     }
   };
 
-  const runesWithRequirements = allRunes.filter((rune) => value[rune] !== undefined);
+  const runesWithRequirements = allRunes.filter((rune) => safeValue[rune] !== undefined);
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -68,7 +71,7 @@ export function RuneFamiliarityEditor({
       <div className="flex flex-wrap gap-2">
         {allRunes.map((rune) => {
           const runeName = Object.entries(RC).find(([_, v]) => v === rune)?.[0] || rune;
-          const hasRequirement = value[rune] !== undefined;
+          const hasRequirement = safeValue[rune] !== undefined;
           const isExpanded = expandedRunes.has(rune);
 
           return (
@@ -92,13 +95,13 @@ export function RuneFamiliarityEditor({
                     min="0"
                     max="1"
                     step="0.05"
-                    value={value[rune] ?? 0.5}
+                    value={safeValue[rune] ?? 0.5}
                     onChange={(e) => updateFamiliarity(rune, parseFloat(e.target.value) || 0)}
                     className="w-20 px-2 py-1 bg-shadow border border-border rounded text-sm text-text-primary"
                     placeholder="0.5"
                   />
                   <span className="text-xs text-text-muted">
-                    {(value[rune] ?? 0.5) * 100}%
+                    {(safeValue[rune] ?? 0.5) * 100}%
                   </span>
                 </div>
               )}
@@ -119,7 +122,7 @@ export function RuneFamiliarityEditor({
                   key={rune}
                   className="text-xs bg-ember/20 text-ember-glow px-2 py-1 rounded"
                 >
-                  {runeName}: {(value[rune]! * 100).toFixed(0)}%
+                  {runeName}: {(safeValue[rune]! * 100).toFixed(0)}%
                 </span>
               );
             })}

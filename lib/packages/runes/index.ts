@@ -23,6 +23,7 @@ export interface RuneDef {
   effects?: EffectBlueprint[];
   overchargeEffects?: OverchargeEffect[];
   dotAffinity?: number;
+  imagePath?: string; // Path to image in public/game-content/runes/
 }
 
 /**
@@ -58,7 +59,8 @@ export const RC = {
   Zeal: "Z" as RuneCode,
 };
 
-export const RUNES: Record<RuneCode, RuneDef> = {
+// Hardcoded fallback data - kept for backward compatibility and as fallback
+const HARDCODED_RUNES: Record<RuneCode, RuneDef> = {
   A: {
     code: "A",
     concept: "Air",
@@ -434,6 +436,73 @@ export const RUNES: Record<RuneCode, RuneDef> = {
   },
 };
 
+/**
+ * Load runes from database with fallback to hardcoded data.
+ * This ensures tests and runtime code continue to work.
+ */
+function loadRunesFromDatabase(): Record<RuneCode, RuneDef> {
+  try {
+    // Only load from DB on server-side
+    if (typeof window === "undefined") {
+      const { getRunesRepository } = require("@/lib/data/runesRepository");
+      const repo = getRunesRepository();
+      const runesList = repo.listAll();
+      
+      if (runesList.length > 0) {
+        // Convert array to Record<RuneCode, RuneDef>
+        const runesRecord = {} as Record<RuneCode, RuneDef>;
+        for (const rune of runesList) {
+          const code = rune.code as RuneCode;
+          runesRecord[code] = rune;
+        }
+        
+        // Ensure all 26 runes exist (A-Z)
+        // If database is missing some, fill from fallback
+        const allCodes: RuneCode[] = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+        for (const code of allCodes) {
+          if (!runesRecord[code]) {
+            runesRecord[code] = HARDCODED_RUNES[code];
+          }
+        }
+        
+        return runesRecord;
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to load runes from database, using fallback:", error);
+  }
+  // Fallback to hardcoded data
+  return HARDCODED_RUNES;
+}
+
+// Export RUNES as a getter that loads from database
+let _cachedRunes: Record<RuneCode, RuneDef> | null = null;
+
+export function getRUNES(): Record<RuneCode, RuneDef> {
+  if (!_cachedRunes) {
+    _cachedRunes = loadRunesFromDatabase();
+  }
+  return _cachedRunes;
+}
+
+// For backward compatibility, export RUNES as a Proxy that loads from database
+// This allows existing code like `RUNES.F` to continue working
+export const RUNES: Record<RuneCode, RuneDef> = new Proxy({} as Record<RuneCode, RuneDef>, {
+  get(target, prop) {
+    const runes = getRUNES();
+    return runes[prop as RuneCode];
+  },
+  ownKeys() {
+    return Object.keys(getRUNES());
+  },
+  has(target, prop) {
+    return prop in getRUNES();
+  },
+  getOwnPropertyDescriptor(target, prop) {
+    return Object.getOwnPropertyDescriptor(getRUNES(), prop);
+  },
+});
+
 export function listRunes() {
-  return Object.values(RUNES);
+  return Object.values(getRUNES());
 }

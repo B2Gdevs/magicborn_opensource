@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import SidebarNav from "@components/SidebarNav";
 import TopNav from "@components/TopNav";
 import { GameProviders } from "./GameProviders";
+import { TooltipProvider } from "@/components/ui/TooltipProvider";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://magicborn.b2gdevs.com'),
@@ -110,11 +111,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           />
         </head>
         <body className="bg-void text-text-primary">
-          <GameProviders>
-            <SidebarNav />
-            <TopNav />
-            {children}
-          </GameProviders>
+          <TooltipProvider>
+            <GameProviders>
+              <SidebarNav />
+              <TopNav />
+              {children}
+            </GameProviders>
+          </TooltipProvider>
         </body>
       </html>
     );

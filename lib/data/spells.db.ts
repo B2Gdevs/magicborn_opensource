@@ -7,6 +7,8 @@ import { join } from "path";
 import { existsSync, mkdirSync } from "fs";
 import { namedSpells } from "./spells.schema";
 import { effectDefinitions } from "./effects.schema";
+import { runes } from "./runes.schema";
+import { characters } from "./characters.schema";
 import { sql } from "drizzle-orm";
 
 const DB_PATH = join(process.cwd(), "data", "spells.db");
@@ -28,9 +30,9 @@ export function getDatabase() {
   sqliteInstance = new Database(DB_PATH);
   sqliteInstance.pragma("journal_mode = WAL"); // Better concurrency
   
-  // Include both schemas in the drizzle instance
+  // Include all schemas in the drizzle instance
   dbInstance = drizzle(sqliteInstance, { 
-    schema: { namedSpells, effectDefinitions } 
+    schema: { namedSpells, effectDefinitions, runes, characters } 
   });
   
   // Initialize schema and indexes
@@ -54,6 +56,51 @@ function initializeSchema() {
       blueprint TEXT NOT NULL,
       max_stacks INTEGER,
       image_path TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Create runes table if it doesn't exist
+  sqliteInstance.exec(`
+    CREATE TABLE IF NOT EXISTS runes (
+      code TEXT PRIMARY KEY,
+      concept TEXT NOT NULL,
+      power_factor REAL NOT NULL,
+      control_factor REAL NOT NULL,
+      instability_base REAL NOT NULL,
+      tags TEXT NOT NULL,
+      mana_cost REAL NOT NULL,
+      damage TEXT,
+      cc_instant TEXT,
+      pen TEXT,
+      effects TEXT,
+      overcharge_effects TEXT,
+      dot_affinity REAL,
+      image_path TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Create characters table if it doesn't exist
+  sqliteInstance.exec(`
+    CREATE TABLE IF NOT EXISTS characters (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      mana REAL NOT NULL,
+      max_mana REAL NOT NULL,
+      hp REAL NOT NULL,
+      max_hp REAL NOT NULL,
+      affinity TEXT NOT NULL,
+      element_xp TEXT,
+      element_affinity TEXT,
+      effects TEXT NOT NULL,
+      control_bonus REAL,
+      cost_efficiency REAL,
+      image_path TEXT,
+      story_ids TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -88,6 +135,16 @@ function initializeSchema() {
     CREATE INDEX IF NOT EXISTS idx_effect_definitions_is_buff ON effect_definitions(is_buff);
   `);
 
+  // Create indexes for runes
+  sqliteInstance.exec(`
+    CREATE INDEX IF NOT EXISTS idx_runes_concept ON runes(concept);
+  `);
+
+  // Create indexes for characters
+  sqliteInstance.exec(`
+    CREATE INDEX IF NOT EXISTS idx_characters_name ON characters(name);
+  `);
+
   // Trigger to update updated_at timestamp for named_spells
   sqliteInstance.exec(`
     CREATE TRIGGER IF NOT EXISTS update_named_spells_timestamp
@@ -103,6 +160,24 @@ function initializeSchema() {
     AFTER UPDATE ON effect_definitions
     BEGIN
       UPDATE effect_definitions SET updated_at = datetime('now') WHERE id = NEW.id;
+    END
+  `);
+
+  // Trigger to update updated_at timestamp for runes
+  sqliteInstance.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_runes_timestamp
+    AFTER UPDATE ON runes
+    BEGIN
+      UPDATE runes SET updated_at = datetime('now') WHERE code = NEW.code;
+    END
+  `);
+
+  // Trigger to update updated_at timestamp for characters
+  sqliteInstance.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_characters_timestamp
+    AFTER UPDATE ON characters
+    BEGIN
+      UPDATE characters SET updated_at = datetime('now') WHERE id = NEW.id;
     END
   `);
 }

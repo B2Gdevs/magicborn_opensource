@@ -20,6 +20,7 @@ import FileManager from "@components/FileManager";
 import SpellEditor from "@components/SpellEditor";
 import EffectEditor from "@components/EffectEditor";
 import RuneEditor from "@components/RuneEditor";
+import CharacterEditor from "@components/CharacterEditor";
 import ResourcePlaceholder from "@components/ResourcePlaceholder";
 import { TabButton } from "@components/ui/TabButton";
 import DocumentationDrawer, { type WorkbenchTab } from "@components/DocumentationDrawer";
@@ -76,13 +77,7 @@ const defaultTabs: EditorTab[] = [
     id: "characters",
     label: "Characters",
     icon: <User className="w-4 h-4" />,
-    component: (
-      <ResourcePlaceholder
-        title="Character Manager"
-        description="Create and manage character data, stats, and abilities"
-        icon={<User className="w-8 h-8" />}
-      />
-    ),
+    component: <CharacterEditor />,
   },
   {
     id: "creatures",
