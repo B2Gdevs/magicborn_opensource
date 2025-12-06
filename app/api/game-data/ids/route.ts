@@ -5,25 +5,28 @@ import { NextResponse } from "next/server";
 import { getSpellsRepository } from "@/lib/data/spellsRepository";
 import { getEffectsRepository } from "@/lib/data/effectsRepository";
 import { getCharactersRepository } from "@/lib/data/charactersRepository";
+import { getCreaturesRepository } from "@/lib/data/creaturesRepository";
 
 export async function GET() {
   try {
     const spellsRepo = getSpellsRepository();
     const effectsRepo = getEffectsRepository();
     const charactersRepo = getCharactersRepository();
+    const creaturesRepo = getCreaturesRepository();
     
     const spells = spellsRepo.listAll();
     const effects = effectsRepo.listAll();
     const characters = charactersRepo.listAll();
+    const creatures = creaturesRepo.listAll();
     
     // Get all IDs grouped by content type
     const allIds = {
       spells: spells.map(s => s.id),
       effects: effects.map(e => e.id),
       characters: characters.map(c => c.id),
+      creatures: creatures.map(c => c.id),
       // TODO: Add other content types as they're implemented
       // runes: runes.map(r => r.code), // Runes use code, not id
-      // creatures: creatures.map(c => c.id),
       // environments: environments.map(e => e.id),
     };
     

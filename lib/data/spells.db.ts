@@ -9,6 +9,7 @@ import { namedSpells } from "./spells.schema";
 import { effectDefinitions } from "./effects.schema";
 import { runes } from "./runes.schema";
 import { characters } from "./characters.schema";
+import { creatures } from "./creatures.schema";
 import { sql } from "drizzle-orm";
 
 const DB_PATH = join(process.cwd(), "data", "spells.db");
@@ -32,7 +33,7 @@ export function getDatabase() {
   
   // Include all schemas in the drizzle instance
   dbInstance = drizzle(sqliteInstance, { 
-    schema: { namedSpells, effectDefinitions, runes, characters } 
+    schema: { namedSpells, effectDefinitions, runes, characters, creatures } 
   });
   
   // Initialize schema and indexes
@@ -106,6 +107,27 @@ function initializeSchema() {
     );
   `);
 
+  // Create creatures table if it doesn't exist
+  sqliteInstance.exec(`
+    CREATE TABLE IF NOT EXISTS creatures (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      image_path TEXT,
+      story_ids TEXT NOT NULL DEFAULT '[]',
+      hp REAL NOT NULL,
+      max_hp REAL NOT NULL,
+      mana REAL NOT NULL,
+      max_mana REAL NOT NULL,
+      affinity TEXT NOT NULL DEFAULT '{}',
+      element_xp TEXT,
+      element_affinity TEXT,
+      effects TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
   // Add image_path column to existing tables if it doesn't exist
   try {
     sqliteInstance.exec(`
@@ -145,6 +167,11 @@ function initializeSchema() {
     CREATE INDEX IF NOT EXISTS idx_characters_name ON characters(name);
   `);
 
+  // Create indexes for creatures
+  sqliteInstance.exec(`
+    CREATE INDEX IF NOT EXISTS idx_creatures_name ON creatures(name);
+  `);
+
   // Trigger to update updated_at timestamp for named_spells
   sqliteInstance.exec(`
     CREATE TRIGGER IF NOT EXISTS update_named_spells_timestamp
@@ -178,6 +205,15 @@ function initializeSchema() {
     AFTER UPDATE ON characters
     BEGIN
       UPDATE characters SET updated_at = datetime('now') WHERE id = NEW.id;
+    END
+  `);
+
+  // Trigger to update updated_at timestamp for creatures
+  sqliteInstance.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_creatures_timestamp
+    AFTER UPDATE ON creatures
+    BEGIN
+      UPDATE creatures SET updated_at = datetime('now') WHERE id = NEW.id;
     END
   `);
 }

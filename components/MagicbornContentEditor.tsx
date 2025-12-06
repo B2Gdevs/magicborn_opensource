@@ -21,6 +21,7 @@ import SpellEditor from "@components/SpellEditor";
 import EffectEditor from "@components/EffectEditor";
 import RuneEditor from "@components/RuneEditor";
 import CharacterEditor from "@components/CharacterEditor";
+import CreatureEditor from "@components/CreatureEditor";
 import ResourcePlaceholder from "@components/ResourcePlaceholder";
 import { TabButton } from "@components/ui/TabButton";
 import DocumentationDrawer, { type WorkbenchTab } from "@components/DocumentationDrawer";
@@ -84,13 +85,7 @@ const defaultTabs: EditorTab[] = [
     id: "creatures",
     label: "Creatures",
     icon: <Ghost className="w-4 h-4" />,
-    component: (
-      <ResourcePlaceholder
-        title="Creature Manager"
-        description="Design creatures, enemies, and their combat behaviors"
-        icon={<Ghost className="w-8 h-8" />}
-      />
-    ),
+    component: <CreatureEditor />,
   },
   {
     id: "environments",

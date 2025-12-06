@@ -6,6 +6,7 @@ import type { EffectDefinition } from "@/lib/data/effects";
 import type { RuneDef } from "@/lib/packages/runes";
 import type { RuneCode } from "@core/types";
 import type { CharacterDefinition } from "@/lib/data/characters";
+import type { CreatureDefinition } from "@/lib/data/creatures";
 
 // Base API client with error handling
 async function apiRequest<T>(
@@ -35,6 +36,7 @@ export const idClient = {
       spells: string[];
       effects: string[];
       characters: string[];
+      creatures: string[];
     };
     idMap: Record<string, string[]>; // ID -> content types that use it
   }> {
@@ -43,6 +45,7 @@ export const idClient = {
         spells: string[];
         effects: string[];
         characters: string[];
+        creatures: string[];
       };
       idMap: Record<string, string[]>;
     }>("/api/game-data/ids");
@@ -50,7 +53,7 @@ export const idClient = {
 
   async checkIdUniqueness(
     id: string,
-    currentContentType: "spells" | "effects" | "characters",
+    currentContentType: "spells" | "effects" | "characters" | "creatures",
     currentId?: string // For edit mode - exclude current item's ID
   ): Promise<{
     isUnique: boolean;
@@ -206,6 +209,41 @@ export const characterClient = {
 
   async delete(id: string): Promise<void> {
     await apiRequest<void>(`/api/game-data/characters?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+// Creature API Client
+export const creatureClient = {
+  async list(): Promise<CreatureDefinition[]> {
+    const result = await apiRequest<{ creatures: CreatureDefinition[] }>("/api/game-data/creatures");
+    return result.creatures;
+  },
+
+  async get(id: string): Promise<CreatureDefinition> {
+    const result = await apiRequest<{ creature: CreatureDefinition }>(`/api/game-data/creatures?id=${encodeURIComponent(id)}`);
+    return result.creature;
+  },
+
+  async create(creature: CreatureDefinition): Promise<CreatureDefinition> {
+    const result = await apiRequest<{ creature: CreatureDefinition }>("/api/game-data/creatures", {
+      method: "POST",
+      body: JSON.stringify(creature),
+    });
+    return result.creature;
+  },
+
+  async update(creature: CreatureDefinition): Promise<CreatureDefinition> {
+    const result = await apiRequest<{ creature: CreatureDefinition }>("/api/game-data/creatures", {
+      method: "PUT",
+      body: JSON.stringify(creature),
+    });
+    return result.creature;
+  },
+
+  async delete(id: string): Promise<void> {
+    await apiRequest<void>(`/api/game-data/creatures?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
   },
