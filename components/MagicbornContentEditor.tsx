@@ -22,7 +22,18 @@ import EffectEditor from "@components/EffectEditor";
 import RuneEditor from "@components/RuneEditor";
 import CharacterEditor from "@components/CharacterEditor";
 import CreatureEditor from "@components/CreatureEditor";
+import dynamic from "next/dynamic";
 import ResourcePlaceholder from "@components/ResourcePlaceholder";
+
+// Dynamically import EnvironmentEditor to avoid SSR issues
+const EnvironmentEditor = dynamic(() => import("@components/environment/EnvironmentEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-deep text-text-muted">
+      <p>Loading environment editor...</p>
+    </div>
+  ),
+});
 import { TabButton } from "@components/ui/TabButton";
 import DocumentationDrawer, { type WorkbenchTab } from "@components/DocumentationDrawer";
 import { Tooltip } from "@components/ui/Tooltip";
@@ -50,71 +61,70 @@ export interface MagicbornContentEditorProps {
   tabs?: EditorTab[];
 }
 
-const defaultTabs: EditorTab[] = [
-  {
-    id: "files",
-    label: "Files",
-    icon: <Folder className="w-4 h-4" />,
-    component: <FileManager />,
-  },
-  {
-    id: "spells",
-    label: "Spells",
-    icon: <Sparkles className="w-4 h-4" />,
-    component: <SpellEditor />,
-  },
-  {
-    id: "effects",
-    label: "Effects",
-    icon: <Zap className="w-4 h-4" />,
-    component: <EffectEditor />,
-  },
-  {
-    id: "runes",
-    label: "Runes",
-    icon: <Gem className="w-4 h-4" />,
-    component: <RuneEditor />,
-  },
-  {
-    id: "characters",
-    label: "Characters",
-    icon: <User className="w-4 h-4" />,
-    component: <CharacterEditor />,
-  },
-  {
-    id: "creatures",
-    label: "Creatures",
-    icon: <Ghost className="w-4 h-4" />,
-    component: <CreatureEditor />,
-  },
-  {
-    id: "environments",
-    label: "Environments",
-    icon: <Globe className="w-4 h-4" />,
-    component: (
-      <ResourcePlaceholder
-        title="Environment Manager"
-        description="Define locations, scenes, and environmental data"
-        icon={<Globe className="w-8 h-8" />}
-      />
-    ),
-  },
-  {
-    id: "status",
-    label: "Status",
-    icon: <BarChart3 className="w-4 h-4" />,
-    component: null, // Handled separately in render
-  },
-];
+// Create tabs function to avoid SSR issues with client components
+function createDefaultTabs(): EditorTab[] {
+  return [
+    {
+      id: "files",
+      label: "Files",
+      icon: <Folder className="w-4 h-4" />,
+      component: <FileManager />,
+    },
+    {
+      id: "spells",
+      label: "Spells",
+      icon: <Sparkles className="w-4 h-4" />,
+      component: <SpellEditor />,
+    },
+    {
+      id: "effects",
+      label: "Effects",
+      icon: <Zap className="w-4 h-4" />,
+      component: <EffectEditor />,
+    },
+    {
+      id: "runes",
+      label: "Runes",
+      icon: <Gem className="w-4 h-4" />,
+      component: <RuneEditor />,
+    },
+    {
+      id: "characters",
+      label: "Characters",
+      icon: <User className="w-4 h-4" />,
+      component: <CharacterEditor />,
+    },
+    {
+      id: "creatures",
+      label: "Creatures",
+      icon: <Ghost className="w-4 h-4" />,
+      component: <CreatureEditor />,
+    },
+    {
+      id: "environments",
+      label: "Environments",
+      icon: <Globe className="w-4 h-4" />,
+      component: <EnvironmentEditor />,
+    },
+    {
+      id: "status",
+      label: "Status",
+      icon: <BarChart3 className="w-4 h-4" />,
+      component: null, // Handled separately in render
+    },
+  ];
+}
 
 export function MagicbornContentEditor({
   activeTab,
   onTabChange,
-  tabs = defaultTabs,
+  tabs,
 }: MagicbornContentEditorProps) {
+  // Use default tabs if not provided, but create them inside component to avoid SSR issues
+  const defaultTabs = tabs || createDefaultTabs();
   const [isDocDrawerOpen, setIsDocDrawerOpen] = useState(false);
   const [activeWorkbenchTab, setActiveWorkbenchTab] = useState<WorkbenchTab>("documentation");
-  const activeEditor = tabs.find((tab) => tab.id === activeTab)?.component;
+  const activeEditor = defaultTabs.find((tab) => tab.id === activeTab)?.component;
 
   return (
     <div className="h-full flex flex-col">
@@ -132,7 +142,7 @@ export function MagicbornContentEditor({
           </Tooltip>
         </div>
         <div className="flex gap-1 flex-wrap">
-          {tabs.map((tab) => (
+          {defaultTabs.map((tab) => (
             <Tooltip key={tab.id} content={tab.label}>
               <TabButton
                 active={activeTab === tab.id}

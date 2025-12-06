@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     // Validate content type
-    const validContentTypes = ["spells", "effects", "runes", "characters", "creatures", "environments"];
+    const validContentTypes = ["spells", "effects", "runes", "characters", "creatures", "environments", "maps"];
     if (!validContentTypes.includes(contentType)) {
       return NextResponse.json(
         { error: `Invalid content type. Must be one of: ${validContentTypes.join(", ")}` },

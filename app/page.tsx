@@ -12,13 +12,14 @@ export default function LandingPage() {
           <div className="container mx-auto px-12 text-center">
             <div className="max-w-4xl mx-auto">
               {/* Logo */}
-              <div className="relative w-64 h-64 mx-auto mb-12 animate-fade-in">
+              <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto mb-12 animate-fade-in">
                 <Image
                   src="/logos/magicborn_logo.png"
                   alt="Magicborn: Mordred's Legacy"
                   fill
                   className="object-contain drop-shadow-2xl"
                   priority
+                  sizes="(max-width: 768px) 192px, 256px"
                 />
               </div>
               

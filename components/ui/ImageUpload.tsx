@@ -8,9 +8,10 @@ import Image from "next/image";
 
 interface ImageUploadProps {
   currentImagePath?: string;
-  contentType: "spells" | "effects" | "runes" | "characters" | "creatures" | "environments";
+  contentType: "spells" | "effects" | "runes" | "characters" | "creatures" | "environments" | "maps";
   entityId?: string;
   onImageUploaded: (imagePath: string) => void;
+  onImageDimensions?: (width: number, height: number) => void;
   label?: string;
   disabled?: boolean;
 }
@@ -20,6 +21,7 @@ export function ImageUpload({
   contentType,
   entityId,
   onImageUploaded,
+  onImageDimensions,
   label = "Image",
   disabled = false,
 }: ImageUploadProps) {
@@ -36,10 +38,19 @@ export function ImageUpload({
       return;
     }
 
-    // Create preview
+    // Create preview and get dimensions
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result as string);
+      
+      // Get image dimensions
+      const img = document.createElement("img");
+      img.onload = () => {
+        if (onImageDimensions) {
+          onImageDimensions(img.naturalWidth, img.naturalHeight);
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
 

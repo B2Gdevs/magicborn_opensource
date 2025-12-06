@@ -90,6 +90,8 @@ export interface MapEditorState {
   deletePlacement: (id: string) => void;
   deleteSelectedPlacements: () => void;
   movePlacements: (ids: string[], deltaX: number, deltaY: number) => void;
+  setPlacements: (placements: MapPlacement[]) => void;
+  loadPlacements: (mapId: string) => Promise<void>;
 }
 
 const DEFAULT_ZOOM = 1;
