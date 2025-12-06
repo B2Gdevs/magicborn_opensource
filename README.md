@@ -1,219 +1,230 @@
-# Magicborn
+📘 MAGICBORN — Development Environment
 
-> A deterministic, progression-heavy spell crafting game where **there are no character levels**—all power comes from crafting spells, building affinity and familiarity through casting, evolving spells through named blueprints, and conquering raids.
+Welcome to the Magicborn development repository.
+This project powers:
 
-[![Tests](https://img.shields.io/badge/tests-30%20passing-brightgreen)](https://github.com/B2Gdevs/magicborn_opensource)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-14.2-black)](https://nextjs.org/)
-[![Vitest](https://img.shields.io/badge/Vitest-4.0-yellow)](https://vitest.dev/)
+The Magicborn Content Editor (spells, effects, characters, worldbuilding)
 
-## 🎮 Core Fantasy
+The Magicborn landing site and documentation
 
-You're a spellcrafter in a dark, systems-driven world. Your identity isn't defined by character levels—it's defined by:
-- **The spells you build** from runes (A-Z alphabet)
-- **The elements you master** through repeated casting
-- **The evolution paths you unlock** by proving your mastery
-- **The choices you make** in raids and encounters
+The AI-assisted creation tools (via n8n + Qdrant + Ollama)
 
-## ✨ Key Features
+Internal utilities for managing story, game data, and creative workflows
 
-### 🧙 Spell Crafting
-- Build nameless spells from 26 runes (A-Z)
-- Infuse runes with extra mana for enhanced effects
-- Each rune contributes damage, effects, and traits
-- Real-time preview of spell stats and costs
+Magicborn's editor and site are built with Next.js, supported by a full local AI stack to help generate content, maintain consistency, and accelerate your development pipeline.
 
-### ⚔️ Deterministic Combat
-- Damage calculated from runes, player affinity, and spell growth
-- Elemental affinity provides both offensive scaling and defensive resistance
-- Status effects (Burn, Slow, Shield, etc.) with stacking mechanics
-- No RNG in core damage calculations—pure systems-driven gameplay
+🧙‍♂️ Project Overview
 
-### 📈 Dual Progression System
+This repo includes:
 
-**Element Affinity** (per damage type)
-- Grows by casting spells of that element
-- Scales offensive damage and provides defensive resistance
-- Visible progression as you specialize
+1. Next.js Application
 
-**Rune Familiarity** (per rune code)
-- Grows by using runes in spells
-- Named spells grow familiarity faster than nameless
-- Gates evolution paths—master runes to unlock advanced spells
+Located in the root (app/, components/):
 
-### 🌱 Spell Evolution
+Main website
 
-**Nameless → Named**
-- Match spell shape and power requirements
-- Unlock named blueprints like "Ember Ray" or "Mind Lance"
-- Evolution preserves your spell's identity and growth
+Content editor UI
 
-**Named → Higher-Tier Named**
-- Requires familiarity thresholds for specific runes
-- Requires achievement flags from raids
-- Example: "Ember Ray" → "Searing Ember Ray" (requires 0.5 Fire familiarity + boss flag)
+Spell crafting tools
 
-### 🏰 Raids (Coming Soon)
-- Scripted encounter sequences
-- Reward achievements/flags that unlock evolution paths
-- Test your crafted spells against challenging encounters
+Game data visualization
 
-## 🏗️ Architecture
+Future player-facing portals
 
-### Core Systems
+2. Local AI Stack (Dockerized)
 
-- **CombatStatsService**: Derives combat stats from runes, affinity, and growth
-- **EncounterService**: Resolves spell hits with affinity-based resistance
-- **AffinityService**: Tracks elemental XP and computes affinity (0-1)
-- **RuneFamiliarityService**: Tracks rune usage and familiarity scores
-- **EvolutionService**: Matches spells to blueprints and handles evolution
+Inside infra/ai-stack/:
 
-### Tech Stack
+n8n → workflow engine + AI agent system
 
-- **Frontend**: Next.js 14, React 18, TypeScript
-- **State**: Zustand for game state management
-- **Testing**: Vitest with comprehensive test coverage
-- **Styling**: Tailwind CSS
+Qdrant → vector database for RAG
 
-### Project Structure
+Postgres → n8n storage, metadata
 
-```
-lib/
-├── core/           # Core types, enums, interfaces
-├── data/           # Named spell blueprints, effect definitions
-├── packages/       # Service modules (combat, evolution, player, etc.)
-└── __tests__/      # Comprehensive test suite (30 tests)
-```
+Magicborn Web Service → Next.js dev server running inside Docker
 
-## 🧪 Testing
+Bind-mounts your public/ and data/ folders so n8n can read and ingest game assets
 
-All systems are fully tested with 30 passing tests across 9 test files:
+3. Native Ollama Installation (Manual)
 
-```bash
-npm test          # Run tests in watch mode
-npm run test:run  # Run tests once
-```
+Ollama runs outside Docker and provides:
 
-Test coverage includes:
-- ✅ Combat stats derivation
-- ✅ Encounter resolution with affinity resistance
-- ✅ Element affinity progression
-- ✅ Rune familiarity tracking
-- ✅ Evolution matching and gating
-- ✅ Named spell blueprint validation
-- ✅ Effect definitions and rune compatibility
+Local LLM models (llama3, nomic-embed-text, etc.)
 
-## 📚 Documentation
+Fast inference on Apple Silicon or CPU fallback on other systems
 
-- **[CHANGELOG.md](./CHANGELOG.md)**: Project history and ongoing changes
-- **[DESIGN.md](./DESIGN.md)**: Complete living design document (v0.5)
+Runtime for all Magicborn RAG workflows
 
-## 🚀 Getting Started
+⚙️ System Requirements
 
-### Prerequisites
+Before working with this repo, install the following:
 
-- Node.js 18+ 
-- npm or yarn
+✔ 1. Install Ollama (manual)
 
-### Installation
+Download and install Ollama from the official site:
 
-```bash
-# Clone the repository
-git clone https://github.com/B2Gdevs/magicborn_opensource.git
-cd magicborn_opensource
+🔗 https://ollama.com/download
 
-# Install dependencies
-npm install
+After installation, verify:
 
-# Run development server
-npm run dev
+ollama --version
 
-# Run tests
-npm test
-```
 
-### Development
+Then pull the required models:
 
-The project uses:
-- TypeScript for type safety
-- Path aliases (`@core/*`, `@pkg/*`, `@data/*`) for clean imports
-- Vitest for fast, reliable testing
-- Next.js App Router for modern React patterns
+ollama pull llama3
+ollama pull nomic-embed-text
 
-### Waitlist Setup
 
-To enable the "Join Waitlist" button in the navigation, create a `.env.local` file in the root directory:
+Ollama is used by n8n for embeddings and AI agent responses.
 
-```bash
-NEXT_PUBLIC_WAITLIST_URL=https://your-waitlist-form-url.com
-```
+✔ 2. Install Docker Desktop
 
-**Recommended services for waitlist + content distribution:**
+Download here:
+https://www.docker.com/products/docker-desktop/
 
-1. **ConvertKit** (Best for creators)
-   - Free tier: Up to 1,000 subscribers
-   - Easy content distribution (stories, updates, newsletters)
-   - Perfect for sending game stories and updates
-   - Website: https://convertkit.com
+Enable:
 
-2. **Mailchimp** (Good free tier)
-   - Free tier: Up to 500 contacts
-   - Newsletter and content distribution
-   - Website: https://mailchimp.com
+Kubernetes: off
 
-3. **Buttondown** (Simple, creator-friendly)
-   - Free tier: Up to 1,000 subscribers
-   - Built for content creators
-   - Website: https://buttondown.email
+Use Apple/WSL virtualization defaults
 
-4. **Substack** (Content-first)
-   - Free to use, takes % of paid subscriptions
-   - Perfect for story distribution and serialized content
-   - Website: https://substack.com
+🚀 Starting the Magicborn Dev Environment
+Step 1 — Start Ollama locally
 
-The waitlist button will only appear when `NEXT_PUBLIC_WAITLIST_URL` is configured.
+In a separate terminal:
 
-## 🎯 Current Status
+ollama serve
 
-### ✅ Implemented & Tested
 
-- Core spell crafting system
-- Combat stats and encounter resolution
-- Element affinity progression
-- Rune familiarity tracking
-- Named spell evolution (nameless→named and named→named)
-- Familiarity-gated evolution chains
-- React UI for spell crafting
-- Full test suite (30 tests passing)
+Make sure it stays running.
 
-### 🚧 In Progress
+Step 2 — Start Everything Else (Docker)
 
-- Achievement/flag system (currently string-based, needs enum)
-- Creature casting system
-- Raid data model and execution
-- SpellRuntime facade for clean API
+From the repo root:
 
-### 📋 Planned
+cd infra/ai-stack
+docker compose up
 
-- Tutorial raid implementation
-- Expanded spell families (Fire, Mind, Water, Void lines)
-- Multi-turn encounter orchestration
-- Unity/C# port documentation
 
-## 🤝 Contributing
+This runs:
 
-This is an open-source project. Contributions are welcome! Please see our design document for the full vision and roadmap.
+Service	Purpose	URL
+web	Next.js app	http://localhost:3000
 
-## 📄 License
+n8n	Magicborn AI engine + workflows	http://localhost:5678
 
-[Add your license here]
+Qdrant	Vector DB	http://localhost:6333
 
-## 🙏 Acknowledgments
+Postgres	AI stack storage	local container only
 
-Built with a focus on deterministic, systems-driven gameplay where player skill and strategic choices matter more than RNG.
+Logs for all services appear in the same terminal.
 
----
+Stop everything with:
 
-**Version**: 0.1.0  
-**Status**: Core systems stable, evolution working, ready for content expansion
+Ctrl + C
 
+🔍 Project Structure
+magicborn_react/
+  app/                     → Next.js routes, pages, API
+  components/              → UI components
+  data/                    → Game data (SQLite, JSON, lore files, etc.)
+  infra/
+    ai-stack/              → docker-compose.yml for n8n + Qdrant + Postgres + Web
+  lib/                     → Utilities and core logic
+  public/                  → Static assets, images, ingestable content
+  scripts/                 → (Reserved for future automation)
+  package.json
+  README.md
+
+🧠 Magicborn AI (RAG System)
+
+The editor integrates with a local Retrieval-Augmented Generation (RAG) system.
+
+Powered by:
+
+Ollama — local model runtime
+
+Qdrant — semantic search
+
+n8n — AI workflows and chat endpoints
+
+Used for:
+
+Spell design recommendations
+
+Procedural worldbuilding
+
+Consistency checks across lore
+
+Metadata generation
+
+Content queries (rune interactions, magical theory, item descriptions, etc.)
+
+The system reads from:
+
+public/ assets
+
+data/ SQLite DB + content files
+
+Future endpoints defined by you
+
+🛠️ Common Commands
+Start Ollama manually:
+ollama serve
+
+Start entire stack:
+cd infra/ai-stack
+docker compose up
+
+Rebuild web container after dependency changes:
+docker compose build web
+
+Clean all containers:
+docker compose down -v
+
+🧩 For Contributors
+When editing AI workflows:
+
+Visit:
+http://localhost:5678
+
+Export workflows into infra/ai-stack/n8n/demo-data if you want to version them.
+
+When adding new lore or data:
+
+Place inside:
+
+data/ → database, structured game content
+
+public/ → image assets, markdown documents, etc.
+
+These will eventually be auto-ingested via n8n ingestion workflows.
+
+🎉 You're Ready to Build Magicborn
+
+Once Ollama + Docker are running:
+
+Visit http://localhost:3000
+ — your Next.js editor
+
+Visit http://localhost:5678
+ — your AI engine
+
+Start creating spells, effects, characters, lore, and more
+
+Magicborn now has a unified development playground where:
+
+Game design tools
+
+Worldbuilding
+
+Procedural generation
+
+Documentation
+
+AI reasoning
+
+Live editing
+
+all exist in one integrated environment.

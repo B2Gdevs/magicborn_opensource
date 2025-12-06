@@ -10,6 +10,9 @@ import { effectDefinitions } from "./effects.schema";
 import { runes } from "./runes.schema";
 import { characters } from "./characters.schema";
 import { creatures } from "./creatures.schema";
+import { environments } from "./environments.schema";
+import { maps } from "./maps.schema";
+import { mapPlacements } from "./mapPlacements.schema";
 import { sql } from "drizzle-orm";
 
 const DB_PATH = join(process.cwd(), "data", "spells.db");
@@ -33,7 +36,16 @@ export function getDatabase() {
   
   // Include all schemas in the drizzle instance
   dbInstance = drizzle(sqliteInstance, { 
-    schema: { namedSpells, effectDefinitions, runes, characters, creatures } 
+    schema: { 
+      namedSpells, 
+      effectDefinitions, 
+      runes, 
+      characters, 
+      creatures,
+      environments,
+      maps,
+      mapPlacements,
+    } 
   });
   
   // Initialize schema and indexes
@@ -172,6 +184,59 @@ function initializeSchema() {
     CREATE INDEX IF NOT EXISTS idx_creatures_name ON creatures(name);
   `);
 
+  // Create environments table if it doesn't exist
+  sqliteInstance.exec(`
+    CREATE TABLE IF NOT EXISTS environments (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      image_path TEXT,
+      story_ids TEXT NOT NULL DEFAULT '[]',
+      map_ids TEXT NOT NULL DEFAULT '[]',
+      metadata TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Create maps table if it doesn't exist
+  sqliteInstance.exec(`
+    CREATE TABLE IF NOT EXISTS maps (
+      id TEXT PRIMARY KEY,
+      environment_id TEXT NOT NULL,
+      parent_map_id TEXT,
+      parent_cell_x REAL,
+      parent_cell_y REAL,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      image_path TEXT,
+      coordinate_config TEXT NOT NULL,
+      scene_ids TEXT NOT NULL DEFAULT '[]',
+      connections TEXT NOT NULL DEFAULT '[]',
+      environmental_modifiers TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  // Create map_placements table if it doesn't exist
+  sqliteInstance.exec(`
+    CREATE TABLE IF NOT EXISTS map_placements (
+      id TEXT PRIMARY KEY,
+      map_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      coordinates TEXT NOT NULL,
+      precision_level TEXT NOT NULL,
+      is_landmark TEXT NOT NULL DEFAULT 'false',
+      landmark_type TEXT,
+      nested_map_id TEXT,
+      metadata TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
   // Trigger to update updated_at timestamp for named_spells
   sqliteInstance.exec(`
     CREATE TRIGGER IF NOT EXISTS update_named_spells_timestamp
@@ -214,6 +279,53 @@ function initializeSchema() {
     AFTER UPDATE ON creatures
     BEGIN
       UPDATE creatures SET updated_at = datetime('now') WHERE id = NEW.id;
+    END
+  `);
+
+  // Create indexes for environments
+  sqliteInstance.exec(`
+    CREATE INDEX IF NOT EXISTS idx_environments_name ON environments(name);
+  `);
+
+  // Create indexes for maps
+  sqliteInstance.exec(`
+    CREATE INDEX IF NOT EXISTS idx_maps_environment_id ON maps(environment_id);
+    CREATE INDEX IF NOT EXISTS idx_maps_parent_map_id ON maps(parent_map_id);
+    CREATE INDEX IF NOT EXISTS idx_maps_name ON maps(name);
+  `);
+
+  // Create indexes for map_placements
+  sqliteInstance.exec(`
+    CREATE INDEX IF NOT EXISTS idx_map_placements_map_id ON map_placements(map_id);
+    CREATE INDEX IF NOT EXISTS idx_map_placements_type ON map_placements(type);
+    CREATE INDEX IF NOT EXISTS idx_map_placements_is_landmark ON map_placements(is_landmark);
+    CREATE INDEX IF NOT EXISTS idx_map_placements_nested_map_id ON map_placements(nested_map_id);
+  `);
+
+  // Trigger to update updated_at timestamp for environments
+  sqliteInstance.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_environments_timestamp
+    AFTER UPDATE ON environments
+    BEGIN
+      UPDATE environments SET updated_at = datetime('now') WHERE id = NEW.id;
+    END
+  `);
+
+  // Trigger to update updated_at timestamp for maps
+  sqliteInstance.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_maps_timestamp
+    AFTER UPDATE ON maps
+    BEGIN
+      UPDATE maps SET updated_at = datetime('now') WHERE id = NEW.id;
+    END
+  `);
+
+  // Trigger to update updated_at timestamp for map_placements
+  sqliteInstance.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_map_placements_timestamp
+    AFTER UPDATE ON map_placements
+    BEGIN
+      UPDATE map_placements SET updated_at = datetime('now') WHERE id = NEW.id;
     END
   `);
 }

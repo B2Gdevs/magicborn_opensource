@@ -6,7 +6,7 @@
 import { useState, useEffect } from "react";
 import { idClient } from "@/lib/api/clients";
 
-export type ContentType = "spells" | "effects" | "characters" | "creatures" | "runes";
+export type ContentType = "spells" | "effects" | "characters" | "creatures" | "runes" | "environments" | "maps";
 
 interface IdInputProps {
   value: string;

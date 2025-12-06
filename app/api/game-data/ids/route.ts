@@ -7,6 +7,8 @@ import { getEffectsRepository } from "@/lib/data/effectsRepository";
 import { getCharactersRepository } from "@/lib/data/charactersRepository";
 import { getCreaturesRepository } from "@/lib/data/creaturesRepository";
 import { getRunesRepository } from "@/lib/data/runesRepository";
+import { getEnvironmentsRepository } from "@/lib/data/environmentsRepository";
+import { getMapsRepository } from "@/lib/data/mapsRepository";
 
 export async function GET() {
   try {
@@ -15,12 +17,16 @@ export async function GET() {
     const charactersRepo = getCharactersRepository();
     const creaturesRepo = getCreaturesRepository();
     const runesRepo = getRunesRepository();
+    const environmentsRepo = getEnvironmentsRepository();
+    const mapsRepo = getMapsRepository();
     
     const spells = spellsRepo.listAll();
     const effects = effectsRepo.listAll();
     const characters = charactersRepo.listAll();
     const creatures = creaturesRepo.listAll();
     const runes = runesRepo.listAll();
+    const environments = environmentsRepo.listAll();
+    const maps = mapsRepo.listAll();
     
     // Get all IDs grouped by content type
     // Note: Runes use 'code' as their identifier, but we treat it as an ID for uniqueness checking
@@ -30,8 +36,8 @@ export async function GET() {
       characters: characters.map(c => c.id),
       creatures: creatures.map(c => c.id),
       runes: runes.map(r => r.code), // Runes use code as their unique identifier
-      // TODO: Add other content types as they're implemented
-      // environments: environments.map(e => e.id),
+      environments: environments.map(e => e.id),
+      maps: maps.map(m => m.id),
     };
     
     // Create a map of ID -> content types for quick lookup
