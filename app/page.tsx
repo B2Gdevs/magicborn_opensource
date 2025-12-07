@@ -14,7 +14,7 @@ export default function LandingPage() {
               {/* Logo */}
               <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto mb-12 animate-fade-in">
                 <Image
-                  src="/logos/magicborn_logo.png"
+                  src="/design/logos/magicborn_logo.png"
                   alt="Magicborn: Mordred's Legacy"
                   fill
                   className="object-contain drop-shadow-2xl"

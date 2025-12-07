@@ -23,7 +23,7 @@ export default function SidebarNav() {
         <Link href="/" className="mb-8 flex flex-col items-center group">
           <div className="relative w-32 h-32 transition-transform group-hover:scale-105">
             <Image
-              src="/logos/magicborn_logo.png"
+              src="/design/logos/magicborn_logo.png"
               alt="Magicborn: Mordred's Legacy"
               fill
               className="object-contain"
