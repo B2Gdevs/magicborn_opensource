@@ -13,6 +13,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { MapForm } from "./MapForm";
 import { EnvironmentForm } from "./EnvironmentForm";
 import { Modal } from "@/components/ui/Modal";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { Plus, X, Globe, Map } from "lucide-react";
 import { environmentClient } from "@/lib/api/clients";
 import type { EnvironmentDefinition } from "@/lib/data/environments";
@@ -37,7 +38,9 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  Maximize2
+  Maximize2,
+  Square,
+  HelpCircle
 } from "lucide-react";
 
 export default function EnvironmentEditor() {
@@ -65,8 +68,12 @@ export default function EnvironmentEditor() {
     panY,
     showGrid,
     snapToGrid,
+    selectionMode,
+    selectedCells,
     toggleGrid,
     toggleSnap,
+    setSelectionMode,
+    clearCellSelection,
     zoomIn,
     zoomOut,
     resetView,
@@ -439,6 +446,20 @@ export default function EnvironmentEditor() {
           {/* Toolbar */}
           <div className="border-b border-border bg-shadow px-4 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
+              {/* Help Button */}
+              <Tooltip content="Open User Guide - Learn how to use the Map Editor">
+                <button
+                  onClick={() => {
+                    window.open("/developer/user-guides/MAP_EDITOR_USER_GUIDE.md", "_blank");
+                  }}
+                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              
+              <div className="w-px h-6 bg-border mx-1" />
+
               {/* Map selector */}
               <select
                 value={selectedMapId || ""}
@@ -472,87 +493,133 @@ export default function EnvironmentEditor() {
 
             <div className="flex items-center gap-2">
               {/* Tool buttons */}
-          <button
-            onClick={toggleGrid}
-            className={`p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all ${
-              showGrid ? "text-ember-glow bg-deep" : ""
-            }`}
-            title="Toggle Grid (G)"
-          >
-            <Grid className="w-4 h-4" />
-          </button>
-          
-          {showGrid && (
-            <button
-              onClick={toggleSnap}
-              className={`p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all ${
-                snapToGrid ? "text-ember-glow bg-deep" : ""
-              }`}
-              title="Toggle Snap (S)"
-            >
-              <MousePointer className="w-4 h-4" />
-            </button>
-          )}
+              <Tooltip content="Toggle Grid Overlay - Show/hide grid lines (G key)">
+                <button
+                  onClick={toggleGrid}
+                  className={`p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all ${
+                    showGrid ? "text-ember-glow bg-deep" : ""
+                  }`}
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              
+              {showGrid && (
+                <Tooltip content="Toggle Snap to Grid - Snap placements to grid cells (S key)">
+                  <button
+                    onClick={toggleSnap}
+                    className={`p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all ${
+                      snapToGrid ? "text-ember-glow bg-deep" : ""
+                    }`}
+                  >
+                    <MousePointer className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+              )}
 
-          <div className="w-px h-6 bg-border mx-1" />
+              <div className="w-px h-6 bg-border mx-1" />
 
-          <button
-            onClick={zoomIn}
-            className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-            title="Zoom In (+)"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={zoomOut}
-            className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-            title="Zoom Out (-)"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={resetView}
-            className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-            title="Reset View (0)"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={fitToViewport}
-            className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-            title="Fit to Viewport (F)"
-          >
-            <Maximize2 className="w-4 h-4" />
-          </button>
+              {/* Cell Selection Mode Toggle */}
+              <Tooltip content="Cell Selection Mode - Click and drag to select cells for creating nested maps/environments">
+                <button
+                  onClick={() => {
+                    if (selectionMode === "cell") {
+                      setSelectionMode("placement");
+                      clearCellSelection();
+                    } else {
+                      setSelectionMode("cell");
+                    }
+                  }}
+                  className={`p-2 rounded transition-all border-2 ${
+                    selectionMode === "cell"
+                      ? "text-blue-400 bg-blue-400/20 border-blue-400/60"
+                      : "text-text-muted hover:text-blue-400 hover:bg-deep border-transparent"
+                  }`}
+                >
+                  <Square className="w-4 h-4" />
+                </button>
+              </Tooltip>
 
-          <div className="w-px h-6 bg-border mx-1" />
+              {/* Placement Mode Toggle */}
+              <Tooltip content="Placement Mode - Click on map to place items (props, landmarks, spawn points)">
+                <button
+                  onClick={() => setSelectionMode("placement")}
+                  className={`p-2 rounded transition-all border-2 ${
+                    selectionMode === "placement"
+                      ? "text-ember-glow bg-ember-glow/20 border-ember-glow/60"
+                      : "text-text-muted hover:text-ember-glow hover:bg-deep border-transparent"
+                  }`}
+                >
+                  <MousePointer className="w-4 h-4" />
+                </button>
+              </Tooltip>
 
-          <button
-            onClick={copySelected}
-            className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-            title="Copy (Ctrl+C)"
-          >
-            <Copy className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={() => paste()}
-            className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-            title="Paste (Ctrl+V)"
-          >
-            <ClipboardPaste className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={deleteSelectedPlacements}
-            className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-            title="Delete (Delete)"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+              <div className="w-px h-6 bg-border mx-1" />
+
+              <Tooltip content="Zoom In - Increase zoom level (+ key)">
+                <button
+                  onClick={zoomIn}
+                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              
+              <Tooltip content="Zoom Out - Decrease zoom level (- key)">
+                <button
+                  onClick={zoomOut}
+                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              
+              <Tooltip content="Reset View - Reset zoom and pan to default (0 key)">
+                <button
+                  onClick={resetView}
+                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              
+              <Tooltip content="Fit to Viewport - Fit entire map to viewport (F key)">
+                <button
+                  onClick={fitToViewport}
+                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </Tooltip>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              <Tooltip content="Copy Selected - Copy selected placements to clipboard (Ctrl+C)">
+                <button
+                  onClick={copySelected}
+                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              
+              <Tooltip content="Paste - Paste copied placements at cursor position (Ctrl+V)">
+                <button
+                  onClick={() => paste()}
+                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
+                >
+                  <ClipboardPaste className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              
+              <Tooltip content="Delete Selected - Delete selected placements (Delete key)">
+                <button
+                  onClick={deleteSelectedPlacements}
+                  className="p-2 rounded text-text-muted hover:text-red-400 hover:bg-deep transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </Tooltip>
             </div>
           </div>
 

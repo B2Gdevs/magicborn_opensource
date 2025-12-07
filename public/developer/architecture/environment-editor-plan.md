@@ -7,51 +7,78 @@ The Environment Editor will manage all location-based game data: environments, m
 
 ## 1. Core Data Structures
 
-### 1.1 Environment Definition
-**What it is:** A top-level location/region in the game world (e.g., "Tarro", "Beanstalk Stump", "Wildlands")
+### 1.1 World Map with Default Environment
+**What it is:** The foundation map where players start. Has a default "World Environment" that provides baseline properties.
 
 **Fields:**
-- `id: string` - Unique identifier (e.g., "tarro", "wildlands")
-- `name: string` - Display name
-- `description: string` - Lore/description
-- `imagePath?: string` - Main environment image/thumbnail
-- `mapIds: string[]` - Associated maps within this environment
-- `ambientEffects?: EnvironmentalModifier[]` - Global modifiers (mana regeneration, element affinity bonuses, etc.)
-- `storyIds: string[]` - Associated story files (like characters/creatures - simple markdown associations)
-- `metadata: { biome: string, climate: string, dangerLevel: number }` - Classification data
+- `id: string` - Unique identifier (e.g., "world-map")
+- `name: string` - Display name (e.g., "World Map")
+- `environmentId: string` - Default environment (e.g., "world-environment")
+- `coordinateConfig: CoordinateSystemConfig` - Image size, Unreal size, cell size
+- `imagePath: string` - Map image/background
+- `parentMapId?: string` - If nested, reference to parent
+- `parentCellCoordinates?: CellCoordinates` - Where on parent map
+
+**Default World Environment:**
+- Biome: (default/neutral)
+- Climate: (default/neutral)
+- Danger Level: 0 (safe to travel)
+- Creatures: (none or basic wildlife)
 
 **Use Cases:**
-- World map navigation
-- Fast travel system
-- Story branching based on location
-- Global environmental effects
+- Starting point for players
+- Contains multiple regions with different properties
+- Provides stable baseline environment
 
 ---
 
-### 1.2 Map Definition (Hierarchical)
-**What it is:** A specific playable area within an environment. Maps can be nested (World → Town → Shop → Home).
+### 1.2 Region Definition
+**What it is:** A selection of cells on a map that defines an area with specific environment properties. Regions override the parent map's default environment.
 
 **Fields:**
 - `id: string` - Unique identifier
-- `environmentId: string` - Parent environment
-- `parentMapId?: string` - If nested map, reference to parent map
-- `parentCellCoordinates?: CellCoordinates` - Where this map is placed on parent (cell coordinates)
+- `mapId: string` - Parent map
+- `name: string` - Display name
+- `cells: CellCoordinates[]` - Selected cells that define this region
+- `nestedMapId?: string` - Link to nested map (if created)
+- `color: string` - Unique color for visual distinction
+- `metadata: { biome: string, climate: string, dangerLevel: number, creatures: string[] }` - Environment properties that override parent
+
+**Environment Properties (Override Parent):**
+- `biome: string` - Mountain, Forest, Swamp, Interior, etc.
+- `climate: string` - Cold, Warm, Temperate, Humid, etc.
+- `dangerLevel: number` - 0 (safe) to 5 (very dangerous)
+- `creatures: string[]` - Specific creatures that spawn in this region
+
+**Use Cases:**
+- Define areas with different environment properties
+- Override world map's default environment
+- Create boundaries for nested maps
+- Control environmental effects and creature spawning
+
+### 1.3 Nested Map Definition
+**What it is:** A detailed view of a region. Inherits environment properties from parent region.
+
+**Fields:**
+- `id: string` - Unique identifier
+- `parentMapId: string` - Parent map
+- `parentCellCoordinates: CellCoordinates` - Where on parent (from region)
 - `name: string` - Display name
 - `description: string` - Area description
-- `imagePath?: string` - Map image/background (2D reference image, lower resolution for nested maps)
-- `unrealMapSize: { width: number, height: number }` - Size in Unreal units (e.g., 12km x 12km = 12000 x 12000)
-- `imageDimensions: { width: number, height: number }` - Pixel dimensions of reference image
+- `imagePath: string` - Map image/background
 - `coordinateConfig: CoordinateSystemConfig` - Mapping between pixels and Unreal units
+- `environmentId: string` - Inherits from parent region
 - `sceneIds: string[]` - Scenes within this map
-- `placements: MapPlacement[]` - All placed items (props, spawn points, interactables, landmarks) with coordinates
-- `connections: MapConnection[]` - Links to other maps (doors, paths, etc.)
+- `placements: MapPlacement[]` - All placed items
+- `connections: MapConnection[]` - Links to other maps
 - `environmentalModifiers?: EnvironmentalModifier[]` - Map-specific effects
 
 **Hierarchical Structure:**
-- **World Map:** Top-level map (e.g., entire game world)
-- **Town Map:** Nested map placed on world map (click into town cell)
-- **Shop Map:** Nested map placed on town map (click into shop cell)
-- **Home Map:** Nested map placed on town map (click into home cell)
+- **World Map:** Top-level map with default environment
+- **Region on World Map:** Overrides world's default environment
+- **Nested Map:** Inherits from parent region, can have its own regions
+- **Region on Nested Map:** Overrides parent's environment again
+- **Nested Map of Region:** Inherits from parent region
 
 **Coordinate System:**
 - Maps 2D image pixels to Unreal world coordinates

@@ -8,7 +8,11 @@ import { Stage, Layer, Image as KonvaImage } from "react-konva";
 import { useMapEditorStore } from "@/lib/store/mapEditorStore";
 import { GridLayer } from "./GridLayer";
 import { StatusBar } from "./StatusBar";
+import { CellSelectionLayer } from "./CellSelectionLayer";
+import { CellSelectionFeedback } from "./CellSelectionFeedback";
+import { MapCompletionIndicator } from "./MapCompletionIndicator";
 import type { PixelCoordinates } from "@/lib/utils/coordinateSystem";
+import { pixelToCell } from "@/lib/utils/coordinateSystem";
 
 interface MapCanvasProps {
   width: number;
@@ -20,6 +24,7 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
   const isDragging = useRef(false);
   const lastPointerPosition = useRef({ x: 0, y: 0 });
   const spacePressed = useRef(false);
+  const justFinishedCellDrag = useRef(false); // Track if we just finished a cell drag
   const [mouseCoords, setMouseCoords] = useState<PixelCoordinates | null>(null);
 
   const {
@@ -34,6 +39,14 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
     resetView,
     showGrid,
     snapToGrid,
+    selectionMode,
+    selectCell,
+    startCellSelection,
+    updateCellSelection,
+    endCellSelection,
+    isSelectingCells,
+    regions,
+    selectRegion,
   } = useMapEditorStore();
 
   // Load map image
@@ -202,10 +215,16 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
     [panX, panY, zoom, selectedMap]
   );
 
-  // Handle click (for placement)
+  // Handle click (for placement or cell selection)
   const handleClick = useCallback(
     (e: any) => {
       if (isDragging.current) return; // Don't place if we were dragging
+      
+      // If we just finished a cell drag, don't overwrite the selection
+      if (justFinishedCellDrag.current) {
+        justFinishedCellDrag.current = false;
+        return;
+      }
 
       const stage = e.target.getStage();
       const pointer = stage.getPointerPosition();
@@ -216,21 +235,113 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
       const mapX = (pointer.x - panX) / zoom;
       const mapY = (pointer.y - panY) / zoom;
 
-      // Apply snapping if enabled
-      let finalX = mapX;
-      let finalY = mapY;
+      // Clamp to map bounds
+      const clampedX = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageWidth || 1000, mapX));
+      const clampedY = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageHeight || 1000, mapY));
+
+      // Handle cell selection mode
+      if (selectionMode === "cell") {
+        const cell = pixelToCell({ x: clampedX, y: clampedY }, selectedMap.coordinateConfig, zoom);
+        
+        // Check if clicking on an existing region
+        const clickedRegion = regions
+          .filter((r) => r.mapId === selectedMap.id)
+          .find((region) =>
+            region.cells.some((c) => c.cellX === cell.cellX && c.cellY === cell.cellY)
+          );
+        
+        if (clickedRegion) {
+          // Clicked on a region - select it for editing
+          selectRegion(clickedRegion.id);
+          return;
+        }
+        
+        // Otherwise, normal cell selection (single click, not drag)
+        const isCtrlOrShift = e.evt.ctrlKey || e.evt.shiftKey;
+        selectCell(cell.cellX, cell.cellY, isCtrlOrShift);
+        return;
+      }
+
+      // Apply snapping if enabled (for placement mode)
+      let finalX = clampedX;
+      let finalY = clampedY;
 
       if (snapToGrid) {
         const gridSize = useMapEditorStore.getState().gridSize;
-        finalX = Math.round(mapX / gridSize) * gridSize;
-        finalY = Math.round(mapY / gridSize) * gridSize;
+        finalX = Math.round(clampedX / gridSize) * gridSize;
+        finalY = Math.round(clampedY / gridSize) * gridSize;
       }
 
       // TODO: Handle placement creation based on active tool
       console.log("Click at:", { x: finalX, y: finalY });
     },
-    [panX, panY, zoom, selectedMap, snapToGrid]
+    [panX, panY, zoom, selectedMap, snapToGrid, selectionMode, selectCell]
   );
+
+  // Handle mouse down (start cell selection drag)
+  const handleMouseDown = useCallback(
+    (e: any) => {
+      if (selectionMode !== "cell") return;
+
+      const stage = e.target.getStage();
+      const pointer = stage.getPointerPosition();
+
+      if (!pointer || !selectedMap) return;
+
+      // Convert screen coordinates to map coordinates
+      const mapX = (pointer.x - panX) / zoom;
+      const mapY = (pointer.y - panY) / zoom;
+
+      // Clamp to map bounds
+      const clampedX = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageWidth || 1000, mapX));
+      const clampedY = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageHeight || 1000, mapY));
+
+      const cell = pixelToCell({ x: clampedX, y: clampedY }, selectedMap.coordinateConfig, zoom);
+      
+      // Start cell selection (for drag)
+      if (!e.evt.ctrlKey && !e.evt.shiftKey) {
+        startCellSelection(cell.cellX, cell.cellY);
+      }
+    },
+    [panX, panY, zoom, selectedMap, selectionMode, startCellSelection]
+  );
+
+  // Handle mouse move (update cell selection during drag)
+  const handleMouseMoveForSelection = useCallback(
+    (e: any) => {
+      if (!isSelectingCells || !selectedMap) return;
+
+      const stage = e.target.getStage();
+      const pointer = stage.getPointerPosition();
+
+      if (!pointer) return;
+
+      // Convert screen coordinates to map coordinates
+      const mapX = (pointer.x - panX) / zoom;
+      const mapY = (pointer.y - panY) / zoom;
+
+      // Clamp to map bounds
+      const clampedX = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageWidth || 1000, mapX));
+      const clampedY = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageHeight || 1000, mapY));
+
+      const cell = pixelToCell({ x: clampedX, y: clampedY }, selectedMap.coordinateConfig, zoom);
+      updateCellSelection(cell.cellX, cell.cellY);
+    },
+    [panX, panY, zoom, selectedMap, isSelectingCells, updateCellSelection]
+  );
+
+  // Handle mouse up (end cell selection drag)
+  const handleMouseUp = useCallback(() => {
+    if (isSelectingCells) {
+      // Mark that we just finished a drag so click handler doesn't overwrite
+      justFinishedCellDrag.current = true;
+      endCellSelection();
+      // Clear the flag after a short delay to allow click event to be ignored
+      setTimeout(() => {
+        justFinishedCellDrag.current = false;
+      }, 100);
+    }
+  }, [isSelectingCells, endCellSelection]);
 
   if (!selectedMap) {
     return (
@@ -265,12 +376,19 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
         x={panX}
         y={panY}
         onWheel={handleWheel}
-        onMouseDown={handleDragStart}
+        onMouseDown={(e) => {
+          handleMouseDown(e);
+          handleDragStart(e);
+        }}
         onMouseMove={(e) => {
           handleMouseMove(e);
+          handleMouseMoveForSelection(e);
           handleDragMove(e);
         }}
-        onMouseUp={handleDragEnd}
+        onMouseUp={(e) => {
+          handleMouseUp();
+          handleDragEnd(e);
+        }}
         onClick={handleClick}
         style={{ cursor: spacePressed.current ? "grab" : "default" }}
       >
@@ -296,12 +414,21 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
             />
           )}
 
+          {/* Cell selection layer */}
+          <CellSelectionLayer zoom={zoom} />
+
           {/* Placements layer - TODO */}
         </Layer>
       </Stage>
 
       {/* Status bar */}
       <StatusBar mouseCoords={mouseCoords} />
+
+      {/* Cell selection feedback */}
+      <CellSelectionFeedback />
+
+      {/* Map completion indicator */}
+      <MapCompletionIndicator />
     </div>
   );
 }

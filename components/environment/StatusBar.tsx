@@ -16,19 +16,37 @@ export function StatusBar({ mouseCoords = null }: StatusBarProps) {
   const {
     zoom,
     selectedPlacementIds,
+    selectedCells,
+    selectionMode,
+    regions,
+    selectedRegionId,
     showGrid,
     snapToGrid,
     gridSize,
     selectedMap,
   } = useMapEditorStore();
   
+  const currentMapRegions = regions.filter((r) => r.mapId === selectedMap?.id);
+  
   // Calculate Unreal coordinates from pixel coordinates
   const unrealCoords = mouseCoords && selectedMap?.coordinateConfig
     ? pixelToUnreal(mouseCoords, selectedMap.coordinateConfig)
     : null;
   
+  // Calculate cell coordinates from pixel coordinates
+  const cellCoords = mouseCoords && selectedMap?.coordinateConfig
+    ? (() => {
+        const cellSize = selectedMap.coordinateConfig.baseCellSize / zoom;
+        return {
+          cellX: Math.floor(mouseCoords.x / cellSize),
+          cellY: Math.floor(mouseCoords.y / cellSize),
+        };
+      })()
+    : null;
+  
   const zoomPercent = Math.round(zoom * 100);
-  const selectedCount = selectedPlacementIds.length;
+  const selectedPlacementCount = selectedPlacementIds.length;
+  const selectedCellCount = selectedCells.length;
   
   return (
     <div className="absolute bottom-0 left-0 right-0 h-8 bg-deep/95 border-t border-border flex items-center justify-between px-4 text-xs text-text-secondary">
@@ -42,10 +60,27 @@ export function StatusBar({ mouseCoords = null }: StatusBarProps) {
               {unrealCoords && (
                 <> | Unreal: ({Math.round(unrealCoords.x)}, {Math.round(unrealCoords.y)})</>
               )}
+              {cellCoords && (
+                <> | Cell: ({cellCoords.cellX}, {cellCoords.cellY})</>
+              )}
             </span>
           ) : (
             <span className="text-text-muted">Hover over map</span>
           )}
+        </div>
+        
+        {/* Selection mode with color coding */}
+        <div className="flex items-center gap-2">
+          <span className="text-text-muted">Mode:</span>
+          <span
+            className={`font-semibold px-2 py-0.5 rounded ${
+              selectionMode === "cell"
+                ? "text-blue-400 bg-blue-400/20 border border-blue-400/40"
+                : "text-ember-glow bg-ember-glow/20 border border-ember-glow/40"
+            }`}
+          >
+            {selectionMode === "cell" ? "Cell Selection" : "Placement"}
+          </span>
         </div>
         
         {/* Zoom */}
@@ -57,11 +92,27 @@ export function StatusBar({ mouseCoords = null }: StatusBarProps) {
       
       <div className="flex items-center gap-4">
         {/* Selection count */}
-        {selectedCount > 0 && (
+        {selectionMode === "placement" && selectedPlacementCount > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-text-muted">Selected:</span>
-            <span className="font-mono text-text-primary">{selectedCount}</span>
+            <span className="text-text-muted">Placements:</span>
+            <span className="font-mono text-text-primary">{selectedPlacementCount}</span>
           </div>
+        )}
+        {selectionMode === "cell" && (
+          <>
+            {selectedCellCount > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-text-muted">Cells:</span>
+                <span className="font-mono text-blue-400">{selectedCellCount}</span>
+              </div>
+            )}
+            {currentMapRegions.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-text-muted">Regions:</span>
+                <span className="font-mono text-text-primary">{currentMapRegions.length}</span>
+              </div>
+            )}
+          </>
         )}
         
         {/* Grid status */}

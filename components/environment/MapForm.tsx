@@ -42,47 +42,48 @@ export function MapForm({
   const [zoneSize, setZoneSize] = useState(initialValues?.coordinateConfig?.zoneSize || 10);
   const [mapType, setMapType] = useState<"world" | "town" | "dungeon" | "shop" | "custom">("custom");
 
-  // Map type presets (Elden Ring overworld is ~12km x 12km)
+  // Map type presets using standardized sizing (aligned with MapLevel enum)
+  // These match the standards in MAP_SIZING_STANDARDS.md
   const mapPresets = {
     world: {
       name: "World Map (Elden Ring scale)",
       imageWidth: 4096,
       imageHeight: 4096,
-      unrealWidth: 12000, // 12km
+      unrealWidth: 12000, // 12km - standardized
       unrealHeight: 12000,
-      baseCellSize: 16, // Larger cells for world maps
-      zoneSize: 16, // Larger zones
-      description: "Massive overworld map. Recommended: 4096x4096px or 8192x8192px for detail",
+      baseCellSize: 16, // Standardized: 16px cells → ~47m × 47m in Unreal
+      zoneSize: 16, // Standardized: 16 cells per zone → ~750m × 750m
+      description: "Massive overworld map. Cell size: ~47m × 47m. Use for huge 3D models (entire towns). Recommended: 4096x4096px or 8192x8192px",
     },
     town: {
       name: "Town/Region",
       imageWidth: 2048,
       imageHeight: 2048,
-      unrealWidth: 2000, // 2km
+      unrealWidth: 2000, // 2km - standardized
       unrealHeight: 2000,
-      baseCellSize: 10,
-      zoneSize: 10,
-      description: "Medium-sized area. Recommended: 2048x2048px or 4096x4096px",
+      baseCellSize: 10, // Standardized: 10px cells → ~9.8m × 9.8m in Unreal
+      zoneSize: 10, // Standardized: 10 cells per zone → ~98m × 98m
+      description: "Medium-sized area. Cell size: ~9.8m × 9.8m. Use for buildings, districts. Recommended: 2048x2048px or 4096x4096px",
     },
     dungeon: {
       name: "Dungeon/Interior",
       imageWidth: 1024,
       imageHeight: 1024,
-      unrealWidth: 500, // 500m
+      unrealWidth: 500, // 500m - standardized
       unrealHeight: 500,
-      baseCellSize: 8,
-      zoneSize: 8,
-      description: "Smaller interior space. Recommended: 1024x1024px or 2048x2048px",
+      baseCellSize: 8, // Standardized: 8px cells → ~3.9m × 3.9m in Unreal
+      zoneSize: 8, // Standardized: 8 cells per zone → ~31m × 31m
+      description: "Smaller interior space. Cell size: ~3.9m × 3.9m. Use for furniture, props. Recommended: 1024x1024px or 2048x2048px",
     },
     shop: {
       name: "Shop/Building",
       imageWidth: 512,
       imageHeight: 512,
-      unrealWidth: 100, // 100m
+      unrealWidth: 100, // 100m - standardized
       unrealHeight: 100,
-      baseCellSize: 5,
-      zoneSize: 5,
-      description: "Small building interior. Recommended: 512x512px or 1024x1024px",
+      baseCellSize: 5, // Standardized: 5px cells → ~0.98m × 0.98m in Unreal
+      zoneSize: 5, // Standardized: 5 cells per zone → ~4.9m × 4.9m
+      description: "Small building interior. Cell size: ~0.98m × 0.98m. Use for precise 3D prop placement. Recommended: 512x512px or 1024x1024px",
     },
     custom: {
       name: "Custom",
@@ -92,7 +93,7 @@ export function MapForm({
       unrealHeight: 12000,
       baseCellSize: 10,
       zoneSize: 10,
-      description: "Custom configuration",
+      description: "Custom configuration (not recommended - use presets for proper scaling)",
     },
   };
 

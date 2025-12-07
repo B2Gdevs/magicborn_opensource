@@ -35,7 +35,7 @@ const EnvironmentEditor = dynamic(() => import("@components/environment/Environm
   ),
 });
 import { TabButton } from "@components/ui/TabButton";
-import DocumentationDrawer, { type WorkbenchTab } from "@components/DocumentationDrawer";
+import DeveloperWorkbench, { type WorkbenchTab } from "@components/DeveloperWorkbench";
 import { Tooltip } from "@components/ui/Tooltip";
 
 export type EditorType =
@@ -46,6 +46,7 @@ export type EditorType =
   | "characters"
   | "creatures"
   | "environments"
+  | "automations"
   | "status";
 
 export interface EditorTab {
@@ -165,8 +166,8 @@ export function MagicbornContentEditor({
         )}
       </div>
 
-      {/* Documentation Drawer */}
-      <DocumentationDrawer
+      {/* Developer Workbench */}
+      <DeveloperWorkbench
         isOpen={isDocDrawerOpen}
         onClose={() => setIsDocDrawerOpen(false)}
         activeTab={activeWorkbenchTab}

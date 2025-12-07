@@ -13,6 +13,7 @@ import { creatures } from "./creatures.schema";
 import { environments } from "./environments.schema";
 import { maps } from "./maps.schema";
 import { mapPlacements } from "./mapPlacements.schema";
+import { mapRegions } from "./mapRegions.schema";
 import { sql } from "drizzle-orm";
 
 const DB_PATH = join(process.cwd(), "data", "spells.db");
@@ -45,6 +46,7 @@ export function getDatabase() {
       environments,
       maps,
       mapPlacements,
+      mapRegions,
     } 
   });
   
@@ -326,6 +328,33 @@ function initializeSchema() {
     AFTER UPDATE ON map_placements
     BEGIN
       UPDATE map_placements SET updated_at = datetime('now') WHERE id = NEW.id;
+    END
+  `);
+
+  // Create map_regions table if it doesn't exist
+  sqliteInstance.exec(`
+    CREATE TABLE IF NOT EXISTS map_regions (
+      id TEXT PRIMARY KEY,
+      map_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      cells TEXT NOT NULL,
+      nested_map_id TEXT,
+      environment_id TEXT,
+      color TEXT NOT NULL,
+      metadata TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_map_regions_map_id ON map_regions(map_id);
+    CREATE INDEX IF NOT EXISTS idx_map_regions_nested_map_id ON map_regions(nested_map_id);
+    CREATE INDEX IF NOT EXISTS idx_map_regions_environment_id ON map_regions(environment_id);
+    
+    CREATE TRIGGER IF NOT EXISTS update_map_regions_timestamp
+    AFTER UPDATE ON map_regions
+    BEGIN
+      UPDATE map_regions SET updated_at = datetime('now') WHERE id = NEW.id;
     END
   `);
 }

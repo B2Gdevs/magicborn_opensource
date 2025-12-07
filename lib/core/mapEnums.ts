@@ -80,4 +80,14 @@ export enum ModifierTarget {
   Spell = "spell",
 }
 
+/**
+ * Map level in hierarchy (determines cell sizes and scaling)
+ */
+export enum MapLevel {
+  World = "world",        // Level 0: Massive overworld (12km, 16px cells)
+  Town = "town",          // Level 1: Towns/regions (2km, 10px cells)
+  Interior = "interior",  // Level 2: Building interiors (500m, 8px cells)
+  SmallInterior = "smallInterior", // Level 3: Small rooms (100m, 5px cells)
+}
+
 

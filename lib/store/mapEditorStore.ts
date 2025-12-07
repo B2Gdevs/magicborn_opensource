@@ -37,6 +37,23 @@ export interface MapEditorState {
   selectedPlacementIds: string[];
   clipboard: MapPlacement[];
   
+  // Cell Selection (for regions/nested maps)
+  selectedCells: Array<{ cellX: number; cellY: number }>;
+  selectionMode: "placement" | "cell"; // What type of selection is active
+  isSelectingCells: boolean; // Whether user is currently selecting cells (drag)
+  selectionStartCell: { cellX: number; cellY: number } | null; // For drag selection
+  
+  // Map Regions (persistent cell selections with nested maps)
+  regions: Array<{
+    id: string;
+    mapId: string;
+    name: string;
+    cells: Array<{ cellX: number; cellY: number }>;
+    nestedMapId?: string;
+    color: string;
+  }>;
+  selectedRegionId: string | null; // Currently selected region (for editing)
+  
   // History (undo/redo)
   history: MapEditorHistoryEntry[];
   historyIndex: number; // Current position in history (-1 = no history)
@@ -67,6 +84,28 @@ export interface MapEditorState {
   selectPlacements: (ids: string[]) => void;
   clearSelection: () => void;
   selectAll: () => void;
+  
+  // Actions - Cell Selection
+  selectCell: (cellX: number, cellY: number, addToSelection?: boolean) => void;
+  selectCellRange: (startCell: { cellX: number; cellY: number }, endCell: { cellX: number; cellY: number }) => void;
+  clearCellSelection: () => void;
+  setSelectionMode: (mode: "placement" | "cell") => void;
+  startCellSelection: (cellX: number, cellY: number) => void;
+  updateCellSelection: (cellX: number, cellY: number) => void;
+  endCellSelection: () => void;
+  
+  // Actions - Regions
+  loadRegions: (mapId: string) => Promise<void>;
+  addRegion: (region: {
+    id: string;
+    mapId: string;
+    name: string;
+    cells: Array<{ cellX: number; cellY: number }>;
+    nestedMapId?: string;
+    color: string;
+  }) => void;
+  selectRegion: (regionId: string | null) => void;
+  clearRegionSelection: () => void;
   
   // Actions - Clipboard
   copySelected: () => void;
@@ -115,18 +154,28 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   gridSize: DEFAULT_GRID_SIZE,
   selectedPlacementIds: [],
   clipboard: [],
+  selectedCells: [],
+  selectionMode: "placement",
+  isSelectingCells: false,
+  selectionStartCell: null,
+  regions: [],
+  selectedRegionId: null,
   history: [],
   historyIndex: -1,
   maxHistorySize: MAX_HISTORY_SIZE,
   activeTool: "select",
   
   // Map actions
-  setSelectedMap: (map) => {
+  setSelectedMap: async (map) => {
     set({ selectedMap: map, selectedMapId: map?.id || null, placements: [] });
     // Reset viewport when changing maps
     get().resetView();
     get().clearSelection();
     get().clearHistory();
+    // Load regions for this map
+    if (map?.id) {
+      await get().loadRegions(map.id);
+    }
   },
   
   setSelectedMapId: (id) => {
@@ -205,12 +254,119 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   },
   
   clearSelection: () => {
-    set({ selectedPlacementIds: [] });
+    set({ selectedPlacementIds: [], selectedCells: [] });
   },
   
   selectAll: () => {
     const { placements } = get();
     set({ selectedPlacementIds: placements.map((p) => p.id) });
+  },
+  
+  // Cell Selection actions
+  selectCell: (cellX, cellY, addToSelection = false) => {
+    const cell = { cellX, cellY };
+    if (addToSelection) {
+      set((state) => {
+        const exists = state.selectedCells.some(
+          (c) => c.cellX === cellX && c.cellY === cellY
+        );
+        if (exists) {
+          return {
+            selectedCells: state.selectedCells.filter(
+              (c) => !(c.cellX === cellX && c.cellY === cellY)
+            ),
+          };
+        }
+        return { selectedCells: [...state.selectedCells, cell] };
+      });
+    } else {
+      set({ selectedCells: [cell] });
+    }
+  },
+  
+  selectCellRange: (startCell, endCell) => {
+    const minX = Math.min(startCell.cellX, endCell.cellX);
+    const maxX = Math.max(startCell.cellX, endCell.cellX);
+    const minY = Math.min(startCell.cellY, endCell.cellY);
+    const maxY = Math.max(startCell.cellY, endCell.cellY);
+    
+    const cells: Array<{ cellX: number; cellY: number }> = [];
+    for (let x = minX; x <= maxX; x++) {
+      for (let y = minY; y <= maxY; y++) {
+        cells.push({ cellX: x, cellY: y });
+      }
+    }
+    
+    set({ selectedCells: cells });
+  },
+  
+  clearCellSelection: () => {
+    set({ selectedCells: [], isSelectingCells: false, selectionStartCell: null });
+  },
+  
+  setSelectionMode: (mode) => {
+    const state = get();
+    set({ 
+      selectionMode: mode,
+      selectedPlacementIds: mode === "cell" ? [] : state.selectedPlacementIds,
+      // Don't clear selectedCells if we have a selected region - keep it visible
+      selectedCells: mode === "placement" && !state.selectedRegionId ? [] : state.selectedCells,
+    });
+  },
+  
+  startCellSelection: (cellX, cellY) => {
+    set({
+      isSelectingCells: true,
+      selectionStartCell: { cellX, cellY },
+      selectedCells: [{ cellX, cellY }],
+      selectionMode: "cell",
+    });
+  },
+  
+  updateCellSelection: (cellX, cellY) => {
+    const { selectionStartCell } = get();
+    if (!selectionStartCell) return;
+    
+    get().selectCellRange(selectionStartCell, { cellX, cellY });
+  },
+  
+  endCellSelection: () => {
+    set({ isSelectingCells: false, selectionStartCell: null });
+  },
+  
+  // Region actions
+  loadRegions: async (mapId) => {
+    try {
+      // TODO: Load from API when ready
+      // For now, keep regions in memory only
+      // This will be implemented with API integration
+      set({ regions: [], selectedRegionId: null });
+    } catch (error) {
+      console.error("Failed to load regions:", error);
+      set({ regions: [], selectedRegionId: null });
+    }
+  },
+  
+  addRegion: (region) => {
+    set((state) => ({
+      regions: [...state.regions, region],
+      // Keep cells selected so region is visible, but mark region as selected
+      selectedRegionId: region.id,
+      // Don't clear selectedCells - keep them visible for the region
+    }));
+  },
+  
+  selectRegion: (regionId) => {
+    set({ selectedRegionId: regionId });
+    const { regions } = get();
+    const region = regions.find((r) => r.id === regionId);
+    if (region) {
+      set({ selectedCells: region.cells, selectionMode: "cell" });
+    }
+  },
+  
+  clearRegionSelection: () => {
+    set({ selectedRegionId: null, selectedCells: [] });
   },
   
   // Clipboard actions

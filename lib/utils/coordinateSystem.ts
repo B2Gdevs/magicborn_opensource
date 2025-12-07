@@ -2,7 +2,7 @@
 // Core coordinate system math for map editor
 // Maps between pixel coordinates, grid cells, zones, and Unreal units
 
-import { PrecisionLevel } from "@core/mapEnums";
+import { PrecisionLevel, MapLevel } from "@core/mapEnums";
 
 /**
  * Map coordinate system configuration
@@ -217,7 +217,71 @@ export function isPrecisionAppropriate(
 }
 
 /**
+ * Detect map level from coordinate configuration
+ */
+export function detectMapLevel(config: CoordinateSystemConfig): MapLevel {
+  // Detect based on unreal size and cell size
+  if (config.unrealWidth >= 10000) return MapLevel.World;
+  if (config.unrealWidth >= 1000) return MapLevel.Town;
+  if (config.unrealWidth >= 200) return MapLevel.Interior;
+  return MapLevel.SmallInterior;
+}
+
+/**
+ * Get standard coordinate system config for a map level
+ */
+export function getStandardConfig(
+  level: MapLevel,
+  imageWidth?: number,
+  imageHeight?: number
+): CoordinateSystemConfig {
+  const standards: Record<MapLevel, Omit<CoordinateSystemConfig, "imageWidth" | "imageHeight">> = {
+    [MapLevel.World]: {
+      unrealWidth: 12000,  // 12km
+      unrealHeight: 12000,
+      baseCellSize: 16,    // 16 pixels per cell
+      zoneSize: 16,        // 16 cells per zone
+    },
+    [MapLevel.Town]: {
+      unrealWidth: 2000,   // 2km
+      unrealHeight: 2000,
+      baseCellSize: 10,    // 10 pixels per cell
+      zoneSize: 10,        // 10 cells per zone
+    },
+    [MapLevel.Interior]: {
+      unrealWidth: 500,    // 500m
+      unrealHeight: 500,
+      baseCellSize: 8,     // 8 pixels per cell
+      zoneSize: 8,         // 8 cells per zone
+    },
+    [MapLevel.SmallInterior]: {
+      unrealWidth: 100,    // 100m
+      unrealHeight: 100,
+      baseCellSize: 5,     // 5 pixels per cell
+      zoneSize: 5,         // 5 cells per zone
+    },
+  };
+  
+  const standard = standards[level];
+  const defaultImageSize: Record<MapLevel, { width: number; height: number }> = {
+    [MapLevel.World]: { width: 4096, height: 4096 },
+    [MapLevel.Town]: { width: 2048, height: 2048 },
+    [MapLevel.Interior]: { width: 1024, height: 1024 },
+    [MapLevel.SmallInterior]: { width: 512, height: 512 },
+  };
+  
+  const defaultSize = defaultImageSize[level];
+  
+  return {
+    imageWidth: imageWidth || defaultSize.width,
+    imageHeight: imageHeight || defaultSize.height,
+    ...standard,
+  };
+}
+
+/**
  * Get default coordinate system config for a map
+ * @deprecated Use getStandardConfig() with MapLevel instead
  */
 export function getDefaultCoordinateConfig(
   imageWidth: number,

@@ -36,3 +36,6 @@ next-env.d.ts
 # vitest
 .vitest
 
+# n8n API key (sensitive)
+infra/ai-stack/n8n/.api-key
+
