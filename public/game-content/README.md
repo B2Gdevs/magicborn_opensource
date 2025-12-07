@@ -26,3 +26,4 @@ Images are stored here and referenced in the database:
 - Database stores: `game-content/environments/tarro.png`
 - Accessed in app: `/game-content/environments/tarro.png` (Next.js public folder)
 
+

@@ -58,3 +58,4 @@ export interface MapDefinition {
   environmentalModifiers?: EnvironmentalModifier[];
 }
 
+

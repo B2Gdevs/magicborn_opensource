@@ -38,3 +38,4 @@ export const mapPlacements = sqliteTable("map_placements", {
 export type MapPlacementRow = typeof mapPlacements.$inferSelect;
 export type NewMapPlacementRow = typeof mapPlacements.$inferInsert;
 
+

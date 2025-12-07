@@ -36,3 +36,4 @@ export const maps = sqliteTable("maps", {
 export type MapRow = typeof maps.$inferSelect;
 export type NewMapRow = typeof maps.$inferInsert;
 
+

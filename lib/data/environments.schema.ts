@@ -23,3 +23,4 @@ export const environments = sqliteTable("environments", {
 export type EnvironmentRow = typeof environments.$inferSelect;
 export type NewEnvironmentRow = typeof environments.$inferInsert;
 
+

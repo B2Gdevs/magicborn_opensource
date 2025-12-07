@@ -125,3 +125,4 @@ export function getMapPlacementsRepository(): MapPlacementsRepository {
   return repositoryInstance;
 }
 
+
