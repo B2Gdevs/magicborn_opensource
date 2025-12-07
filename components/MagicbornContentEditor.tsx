@@ -104,7 +104,7 @@ function createDefaultTabs(): EditorTab[] {
       id: "environments",
       label: "Environments",
       icon: <Globe className="w-4 h-4" />,
-      component: <EnvironmentEditor />,
+      component: null, // Handled separately - dynamically imported
     },
     {
       id: "status",
@@ -158,6 +158,8 @@ export function MagicbornContentEditor({
       <div className="flex-1 overflow-hidden min-h-0">
         {activeTab === "status" ? (
           <StatusContent />
+        ) : activeTab === "environments" ? (
+          <EnvironmentEditor />
         ) : (
           activeEditor
         )}
