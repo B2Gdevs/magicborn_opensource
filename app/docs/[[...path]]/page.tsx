@@ -25,7 +25,8 @@ interface DocPageProps {
   searchParams: Promise<{ mode?: string }>;
 }
 
-// Generate static params for all documentation pages at build time
+// Generate static params only for design and books (customer-facing content)
+// Developer docs will be generated dynamically (dynamicParams = true)
 export async function generateStaticParams() {
   try {
     const files = await loadDocumentationListServer();
@@ -34,12 +35,18 @@ export async function generateStaticParams() {
     // Add root path (will redirect to default)
     params.push({ path: [] });
     
-    // Add all documentation files
+    // Only generate static params for design docs (not developer docs)
     function collectPaths(fileList: typeof files, basePath: string[] = []) {
       for (const file of fileList) {
         if (!file.isDirectory) {
-          const pathSegments = file.path.split('/');
-          params.push({ path: pathSegments });
+          // Only include design docs for static generation
+          // Developer docs will be generated dynamically
+          if (file.path.startsWith('design/')) {
+            // Remove "design/" prefix for URL
+            const pathWithoutPrefix = file.path.replace(/^design\//, '');
+            const pathSegments = pathWithoutPrefix.split('/');
+            params.push({ path: pathSegments });
+          }
         } else if (file.children) {
           collectPaths(file.children, [...basePath, file.name]);
         }
@@ -47,27 +54,6 @@ export async function generateStaticParams() {
     }
     
     collectPaths(files);
-    
-    // Also add all book pages from book scanner
-    try {
-      const books = await loadBooksFromFileSystemServer();
-      for (const book of books) {
-        const pages = getAllPages(book);
-        for (const page of pages) {
-          // Convert contentPath to route path
-          // contentPath: /books/mordreds_tale/chapters/00-prologue/001-page-1.md
-          // route path: books/mordreds_tale/chapters/00-prologue/001-page-1
-          const routePath = page.contentPath
-            .replace(/^\/books\//, 'books/')
-            .replace(/\.md$/, '');
-          const pathSegments = routePath.split('/');
-          params.push({ path: pathSegments });
-        }
-      }
-    } catch (bookError) {
-      console.error("Error loading books for static params:", bookError);
-      // Continue without book pages - they'll be generated dynamically
-    }
     
     return params;
   } catch (error) {
@@ -112,8 +98,18 @@ export async function generateMetadata({ params, searchParams }: DocPageProps): 
 
     // Get the document path
     let targetPath = docPath;
+    
+    // Add prefix if missing based on mode
+    if (targetPath) {
+      if (actualMode === ViewerMode.DEVELOPER && !targetPath.startsWith('developer/')) {
+        targetPath = `developer/${targetPath}`;
+      } else if (actualMode === ViewerMode.DESIGN && !targetPath.startsWith('design/')) {
+        targetPath = `design/${targetPath}`;
+      }
+    }
+    
     if (!targetPath || targetPath.endsWith('/')) {
-      targetPath = getDefaultDocument(filteredFiles, 'README') || undefined;
+      targetPath = getDefaultDocumentForMode(filteredFiles, actualMode) || undefined;
     }
 
     if (!targetPath) {
@@ -254,6 +250,16 @@ export default async function DocPage({ params, searchParams }: DocPageProps) {
 
     // Get the document path
     let targetPath = docPath;
+    
+    // Add prefix if missing based on mode
+    if (targetPath) {
+      if (actualMode === ViewerMode.DEVELOPER && !targetPath.startsWith('developer/')) {
+        targetPath = `developer/${targetPath}`;
+      } else if (actualMode === ViewerMode.DESIGN && !targetPath.startsWith('design/')) {
+        targetPath = `design/${targetPath}`;
+      }
+    }
+    
     if (!targetPath || targetPath.endsWith('/')) {
       targetPath = getDefaultDocumentForMode(filteredFiles, actualMode) || undefined;
     }
@@ -331,6 +337,13 @@ export default async function DocPage({ params, searchParams }: DocPageProps) {
       },
     };
 
+    // Remove prefix from URL path for cleaner URLs
+    const urlPath = actualMode === ViewerMode.DEVELOPER 
+      ? targetPath.replace(/^developer\//, '')
+      : actualMode === ViewerMode.DESIGN
+      ? targetPath.replace(/^design\//, '')
+      : targetPath;
+
     // Pass pre-loaded content to client component
     return (
       <>
@@ -352,7 +365,7 @@ export default async function DocPage({ params, searchParams }: DocPageProps) {
             initialBookPage={bookPageData}
             initialFiles={filteredFilesForSidebar}
             initialCategories={categoriesForSidebar}
-            currentPath={`/docs/${targetPath}${actualMode !== ViewerMode.AUTO ? `?mode=${actualMode}` : ''}`}
+            currentPath={`/docs/${urlPath}${actualMode !== ViewerMode.AUTO ? `?mode=${actualMode}` : ''}`}
           />
         </main>
       </>

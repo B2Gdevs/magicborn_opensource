@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import DocumentationViewer from "@components/DocumentationViewer";
+import BookReader from "@components/BookReader";
 import { ViewerMode } from "@lib/config/content-types";
 import { 
   loadDocumentationFileServer, 
@@ -64,9 +64,8 @@ export default async function StoriesPage({ searchParams }: StoriesPageProps) {
     // Render directly instead of redirecting
     return (
       <main className="ml-64 mt-16 h-[calc(100vh-4rem)] bg-void text-text-primary overflow-hidden">
-        <DocumentationViewer
+        <BookReader
           initialPath={cleanPath}
-          mode={ViewerMode.BOOKS}
           initialContent={content}
           initialProcessedContent={processed}
           initialToc={toc}

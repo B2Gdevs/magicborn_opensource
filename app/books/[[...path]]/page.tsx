@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import DocumentationViewer from "@components/DocumentationViewer";
+import BookReader from "@components/BookReader";
 import { ViewerMode } from "@lib/config/content-types";
 import { 
   loadDocumentationFileServer, 
@@ -195,9 +195,8 @@ export default async function BookPage({ params }: BookPageProps) {
           />
         )}
         <main className="ml-64 mt-16 h-[calc(100vh-4rem)] bg-void text-text-primary overflow-hidden">
-          <DocumentationViewer
+          <BookReader
             initialPath={targetPath}
-            mode={ViewerMode.BOOKS}
             initialContent={content}
             initialProcessedContent={processed}
             initialToc={toc}

@@ -99,7 +99,7 @@ export default function DeveloperWorkbench({
                 <div className="flex-1 min-h-0 overflow-hidden relative">
                   {currentTab === "documentation" ? (
                     <div className="absolute inset-0">
-                      <DocumentationViewer mode={ViewerMode.DEVELOPER} />
+                      <DocumentationViewer mode={ViewerMode.DEVELOPER} embedded={true} />
                     </div>
                   ) : currentTab === "automations" ? (
                     <div className="absolute inset-0">

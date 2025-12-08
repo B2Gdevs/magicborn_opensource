@@ -45,6 +45,7 @@ interface DocumentationViewerProps {
   initialFiles?: DocFile[]; // Pre-loaded file list for sidebar (server-side)
   initialCategories?: DocCategory[]; // Pre-organized categories for sidebar (server-side)
   currentPath?: string; // Current pathname for active state (server-side)
+  embedded?: boolean; // If true, don't navigate away (for drawer/iframe use)
 }
 
 export default function DocumentationViewer({ 
@@ -59,6 +60,7 @@ export default function DocumentationViewer({
   initialFiles,
   initialCategories,
   currentPath: initialCurrentPath,
+  embedded = false,
 }: DocumentationViewerProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -504,6 +506,27 @@ export default function DocumentationViewer({
                                currentPathWithoutQuery === `/${normalizedPath}` || 
                                currentPathWithoutQuery.includes(`/${normalizedPath}`) ||
                                currentDoc === file.path;
+              
+              // In embedded mode, use button instead of Link to avoid navigation
+              if (embedded) {
+                return (
+                  <button
+                    key={file.path}
+                    onClick={() => {
+                      // Load document without navigating
+                      setCurrentDoc(file.path);
+                      loadDocument(file.path);
+                    }}
+                    className={`block w-full text-left px-3 py-2 rounded-lg transition-all text-sm ${
+                      isActive
+                        ? "text-ember-glow bg-shadow border-l-2 border-ember-glow"
+                        : "text-text-secondary hover:text-ember-glow hover:bg-deep"
+                    }`}
+                  >
+                    {searchQuery ? highlightText(file.name, searchQuery) : file.name}
+                  </button>
+                );
+              }
               
               return (
                 <Link
