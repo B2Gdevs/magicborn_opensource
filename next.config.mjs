@@ -16,6 +16,36 @@ const nextConfig = {
       canvas: false,
     };
     
+    // Exclude better-sqlite3 and Node.js built-ins from client bundle
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      };
+      
+      // Ignore better-sqlite3 and database-related modules in client bundle
+      config.externals = config.externals || [];
+      config.externals.push(
+        {
+          "better-sqlite3": "commonjs better-sqlite3",
+        },
+        // Exclude database modules from client bundle
+        function ({ request }, callback) {
+          if (
+            request?.includes("spells.db") ||
+            request?.includes("spellsRepository") ||
+            request?.includes("runesRepository") ||
+            request?.includes("drizzle-orm/better-sqlite3")
+          ) {
+            return callback(null, `commonjs ${request}`);
+          }
+          callback();
+        }
+      );
+    }
+    
     return config;
   },
 };

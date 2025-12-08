@@ -1,5 +1,6 @@
 // lib/data/spellsRepository.ts
 // Repository layer for named spells database operations using Drizzle ORM
+// SERVER-ONLY: This module uses the database which is server-only
 
 import { getDatabase } from "./spells.db";
 import { namedSpells } from "./spells.schema";

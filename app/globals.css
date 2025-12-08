@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Remove default details/summary marker for custom styling */
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details summary::marker {
+  display: none;
+}
+
 :root {
   /* Magicborn: Mordred's Legacy - Dark Shadowy Theme */
   --color-void: #000000;
@@ -368,7 +377,57 @@
   }
 
   .documentation-content figcaption {
-    @apply text-center text-sm text-text-muted mt-2;
+    @apply text-center text-sm text-text-muted mt-2 italic;
+  }
+  
+  /* Book Reading Mode - More immersive, fun reading experience */
+  .book-reading-mode {
+    @apply max-w-3xl mx-auto;
+    font-family: 'Georgia', 'Times New Roman', serif;
+  }
+  
+  .book-reading-mode h1 {
+    @apply text-5xl font-bold text-glow mb-8 leading-tight;
+    font-family: inherit;
+    letter-spacing: -0.02em;
+  }
+  
+  .book-reading-mode h2 {
+    @apply text-3xl font-bold text-glow mt-12 mb-6;
+    font-family: inherit;
+    letter-spacing: -0.01em;
+  }
+  
+  .book-reading-mode h3 {
+    @apply text-2xl font-semibold text-glow mt-10 mb-4;
+    font-family: inherit;
+  }
+  
+  .book-reading-mode p {
+    @apply mb-6 leading-relaxed text-lg;
+    font-size: 1.125rem;
+    line-height: 1.8;
+    text-align: justify;
+    hyphens: auto;
+  }
+  
+  .book-reading-mode p:first-of-type::first-letter {
+    @apply float-left text-6xl font-bold text-ember-glow mr-2 mt-1;
+    line-height: 0.8;
+    font-family: 'Georgia', serif;
+  }
+  
+  .book-reading-mode blockquote {
+    @apply border-l-4 border-ember-glow pl-6 my-8 italic text-xl;
+    font-style: italic;
+  }
+  
+  .book-reading-mode figure {
+    @apply my-10;
+  }
+  
+  .book-reading-mode figure img {
+    @apply rounded-lg shadow-2xl;
   }
 
   /* Custom Scrollbars - Dark theme */

@@ -1,71 +1,85 @@
-"use client";
+import { notFound } from "next/navigation";
+import DocumentationViewer from "@components/DocumentationViewer";
+import { ViewerMode } from "@lib/config/content-types";
+import { 
+  loadDocumentationFileServer, 
+  getDocumentationMetadataServer,
+  loadDocumentationListServer,
+} from "@lib/utils/docs-loader-server";
+import { processMarkdownContent, generateTableOfContents } from "@lib/utils/markdown-parser";
+import { extractImagesFromMarkdown } from "@lib/utils/image-extractor";
+import { filterFilesByMode } from "@lib/utils/content-validator";
+import { organizeByCategory } from "@lib/utils/docs-loader";
 
-import { useMemo, useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import DocumentationViewer, { ViewerMode } from "@components/DocumentationViewer";
-import { getBookById, getPageByNumber } from "@/lib/utils/book-scanner";
+// Enable static generation
+export const dynamicParams = false;
+export const revalidate = 3600;
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
-
-function StoriesPageContent() {
-  const searchParams = useSearchParams();
-  const pageParam = searchParams.get("page");
-  const bookParam = searchParams.get("book") || "mordreds_tale"; // Default to first book
-  const initialPage = useMemo(() => (pageParam ? parseInt(pageParam, 10) : 1), [pageParam]);
-  
-  const [initialPath, setInitialPath] = useState<string | undefined>(undefined);
-  
-  useEffect(() => {
-    async function loadInitialPath() {
-      const book = await getBookById(bookParam);
-      if (!book) return;
-      
-      if (pageParam) {
-        const page = getPageByNumber(book, initialPage);
-        if (page) {
-          setInitialPath(page.contentPath.replace(/^\/books\//, 'books/').replace(/\.md$/, ''));
-          return;
-        }
-      }
-      // Default to first page of the book
-      const firstPage = getPageByNumber(book, 1);
-      if (firstPage) {
-        setInitialPath(firstPage.contentPath.replace(/^\/books\//, 'books/').replace(/\.md$/, ''));
-      }
-    }
-    loadInitialPath();
-  }, [bookParam, initialPage, pageParam]);
-
-  return (
-    <main className="ml-64 mt-16 h-[calc(100vh-4rem)] bg-void text-text-primary overflow-hidden">
-      <div className="h-full flex flex-col">
-        {/* Header */}
-        <div className="border-b border-border bg-shadow px-8 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-glow">Stories & Books</h1>
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-hidden min-h-0">
-          <DocumentationViewer initialPath={initialPath} mode={ViewerMode.BOOKS} />
-        </div>
-      </div>
-    </main>
-  );
+interface StoriesPageProps {
+  searchParams: Promise<{ page?: string; book?: string }>;
 }
 
-export default function StoriesPage() {
-  return (
-    <Suspense fallback={
+export default async function StoriesPage({ searchParams }: StoriesPageProps) {
+  const params = await searchParams;
+  
+  try {
+    // Load file list and filter to only books
+    const allFiles = await loadDocumentationListServer();
+    const bookFiles = filterFilesByMode(allFiles, ViewerMode.BOOKS);
+    
+    // Find first book file (alphabetically, first file in first folder)
+    function findFirstFile(fileList: typeof bookFiles): string | null {
+      for (const file of fileList) {
+        if (!file.isDirectory) {
+          return file.path;
+        } else if (file.children) {
+          const found = findFirstFile(file.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    
+    const firstBookPath = findFirstFile(bookFiles);
+    
+    if (!firstBookPath) {
+      notFound();
+    }
+
+    // Ensure path doesn't already have /books/ prefix
+    const cleanPath = firstBookPath.startsWith('books/') 
+      ? firstBookPath 
+      : `books/${firstBookPath}`;
+
+    // Load document content server-side
+    const content = await loadDocumentationFileServer(cleanPath);
+    const processed = processMarkdownContent(content);
+    const toc = generateTableOfContents(content);
+    const images = extractImagesFromMarkdown(content);
+    const metadata = await getDocumentationMetadataServer(cleanPath);
+
+    // Organize book files for sidebar (already loaded above)
+    const bookCategories = organizeByCategory(bookFiles);
+
+    // Render directly instead of redirecting
+    return (
       <main className="ml-64 mt-16 h-[calc(100vh-4rem)] bg-void text-text-primary overflow-hidden">
-        <div className="h-full flex items-center justify-center">
-          <div className="text-text-secondary">Loading...</div>
-        </div>
+        <DocumentationViewer
+          initialPath={cleanPath}
+          mode={ViewerMode.BOOKS}
+          initialContent={content}
+          initialProcessedContent={processed}
+          initialToc={toc}
+          initialImages={images}
+          initialMetadata={metadata}
+          initialFiles={bookFiles}
+          initialCategories={bookCategories}
+          currentPath={`/books/${cleanPath}`}
+        />
       </main>
-    }>
-      <StoriesPageContent />
-    </Suspense>
-  );
+    );
+  } catch (error) {
+    console.error("Error loading stories page:", error);
+    notFound();
+  }
 }

@@ -444,7 +444,8 @@ function loadRunesFromDatabase(): Record<RuneCode, RuneDef> {
   try {
     // Only load from DB on server-side
     if (typeof window === "undefined") {
-      const { getRunesRepository } = require("@/lib/data/runesRepository");
+      // Dynamic import to avoid bundling database code in client
+      const { getRunesRepository } = require("../../data/runesRepository");
       const repo = getRunesRepository();
       const runesList = repo.listAll();
       

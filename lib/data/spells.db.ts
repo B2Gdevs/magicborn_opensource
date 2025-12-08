@@ -1,5 +1,6 @@
 // lib/data/spells.db.ts
 // Drizzle ORM database setup for named spells and effects
+// SERVER-ONLY: This module uses better-sqlite3 which is a native Node.js module
 
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";

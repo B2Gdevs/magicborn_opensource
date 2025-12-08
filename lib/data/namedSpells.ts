@@ -181,11 +181,20 @@ function loadBlueprintsFromDatabase(): NamedSpellBlueprint[] {
   try {
     // Only load from DB on server-side
     if (typeof window === "undefined") {
+      // Dynamic import to avoid bundling database code in client
       const { getSpellsRepository } = require("./spellsRepository");
       const repo = getSpellsRepository();
       const spells = repo.listAll();
+      // Only use database data if we have valid spells that match known IDs
+      // This ensures we fall back to hardcoded data if database is empty or corrupted
       if (spells.length > 0) {
-        return spells;
+        // Validate that we have at least the core blueprints
+        const knownIds = new Set(NAMED_SPELL_BLUEPRINTS.map(bp => bp.id));
+        const hasKnownSpells = spells.some((spell: NamedSpellBlueprint) => knownIds.has(spell.id));
+        // If database has valid known spells, use it; otherwise fall back
+        if (hasKnownSpells) {
+          return spells;
+        }
       }
     }
   } catch (error) {

@@ -223,10 +223,15 @@ export function CellSelectionFeedback() {
                       const regionId = `region-${Date.now()}`;
                       addRegion({
                         id: regionId,
-                        mapId: selectedMap.id,
+                        mapId: selectedMap.id, // Parent map
                         name: regionName.trim(),
-                        cells: [...selectedCells],
+                        cells: [...selectedCells], // Selected cells define boundaries
                         color: generateRegionColor(regionId),
+                        metadata: {
+                          // Environment properties (override parent map's default)
+                          // Will be set when environment properties form is added
+                          // For now, empty - inherits world default until overridden
+                        },
                       });
                       setRegionName("");
                       setShowCreateDialog(false);

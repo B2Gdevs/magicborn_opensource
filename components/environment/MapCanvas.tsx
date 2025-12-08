@@ -387,7 +387,7 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
         }}
         onMouseUp={(e) => {
           handleMouseUp();
-          handleDragEnd(e);
+          handleDragEnd();
         }}
         onClick={handleClick}
         style={{ cursor: spacePressed.current ? "grab" : "default" }}

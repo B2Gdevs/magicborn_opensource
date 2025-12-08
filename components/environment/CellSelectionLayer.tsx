@@ -9,6 +9,7 @@ import { useMapEditorStore } from "@/lib/store/mapEditorStore";
 import { cellToPixel } from "@/lib/utils/coordinateSystem";
 import { isCellOnBoundary, hslToRgba } from "@/lib/data/mapRegions";
 import type { CellCoordinates } from "@/lib/utils/coordinateSystem";
+import type { MapRegion } from "@/lib/data/mapRegions";
 
 interface CellSelectionLayerProps {
   zoom: number;
@@ -43,13 +44,18 @@ export function CellSelectionLayer({ zoom }: CellSelectionLayerProps) {
         
         region.cells.forEach((cell) => {
           const pixel = cellToPixel(cell, config, zoom);
-          const isBoundary = isCellOnBoundary(cell, {
+          // Create a full MapRegion object for boundary check (store region has optional metadata)
+          const fullRegion: MapRegion = {
             id: region.id,
             mapId: region.mapId,
             name: region.name,
             cells: region.cells,
             color: region.color,
-          });
+            metadata: region.metadata || {
+              // Default empty metadata - will be populated when environment properties form is added
+            },
+          };
+          const isBoundary = isCellOnBoundary(cell, fullRegion);
 
           rects.push({
             x: pixel.x,

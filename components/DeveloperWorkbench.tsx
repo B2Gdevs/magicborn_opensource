@@ -7,7 +7,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Workflow, Settings } from "lucide-react";
-import DocumentationViewer, { ViewerMode } from "@components/DocumentationViewer";
+import DocumentationViewer from "@components/DocumentationViewer";
+import { ViewerMode } from "@lib/config/content-types";
 import AutomationsTab from "@components/ai-stack/AutomationsTab";
 import AIStackStatus from "@components/ai-stack/AIStackStatus";
 import { TabButton } from "@components/ui/TabButton";

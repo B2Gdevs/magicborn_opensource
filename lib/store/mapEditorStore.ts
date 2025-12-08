@@ -44,13 +44,26 @@ export interface MapEditorState {
   selectionStartCell: { cellX: number; cellY: number } | null; // For drag selection
   
   // Map Regions (persistent cell selections with nested maps)
+  // Regions override parent map's environment properties
   regions: Array<{
     id: string;
-    mapId: string;
+    mapId: string; // Parent map
     name: string;
-    cells: Array<{ cellX: number; cellY: number }>;
-    nestedMapId?: string;
-    color: string;
+    cells: Array<{ cellX: number; cellY: number }>; // Selected cells that define boundaries
+    nestedMapId?: string; // Link to nested map (if created)
+    color: string; // Unique color for visual distinction
+    metadata: {
+      // Environment properties that override parent map's default
+      biome?: string; // Overrides world default (Mountain, Forest, Swamp, Interior, etc.)
+      climate?: string; // Overrides world default (Cold, Warm, Temperate, Humid, etc.)
+      dangerLevel?: number; // Overrides world default (0-5)
+      creatures?: string[]; // Specific creatures for this region
+      completion?: {
+        totalCells: number;
+        completedCells: number;
+        percentage: number;
+      };
+    };
   }>;
   selectedRegionId: string | null; // Currently selected region (for editing)
   
@@ -98,11 +111,23 @@ export interface MapEditorState {
   loadRegions: (mapId: string) => Promise<void>;
   addRegion: (region: {
     id: string;
-    mapId: string;
+    mapId: string; // Parent map
     name: string;
-    cells: Array<{ cellX: number; cellY: number }>;
-    nestedMapId?: string;
-    color: string;
+    cells: Array<{ cellX: number; cellY: number }>; // Selected cells
+    nestedMapId?: string; // Link to nested map
+    color: string; // Unique color
+    metadata: {
+      // Environment properties (override parent map's default)
+      biome?: string;
+      climate?: string;
+      dangerLevel?: number;
+      creatures?: string[];
+      completion?: {
+        totalCells: number;
+        completedCells: number;
+        percentage: number;
+      };
+    };
   }) => void;
   selectRegion: (regionId: string | null) => void;
   clearRegionSelection: () => void;

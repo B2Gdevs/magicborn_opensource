@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { generateTableOfContents, processMarkdownContent, slugify, type TocItem } from "@lib/utils/markdown-parser";
 import { extractImagesFromMarkdown, type ExtractedImage } from "@lib/utils/image-extractor";
+import { formatDateForDisplay } from "@lib/utils/date-formatter";
 import { 
   loadDocumentationList, 
   loadDocumentationFile, 
@@ -13,107 +15,109 @@ import {
   type DocFile,
   type DocCategory 
 } from "@lib/utils/docs-loader";
+import { filterFilesByMode, getDefaultDocumentForMode } from "@lib/utils/content-validator";
+import { getReadingMode } from "@lib/config/content-types";
 import { 
   getBookPageFromPath,
   type BookDocument 
 } from "@lib/utils/book-integration";
 import { getNextPage, getPreviousPage, type BookPage } from "@lib/utils/book-scanner";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import MoodBoard from "@components/MoodBoard";
 import FloatingToolbar from "@components/FloatingToolbar";
 import VideoPlayer from "@components/VideoPlayer";
+import { ViewerMode } from "@lib/config/content-types";
 
-export enum ViewerMode {
-  DESIGN = "design",
-  BOOKS = "books",
-  DEVELOPER = "developer",
-  AUTO = "auto",
-}
+// Re-export for backward compatibility
+export { ViewerMode };
 
 interface DocumentationViewerProps {
   initialPath?: string;
   mode?: ViewerMode; // DESIGN shows only design docs, BOOKS shows only books, AUTO detects from path
+  // Pre-loaded content (for server-side rendering / SEO)
+  initialContent?: string; // Raw markdown content
+  initialProcessedContent?: string; // Processed markdown content
+  initialToc?: TocItem[]; // Pre-generated table of contents
+  initialImages?: ExtractedImage[]; // Pre-extracted images
+  initialMetadata?: { created: Date; modified: Date } | null; // File metadata
+  initialBookPage?: { book: BookDocument; page: BookPage } | null; // Book page data
+  initialFiles?: DocFile[]; // Pre-loaded file list for sidebar (server-side)
+  initialCategories?: DocCategory[]; // Pre-organized categories for sidebar (server-side)
+  currentPath?: string; // Current pathname for active state (server-side)
 }
 
-export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUTO }: DocumentationViewerProps) {
+export default function DocumentationViewer({ 
+  initialPath, 
+  mode = ViewerMode.AUTO,
+  initialContent,
+  initialProcessedContent,
+  initialToc,
+  initialImages,
+  initialMetadata,
+  initialBookPage,
+  initialFiles,
+  initialCategories,
+  currentPath: initialCurrentPath,
+}: DocumentationViewerProps) {
   const router = useRouter();
-  const [toc, setToc] = useState<TocItem[]>([]);
-  const [markdownContent, setMarkdownContent] = useState<string>("");
-  const [rawMarkdownContent, setRawMarkdownContent] = useState<string>("");
-  const [images, setImages] = useState<ExtractedImage[]>([]);
+  const pathname = usePathname();
+  const [toc, setToc] = useState<TocItem[]>(initialToc || []);
+  const [markdownContent, setMarkdownContent] = useState<string>(initialProcessedContent || "");
+  const [rawMarkdownContent, setRawMarkdownContent] = useState<string>(initialContent || "");
+  const [images, setImages] = useState<ExtractedImage[]>(initialImages || []);
   const [activeSection, setActiveSection] = useState<string>("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMoodBoardOpen, setIsMoodBoardOpen] = useState(false);
-  const [currentDoc, setCurrentDoc] = useState<string>("");
-  const [docFiles, setDocFiles] = useState<DocFile[]>([]);
-  const [categories, setCategories] = useState<DocCategory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [currentDoc, setCurrentDoc] = useState<string>(initialPath || "");
+  const [docFiles, setDocFiles] = useState<DocFile[]>(initialFiles || []);
+  const [categories, setCategories] = useState<DocCategory[]>(initialCategories || []);
+  const [loading, setLoading] = useState(!initialContent); // If we have initial content, we're not loading
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => {
+    // Initialize with all categories expanded if we have initial categories
+    if (initialCategories) {
+      const allCategoryNames = new Set<string>();
+      initialCategories.forEach(cat => {
+        allCategoryNames.add(cat.name);
+        cat.subcategories.forEach(sub => allCategoryNames.add(`${cat.name}/${sub.name}`));
+      });
+      return allCategoryNames;
+    }
+    return new Set();
+  });
   const mainContentRef = useRef<HTMLElement>(null);
   
   // Book mode state
-  const [currentBookPage, setCurrentBookPage] = useState<{ book: BookDocument; page: BookPage } | null>(null);
+  const [currentBookPage, setCurrentBookPage] = useState<{ book: BookDocument; page: BookPage } | null>(initialBookPage || null);
+  
+  // File metadata state
+  const [fileMetadata, setFileMetadata] = useState<{ created: Date; modified: Date } | null>(initialMetadata || null);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Determine actual mode based on prop or path
   const actualMode: ViewerMode.DESIGN | ViewerMode.BOOKS | ViewerMode.DEVELOPER = mode === ViewerMode.AUTO 
     ? (initialPath?.startsWith("books/") ? ViewerMode.BOOKS : initialPath?.startsWith("developer/") ? ViewerMode.DEVELOPER : ViewerMode.DESIGN)
     : mode;
+  
+  // Get reading mode for special UI treatment (books get "fun" reading experience)
+  const readingMode = initialPath ? getReadingMode(initialPath) : "documentation";
 
-  // Load documentation structure
+  // Load documentation structure (only if not provided as initial props)
   useEffect(() => {
+    // If we already have initial files/categories, skip loading
+    if (initialFiles && initialCategories) {
+      return;
+    }
+
     async function loadDocs() {
       try {
         const files = await loadDocumentationList();
         setDocFiles(files);
         
-        // Filter files based on mode
-        let filteredFiles = files;
-        if (actualMode === ViewerMode.DESIGN) {
-          // Only show design category - filter out books and developer
-          filteredFiles = files.filter(f => {
-            // Keep if it's in design category or path starts with design/
-            if (f.category === "design" || f.path.startsWith("design/")) {
-              return true;
-            }
-            // Remove books and developer categories
-            if (f.category === "books" || f.path.startsWith("books/") ||
-                f.category === "developer" || f.path.startsWith("developer/")) {
-              return false;
-            }
-            // Keep other categories (like main)
-            return true;
-          });
-        } else if (actualMode === ViewerMode.BOOKS) {
-          // Only show books category - filter out design and developer
-          filteredFiles = files.filter(f => {
-            // Keep if it's in books category or path starts with books/
-            if (f.category === "books" || f.path.startsWith("books/")) {
-              return true;
-            }
-            // Remove design and developer categories
-            if (f.category === "design" || f.path.startsWith("design/") ||
-                f.category === "developer" || f.path.startsWith("developer/")) {
-              return false;
-            }
-            // Remove other categories
-            return false;
-          });
-        } else if (actualMode === ViewerMode.DEVELOPER) {
-          // Only show developer category - filter out design and books
-          filteredFiles = files.filter(f => {
-            // Keep if it's in developer category or path starts with developer/
-            if (f.category === "developer" || f.path.startsWith("developer/")) {
-              return true;
-            }
-            // Remove design and books categories
-            if (f.category === "design" || f.path.startsWith("design/") ||
-                f.category === "books" || f.path.startsWith("books/")) {
-              return false;
-            }
-            // Remove other categories
-            return false;
-          });
-        }
+        // Filter files based on mode using strict validation
+        const filteredFiles = filterFilesByMode(files, actualMode);
         
         const organized = organizeByCategory(filteredFiles);
         setCategories(organized);
@@ -126,14 +130,36 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
         });
         setExpandedCategories(allCategoryNames);
         
-        // Load default or initial document
-        let docPath = initialPath;
-        if (!docPath || docPath.endsWith('/')) {
-          // If no path or path ends with /, use default document
-          docPath = getDefaultDocument(filteredFiles, 'README') || undefined;
-        }
-        if (docPath) {
-          await loadDocument(docPath);
+        // Only load document if we don't have initial content
+        if (!initialContent) {
+          let docPath = initialPath;
+          if (!docPath || docPath.endsWith('/')) {
+            // For books mode, try to load first book page first
+            if (actualMode === ViewerMode.BOOKS) {
+              try {
+                const { loadBooksFromFileSystem, getPageByNumber } = await import("@lib/utils/book-scanner");
+                const books = await loadBooksFromFileSystem();
+                if (books.length > 0) {
+                  const firstBook = books[0];
+                  const firstPage = getPageByNumber(firstBook, 1);
+                  if (firstPage) {
+                    docPath = firstPage.contentPath.replace(/^\/books\//, 'books/').replace(/\.md$/, '');
+                  }
+                }
+              } catch (error) {
+                console.error("Error loading default book:", error);
+              }
+            }
+            
+            // If still no path, use default document from filtered files
+            // This ensures we only get documents that match the current mode
+            if (!docPath) {
+              docPath = getDefaultDocumentForMode(filteredFiles, actualMode) || undefined;
+            }
+          }
+          if (docPath) {
+            await loadDocument(docPath);
+          }
         }
       } catch (error) {
         console.error("Failed to load documentation:", error);
@@ -142,7 +168,38 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
       }
     }
     loadDocs();
-  }, [initialPath, actualMode]);
+  }, [initialPath, actualMode, initialContent, initialFiles, initialCategories]);
+
+  // Update content when pathname changes (for client-side navigation via Link)
+  useEffect(() => {
+    const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+    if (currentPath) {
+      // Extract path from URL for docs or books routes
+      const pathMatch = currentPath.match(/\/(?:docs|books)\/(.+?)(?:\?|$)/);
+      if (pathMatch && pathMatch[1]) {
+        let docPath = pathMatch[1];
+        
+        // If we're on /books route, add "books/" prefix to match file.path format
+        // If we're on /docs route, determine prefix based on mode
+        if (currentPath.startsWith('/books/')) {
+          docPath = `books/${docPath}`;
+        } else if (currentPath.startsWith('/docs/')) {
+          // For /docs, we need to determine the prefix based on the actual mode
+          if (actualMode === ViewerMode.DESIGN && !docPath.startsWith('design/')) {
+            docPath = `design/${docPath}`;
+          } else if (actualMode === ViewerMode.DEVELOPER && !docPath.startsWith('developer/')) {
+            docPath = `developer/${docPath}`;
+          }
+        }
+        
+        if (docPath !== currentDoc) {
+          // Only load if we don't have initial content (to avoid double loading)
+          // This handles client-side navigation via Next.js Link
+          loadDocument(docPath);
+        }
+      }
+    }
+  }, [pathname, currentDoc]);
 
   const loadDocument = async (path: string) => {
     try {
@@ -168,12 +225,30 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
       // Extract images from markdown
       const extractedImages = extractImagesFromMarkdown(content);
       setImages(extractedImages);
+      
+      // Load file metadata
+      try {
+        const metadataResponse = await fetch(`/api/docs/metadata?path=${encodeURIComponent(path)}`);
+        if (metadataResponse.ok) {
+          const metadata = await metadataResponse.json();
+          setFileMetadata({
+            created: new Date(metadata.created),
+            modified: new Date(metadata.modified),
+          });
+        } else {
+          setFileMetadata(null);
+        }
+      } catch (error) {
+        console.error("Failed to load file metadata:", error);
+        setFileMetadata(null);
+      }
     } catch (error) {
       console.error("Failed to load document:", error);
       setMarkdownContent("# Error\n\nFailed to load document. Please try again.");
       setRawMarkdownContent("");
       setImages([]);
       setCurrentBookPage(null);
+      setFileMetadata(null);
     } finally {
       setLoading(false);
     }
@@ -249,6 +324,99 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
     setExpandedCategories(newExpanded);
   };
 
+  // Filter categories and files based on search query
+  const filterCategory = (category: DocCategory, query: string): DocCategory | null => {
+    const lowerQuery = query.toLowerCase();
+    
+    // Filter files
+    const filteredFiles = category.files.filter(file => 
+      file.name.toLowerCase().includes(lowerQuery) || 
+      file.path.toLowerCase().includes(lowerQuery)
+    );
+    
+    // Filter subcategories recursively
+    const filteredSubcategories = category.subcategories
+      .map(sub => filterCategory(sub, query))
+      .filter((sub): sub is DocCategory => sub !== null);
+    
+    // Check if category name matches
+    const categoryMatches = category.name.toLowerCase().includes(lowerQuery);
+    
+    // If there are matching files, subcategories, or category name matches, return filtered category
+    if (filteredFiles.length > 0 || filteredSubcategories.length > 0 || categoryMatches) {
+      return {
+        ...category,
+        files: filteredFiles,
+        subcategories: filteredSubcategories,
+      };
+    }
+    
+    return null;
+  };
+
+  // Highlight matching text in a string
+  const highlightText = (text: string, query: string) => {
+    if (!query) return text;
+    
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const index = lowerText.indexOf(lowerQuery);
+    
+    if (index === -1) return text;
+    
+    const before = text.substring(0, index);
+    const match = text.substring(index, index + query.length);
+    const after = text.substring(index + query.length);
+    
+    return (
+      <>
+        {before}
+        <span className="bg-ember-glow/30 text-ember-glow font-semibold">{match}</span>
+        {after}
+      </>
+    );
+  };
+
+  // Get filtered categories based on search
+  const filteredCategories = searchQuery
+    ? categories
+        .map(cat => filterCategory(cat, searchQuery))
+        .filter((cat): cat is DocCategory => cat !== null)
+    : categories;
+
+  // Auto-expand categories with matches when searching
+  useEffect(() => {
+    if (searchQuery) {
+      const categoriesWithMatches = new Set<string>();
+      
+      // Compute filtered categories for this effect
+      const filtered = categories
+        .map(cat => filterCategory(cat, searchQuery))
+        .filter((cat): cat is DocCategory => cat !== null);
+      
+      const collectMatchingCategories = (cats: DocCategory[], parentPath = "") => {
+        cats.forEach(cat => {
+          const categoryPath = parentPath ? `${parentPath}/${cat.name}` : cat.name;
+          if (cat.files.length > 0 || cat.subcategories.length > 0) {
+            categoriesWithMatches.add(categoryPath);
+            collectMatchingCategories(cat.subcategories, categoryPath);
+          }
+        });
+      };
+      
+      collectMatchingCategories(filtered);
+      setExpandedCategories(categoriesWithMatches);
+    } else {
+      // When search is cleared, restore default expanded state
+      const allCategoryNames = new Set<string>();
+      categories.forEach(cat => {
+        allCategoryNames.add(cat.name);
+        cat.subcategories.forEach(sub => allCategoryNames.add(`${cat.name}/${sub.name}`));
+      });
+      setExpandedCategories(allCategoryNames);
+    }
+  }, [searchQuery, categories]);
+
   const renderTocItem = (item: TocItem, depth = 0) => {
     const isActive = activeSection === item.id;
     const hasChildren = item.children && item.children.length > 0;
@@ -274,6 +442,29 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
     );
   };
 
+  // Get the base route for navigation based on mode
+  const getBaseRoute = () => {
+    if (actualMode === ViewerMode.BOOKS) return "/books";
+    if (actualMode === ViewerMode.DESIGN) return "/docs";
+    if (actualMode === ViewerMode.DEVELOPER) return "/docs";
+    return "/docs";
+  };
+
+  // Normalize file path by removing base folder prefix if present
+  const normalizeFilePath = (filePath: string, mode: ViewerMode): string => {
+    // Remove base folder prefix if it exists (e.g., "books/" or "design/" or "developer/")
+    if (mode === ViewerMode.BOOKS && filePath.startsWith("books/")) {
+      return filePath.replace(/^books\//, "");
+    }
+    if (mode === ViewerMode.DESIGN && filePath.startsWith("design/")) {
+      return filePath.replace(/^design\//, "");
+    }
+    if (mode === ViewerMode.DEVELOPER && filePath.startsWith("developer/")) {
+      return filePath.replace(/^developer\//, "");
+    }
+    return filePath;
+  };
+
   const renderCategory = (category: DocCategory, parentPath = "") => {
     const categoryPath = parentPath ? `${parentPath}/${category.name}` : category.name;
     const isExpanded = expandedCategories.has(categoryPath);
@@ -281,32 +472,55 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
 
     if (!hasContent) return null;
 
+    const categoryNameMatches = searchQuery && category.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const baseRoute = getBaseRoute();
+    // Only add mode param for /docs route, not for /books (which has its own route)
+    const modeParam = (mode !== ViewerMode.AUTO && baseRoute === "/docs") ? `?mode=${actualMode}` : "";
+
     return (
       <div key={categoryPath} className="mb-4">
         <button
           onClick={() => toggleCategory(categoryPath)}
           className="flex items-center justify-between w-full px-3 py-2 text-left text-sm font-semibold text-glow hover:bg-deep rounded-lg transition-colors"
         >
-          <span className="capitalize">{category.name}</span>
-          <span className="text-text-muted">{isExpanded ? "▼" : "▶"}</span>
+          <span className="capitalize">
+            {searchQuery ? highlightText(category.name, searchQuery) : category.name}
+          </span>
+          <span className={`text-text-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+            ▶
+          </span>
         </button>
-        
         {isExpanded && (
           <div className="ml-4 mt-2 space-y-1">
             {category.files.map((file) => {
-              const isActive = currentDoc === file.path;
+              // Normalize file path to remove base folder prefix
+              const normalizedPath = normalizeFilePath(file.path, actualMode);
+              const fileUrl = `${baseRoute}/${normalizedPath}${modeParam}`;
+              // Determine active state from URL pathname
+              const currentPathValue = initialCurrentPath || pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+              const currentPathWithoutQuery = currentPathValue.split('?')[0];
+              const fileUrlWithoutQuery = fileUrl.split('?')[0];
+              const isActive = currentPathWithoutQuery === fileUrlWithoutQuery || 
+                               currentPathWithoutQuery === `/${normalizedPath}` || 
+                               currentPathWithoutQuery.includes(`/${normalizedPath}`) ||
+                               currentDoc === file.path;
+              
               return (
-                <button
+                <Link
                   key={file.path}
-                  onClick={() => loadDocument(file.path)}
+                  href={fileUrl}
                   className={`block w-full text-left px-3 py-2 rounded-lg transition-all text-sm ${
                     isActive
                       ? "text-ember-glow bg-shadow border-l-2 border-ember-glow"
                       : "text-text-secondary hover:text-ember-glow hover:bg-deep"
                   }`}
+                  onClick={() => {
+                    // Update local state immediately for instant UI feedback
+                    setCurrentDoc(file.path);
+                  }}
                 >
-                  {file.name}
-                </button>
+                  {searchQuery ? highlightText(file.name, searchQuery) : file.name}
+                </Link>
               );
             })}
             {category.subcategories.map((sub) => renderCategory(sub, categoryPath))}
@@ -337,14 +551,39 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
               </button>
             </div>
 
+            {/* Search Input */}
+            <div className="mb-6">
+              <input
+                type="text"
+                placeholder="Search documents..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 bg-deep border border-border rounded-lg text-text-secondary placeholder-text-muted focus:outline-none focus:border-ember-glow focus:ring-1 focus:ring-ember-glow transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="mt-2 text-xs text-text-muted hover:text-ember-glow transition-colors"
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
+
             {/* Document Navigation */}
             <div className="mb-6 pb-6 border-b border-border">
               <h3 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wide">
                 Documents
               </h3>
-              <div className="space-y-1">
-                {categories.map((category) => renderCategory(category))}
-              </div>
+              {filteredCategories.length === 0 && searchQuery ? (
+                <div className="text-sm text-text-muted py-4 text-center">
+                  No documents found matching "{searchQuery}"
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {filteredCategories.map((category) => renderCategory(category))}
+                </div>
+              )}
             </div>
 
             {/* Table of Contents for Current Document */}
@@ -372,6 +611,25 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
           >
             →
           </button>
+        )}
+        {/* File Metadata */}
+        {fileMetadata && !loading && (
+          <div className="absolute top-4 right-4 z-40 bg-shadow/90 backdrop-blur-sm border border-border rounded-lg px-3 py-2 text-xs text-text-muted">
+            <div className="space-y-1">
+              <div>
+                <span className="text-text-secondary">Created: </span>
+                <span className="text-ember-glow">
+                  {formatDateForDisplay(fileMetadata.created)}
+                </span>
+              </div>
+              <div>
+                <span className="text-text-secondary">Updated: </span>
+                <span className="text-ember-glow">
+                  {formatDateForDisplay(fileMetadata.modified)}
+                </span>
+              </div>
+            </div>
+          </div>
         )}
         <div className="max-w-4xl mx-auto px-8 py-8">
           {loading ? (
@@ -422,7 +680,9 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
                 </div>
               )}
               
-              <article className="documentation-content max-w-none">
+              <article className={`documentation-content max-w-none ${
+                readingMode === "book" ? "book-reading-mode" : ""
+              }`}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -442,7 +702,51 @@ export default function DocumentationViewer({ initialPath, mode = ViewerMode.AUT
                     const id = slugify(String(props.children || ''));
                     return <h4 id={id} className="text-xl font-semibold text-glow mt-8 mb-4" {...props} />;
                   },
-                  p: ({ node, ...props }) => <p className="mb-6 leading-relaxed text-text-secondary" {...props} />,
+                  p: ({ node, ...props }: any) => {
+                    // Check if paragraph contains a video link
+                    // If so, render as div to avoid hydration error (<figure> can't be in <p>)
+                    const nodeChildren = node?.children || [];
+                    const hasVideoLink = nodeChildren.some((child: any) => {
+                      if (child.type === 'link' || child.type === 'linkReference') {
+                        const href = child.url || child.href || '';
+                        const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.m4v'];
+                        return videoExtensions.some(ext => href.toLowerCase().endsWith(ext));
+                      }
+                      return false;
+                    });
+
+                    // Also check props.children for rendered links (more reliable)
+                    const propsChildren = props.children;
+                    let hasVideoInProps = false;
+                    if (React.isValidElement(propsChildren)) {
+                      const childProps = propsChildren.props as any;
+                      if (propsChildren.type === 'a' && typeof childProps?.href === 'string') {
+                        const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.m4v'];
+                        hasVideoInProps = videoExtensions.some(ext => 
+                          childProps.href.toLowerCase().endsWith(ext)
+                        );
+                      }
+                    }
+
+                    if (hasVideoLink || hasVideoInProps) {
+                      // Render as div instead of p to allow block-level children (VideoPlayer with <figure>)
+                      return (
+                        <div className={`mb-6 leading-relaxed ${
+                          readingMode === "book" 
+                            ? "text-text-primary text-lg leading-loose" 
+                            : "text-text-secondary"
+                        }`} {...props} />
+                      );
+                    }
+
+                    return (
+                      <p className={`mb-6 leading-relaxed ${
+                        readingMode === "book" 
+                          ? "text-text-primary text-lg leading-loose" 
+                          : "text-text-secondary"
+                      }`} {...props} />
+                    );
+                  },
                   ul: ({ node, ...props }) => <ul className="list-disc space-y-2 my-4 ml-6" {...props} />,
                   ol: ({ node, ...props }) => <ol className="list-decimal space-y-2 my-4 ml-6" {...props} />,
                   li: ({ node, ...props }) => <li className="text-text-secondary" {...props} />,

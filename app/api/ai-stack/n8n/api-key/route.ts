@@ -96,6 +96,3 @@ export async function DELETE() {
   }
 }
 
-// Export helper function for use in other routes
-export { getApiKey };
-

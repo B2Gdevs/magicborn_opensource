@@ -15,8 +15,9 @@ All Environment Editor documentation is organized here for easy navigation.
 
 ### **For Developers:**
 1. **[Component Breakdown](COMPONENT_BREAKDOWN.md)** - What each component does and how to extend it
-2. **[Architecture Plan](../architecture/environment-editor-plan.md)** - Technical design and data structures
-3. **[Coordinate System](../technical/coordinate-system-notes.md)** - Coordinate conversion details
+2. **[Architecture](ARCHITECTURE.md)** - Technical design and data structures
+3. **[Roadmap](ROADMAP.md)** - Development roadmap and next steps
+4. **[Coordinate System](../technical/coordinate-system-notes.md)** - Coordinate conversion details
 
 ---
 
@@ -30,9 +31,8 @@ All Environment Editor documentation is organized here for easy navigation.
 
 ### **Component Documentation** (`./`)
 - **COMPONENT_BREAKDOWN.md** - Detailed component breakdown and extension guide
-
-### **Architecture** (`../architecture/`)
-- **environment-editor-plan.md** - Complete architecture plan
+- **ARCHITECTURE.md** - Complete architecture plan
+- **ROADMAP.md** - Development roadmap and next steps
 
 ### **Technical** (`../technical/`)
 - **MAP_SIZING_STANDARDS.md** - Standard sizing for map levels
@@ -128,4 +128,3 @@ See **[COMPONENT_BREAKDOWN.md](COMPONENT_BREAKDOWN.md)** for details.
 ---
 
 For specific questions, see the relevant documentation file.
-

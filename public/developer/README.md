@@ -7,6 +7,8 @@
 
 - **README.md** - Environment Editor documentation index
 - **COMPONENT_BREAKDOWN.md** - Component breakdown and extension guide
+- **ARCHITECTURE.md** - Complete architecture plan
+- **ROADMAP.md** - Development roadmap and next steps
 - **user-guides/** - User guides and workflows
   - **MAP_EDITOR_DATA_RELATIONSHIPS.md** - Core data model and relationships
   - **MAP_EDITOR_USER_GUIDE.md** - Complete user guide
@@ -16,7 +18,6 @@
 ### **Architecture** (`architecture/`)
 **High-level design and planning**
 
-- **environment-editor-plan.md** - Complete architecture plan
 - **overview.md** - System overview
 
 ### **Technical** (`technical/`)
@@ -25,8 +26,12 @@
 - **MAP_SIZING_STANDARDS.md** - Standard sizing for map levels
 - **UNREAL_ENGINE_MAPPING.md** - Unreal Engine integration guide
 - **SELECTION_AND_PLACEMENT_SYSTEM.md** - Selection vs placement system
-- **NEXT_STEPS_ROADMAP.md** - Development roadmap
 - **coordinate-system-notes.md** - Coordinate system details
+
+### **Archive** (`archive/`)
+**Outdated documentation (kept for reference)**
+
+- Old environment editor docs (superseded by environment-editor/)
 
 ---
 
@@ -49,8 +54,8 @@
 
 ### **Understanding Components?**
 1. Read: **environment-editor/COMPONENT_BREAKDOWN.md** (what each component does)
-2. See: **environment-editor/README.md** (overview)
-3. Check: **architecture/environment-editor-plan.md** (technical details)
+2. See: **environment-editor/ARCHITECTURE.md** (technical design)
+3. Check: **environment-editor/ROADMAP.md** (development roadmap)
 
 ---
 
@@ -113,10 +118,11 @@ See **environment-editor/COMPONENT_BREAKDOWN.md** for details.
 ## 📝 Documentation Status
 
 ### **✅ Up to Date:**
-- All Environment Editor documentation consolidated
+- All Environment Editor documentation consolidated in `environment-editor/`
 - Component breakdown created
 - User guides organized
 - Architecture plan updated
+- Roadmap consolidated
 
 ---
 
