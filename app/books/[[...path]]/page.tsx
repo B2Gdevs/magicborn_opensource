@@ -129,7 +129,7 @@ export default async function BookPage({ params }: BookPageProps) {
         return null;
       }
       
-      targetPath = findFirstFile(bookFiles) || null;
+      targetPath = findFirstFile(bookFiles) || undefined;
     }
 
     if (!targetPath) {
