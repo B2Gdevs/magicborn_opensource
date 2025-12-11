@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 export const mapRegions = sqliteTable("map_regions", {
   id: text("id").primaryKey(),
   mapId: text("map_id").notNull(), // Parent map
+  parentRegionId: text("parent_region_id"), // Parent region (if nested within another region)
   
   // Region definition
   name: text("name").notNull(),
@@ -29,4 +30,5 @@ export const mapRegions = sqliteTable("map_regions", {
 });
 
 export type MapRegionRow = typeof mapRegions.$inferSelect;
+
 

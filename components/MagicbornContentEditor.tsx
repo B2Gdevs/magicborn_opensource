@@ -26,7 +26,7 @@ import dynamic from "next/dynamic";
 import ResourcePlaceholder from "@components/ResourcePlaceholder";
 
 // Dynamically import EnvironmentEditor to avoid SSR issues
-const EnvironmentEditor = dynamic(() => import("@components/environment/EnvironmentEditor"), {
+const EnvironmentEditor = dynamic(() => import("./environment/EnvironmentEditor"), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-full bg-deep text-text-muted">

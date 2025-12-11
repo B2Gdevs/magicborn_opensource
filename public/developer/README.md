@@ -28,10 +28,13 @@
 - **SELECTION_AND_PLACEMENT_SYSTEM.md** - Selection vs placement system
 - **coordinate-system-notes.md** - Coordinate system details
 
-### **Archive** (`archive/`)
-**Outdated documentation (kept for reference)**
+### **Magicborn Assistant** (`magicborn-assistant/`)
+**AI Assistant (powered by OpenWebUI) for game database and documentation access**
 
-- Old environment editor docs (superseded by environment-editor/)
+- **SUMMARY.md** - Overview, features, and known limitations
+- **Magicborn Ingestion (RAG).md** - Quick start and RAG setup guide
+- **TOOLS_SETUP.md** - REST API tool server configuration
+
 
 ---
 
@@ -56,6 +59,11 @@
 1. Read: **environment-editor/COMPONENT_BREAKDOWN.md** (what each component does)
 2. See: **environment-editor/ARCHITECTURE.md** (technical design)
 3. Check: **environment-editor/ROADMAP.md** (development roadmap)
+
+### **Using Magicborn Assistant?**
+1. Start with: **magicborn-assistant/SUMMARY.md** (overview and limitations)
+2. Quick start & RAG: **magicborn-assistant/Magicborn Ingestion (RAG).md** (setup guide)
+3. Setup tools: **magicborn-assistant/TOOLS_SETUP.md** (REST API tool server)
 
 ---
 

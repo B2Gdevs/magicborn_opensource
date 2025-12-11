@@ -10,16 +10,21 @@ import { GridLayer } from "./GridLayer";
 import { StatusBar } from "./StatusBar";
 import { CellSelectionLayer } from "./CellSelectionLayer";
 import { CellSelectionFeedback } from "./CellSelectionFeedback";
+import type { EnvironmentDefinition } from "@/lib/data/environments";
 import { MapCompletionIndicator } from "./MapCompletionIndicator";
+import type { MapDefinition } from "@/lib/data/maps";
 import type { PixelCoordinates } from "@/lib/utils/coordinateSystem";
 import { pixelToCell } from "@/lib/utils/coordinateSystem";
+import { AlertTriangle } from "lucide-react";
 
 interface MapCanvasProps {
   width: number;
   height: number;
+  environments?: EnvironmentDefinition[];
+  maps?: MapDefinition[];
 }
 
-export function MapCanvas({ width, height }: MapCanvasProps) {
+export function MapCanvas({ width, height, environments = [], maps = [] }: MapCanvasProps) {
   const stageRef = useRef<any>(null);
   const isDragging = useRef(false);
   const lastPointerPosition = useRef({ x: 0, y: 0 });
@@ -37,6 +42,7 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
     zoomIn,
     zoomOut,
     resetView,
+    fitToViewport,
     showGrid,
     snapToGrid,
     selectionMode,
@@ -47,28 +53,113 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
     isSelectingCells,
     regions,
     selectRegion,
+    selectAllCells,
   } = useMapEditorStore();
+  
+  // Lock zoom to 100% when in cell selection mode
+  // Use a more lenient check to handle floating point precision
+  useEffect(() => {
+    if (selectionMode === "cell" && Math.abs(zoom - 1.0) > 0.001) {
+      setZoom(1.0);
+    }
+  }, [selectionMode, zoom, setZoom]);
+  
+  // Auto-fit viewport when map loads (only on initial load, not when selection mode changes)
+  const hasAutoFitted = useRef<string | null>(null);
+  useEffect(() => {
+    if (selectedMap && width > 0 && height > 0 && selectionMode !== "cell" && hasAutoFitted.current !== selectedMap.id) {
+      const config = selectedMap.coordinateConfig;
+      const scaleX = width / config.imageWidth;
+      const scaleY = height / config.imageHeight;
+      const fitZoom = Math.min(scaleX, scaleY, 1.0); // Don't zoom in beyond 100%
+      
+      // Center the map
+      const centerX = (width - config.imageWidth * fitZoom) / 2;
+      const centerY = (height - config.imageHeight * fitZoom) / 2;
+      
+      setZoom(fitZoom);
+      setPan(centerX, centerY);
+      hasAutoFitted.current = selectedMap.id;
+    }
+  }, [selectedMap?.id, width, height, setZoom, setPan, selectionMode]);
+  
+  // When entering cell selection mode, set zoom to 100% and center map
+  useEffect(() => {
+    if (selectionMode === "cell" && selectedMap && width > 0 && height > 0) {
+      setZoom(1.0);
+      // Center the map at 100% zoom
+      const config = selectedMap.coordinateConfig;
+      const centerX = (width - config.imageWidth) / 2;
+      const centerY = (height - config.imageHeight) / 2;
+      setPan(centerX, centerY);
+    }
+  }, [selectionMode, selectedMap?.id, width, height, setZoom, setPan]);
 
   // Load map image
   const [mapImage, setMapImage] = useState<HTMLImageElement | null>(null);
+  const [imageSizeWarning, setImageSizeWarning] = useState<string | null>(null);
   
   useEffect(() => {
     if (!selectedMap?.imagePath) {
       setMapImage(null);
+      setImageSizeWarning(null);
       return;
     }
     
     const img = new window.Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => setMapImage(img);
+    img.onload = () => {
+      setMapImage(img);
+      
+      // Validate image size matches config
+      const config = selectedMap.coordinateConfig;
+      const expectedWidth = config.imageWidth;
+      const expectedHeight = config.imageHeight;
+      const actualWidth = img.naturalWidth;
+      const actualHeight = img.naturalHeight;
+      
+      // Calculate expected cells based on config
+      const expectedCellsX = Math.floor(config.imageWidth / config.baseCellSize);
+      const expectedCellsY = Math.floor(config.imageHeight / config.baseCellSize);
+      
+      // Calculate pixels per cell in actual image
+      // If image is smaller than config, we'll stretch it, so calculate based on actual
+      const pixelsPerCellX = actualWidth / expectedCellsX;
+      const pixelsPerCellY = actualHeight / expectedCellsY;
+      const minPixelsPerCell = Math.min(pixelsPerCellX, pixelsPerCellY);
+      
+      // Warn if resolution is too low
+      // Less than 1 pixel per cell = severe stretching
+      // Less than 2 pixels per cell = low quality (recommended minimum)
+      if (minPixelsPerCell < 1) {
+        const recommendedWidth = expectedCellsX * 2; // 2px per cell minimum
+        const recommendedHeight = expectedCellsY * 2;
+        setImageSizeWarning(
+          `⚠️ Low Resolution: Image is ${actualWidth}×${actualHeight}px (${minPixelsPerCell.toFixed(2)}px/cell). ` +
+          `Image will be stretched to ${config.imageWidth}×${config.imageHeight}px for ${expectedCellsX}×${expectedCellsY} cells. ` +
+          `Recommended: ${recommendedWidth}×${recommendedHeight}px (2px/cell) or higher for better clarity.`
+        );
+      } else if (minPixelsPerCell < 2) {
+        const recommendedWidth = expectedCellsX * 2;
+        const recommendedHeight = expectedCellsY * 2;
+        setImageSizeWarning(
+          `⚠️ Low Resolution: ${minPixelsPerCell.toFixed(1)} pixels per cell. ` +
+          `Recommended: ${recommendedWidth}×${recommendedHeight}px (2px/cell) or higher for better clarity. ` +
+          `Image will be stretched to fit ${config.imageWidth}×${config.imageHeight}px.`
+        );
+      } else {
+        setImageSizeWarning(null);
+      }
+    };
     img.onerror = () => {
       console.error("Failed to load map image:", selectedMap.imagePath);
       setMapImage(null);
+      setImageSizeWarning(null);
     };
     img.src = selectedMap.imagePath.startsWith("/") 
       ? selectedMap.imagePath 
       : `/${selectedMap.imagePath}`;
-  }, [selectedMap?.imagePath]);
+  }, [selectedMap?.imagePath, selectedMap?.coordinateConfig]);
 
   // Keyboard shortcuts handler
   useEffect(() => {
@@ -102,6 +193,11 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
         e.preventDefault();
         useMapEditorStore.getState().fitToViewport();
       }
+      // Ctrl/Cmd+A to select all cells (when in cell selection mode)
+      if ((e.ctrlKey || e.metaKey) && e.key === "a" && selectionMode === "cell") {
+        e.preventDefault();
+        selectAllCells();
+      }
       if (e.key === " ") {
         e.preventDefault();
         spacePressed.current = true;
@@ -121,15 +217,23 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [zoomIn, zoomOut, resetView]);
+  }, [zoomIn, zoomOut, resetView, selectionMode, selectAllCells]);
 
-  // Handle wheel zoom (smooth zoom to cursor)
+  // Disable wheel zoom in cell selection mode (locked to 100%)
   const handleWheel = useCallback(
     (e: any) => {
+      // Don't allow zooming in cell selection mode - prevent all wheel behavior
+      if (selectionMode === "cell") {
+        e.evt.preventDefault();
+        e.evt.stopPropagation();
+        return;
+      }
+      
       e.evt.preventDefault();
 
       const stage = e.target.getStage();
       const oldScale = stage.scaleX();
+      // Use getPointerPosition for screen coordinates (needed for zoom calculation)
       const pointer = stage.getPointerPosition();
 
       if (!pointer) return;
@@ -155,13 +259,14 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
 
       setPan(newPos.x, newPos.y);
     },
-    [setZoom, setPan]
+    [selectionMode, setZoom, setPan]
   );
 
   // Handle drag (pan)
   const handleDragStart = useCallback((e: any) => {
     if (spacePressed.current || e.evt.button === 1) {
       isDragging.current = true;
+      // Use getPointerPosition for screen coordinates (needed for pan calculation)
       const pointer = e.target.getStage().getPointerPosition();
       if (pointer) {
         lastPointerPosition.current = pointer;
@@ -174,6 +279,7 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
       if (!isDragging.current) return;
 
       const stage = e.target.getStage();
+      // Use getPointerPosition for screen coordinates (needed for pan calculation)
       const pointer = stage.getPointerPosition();
 
       if (!pointer) return;
@@ -195,24 +301,30 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
   const handleMouseMove = useCallback(
     (e: any) => {
       const stage = e.target.getStage();
-      const pointer = stage.getPointerPosition();
-
-      if (!pointer || !selectedMap) {
+      if (!stage || !selectedMap) {
         setMouseCoords(null);
         return;
       }
 
-      // Convert screen coordinates to map coordinates
-      const mapX = (pointer.x - panX) / zoom;
-      const mapY = (pointer.y - panY) / zoom;
+      // Use getRelativePointerPosition - automatically accounts for Stage transform (zoom/pan)
+      const pointer = stage.getRelativePointerPosition();
+      if (!pointer) {
+        setMouseCoords(null);
+        return;
+      }
+
+      // Pointer is already in map coordinates (accounting for zoom/pan transform)
+      const mapX = pointer.x;
+      const mapY = pointer.y;
 
       // Clamp to map bounds
-      const clampedX = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageWidth || 1000, mapX));
-      const clampedY = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageHeight || 1000, mapY));
+      const config = selectedMap.coordinateConfig;
+      const clampedX = Math.max(0, Math.min(config.imageWidth, mapX));
+      const clampedY = Math.max(0, Math.min(config.imageHeight, mapY));
 
       setMouseCoords({ x: clampedX, y: clampedY });
     },
-    [panX, panY, zoom, selectedMap]
+    [selectedMap]
   );
 
   // Handle click (for placement or cell selection)
@@ -227,21 +339,24 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
       }
 
       const stage = e.target.getStage();
-      const pointer = stage.getPointerPosition();
+      if (!stage || !selectedMap) return;
 
-      if (!pointer || !selectedMap) return;
+      // Use getRelativePointerPosition - automatically accounts for Stage transform (zoom/pan)
+      const pointer = stage.getRelativePointerPosition();
+      if (!pointer) return;
 
-      // Convert screen coordinates to map coordinates
-      const mapX = (pointer.x - panX) / zoom;
-      const mapY = (pointer.y - panY) / zoom;
+      // Pointer is already in map coordinates (accounting for zoom/pan transform)
+      const mapX = pointer.x;
+      const mapY = pointer.y;
 
       // Clamp to map bounds
-      const clampedX = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageWidth || 1000, mapX));
-      const clampedY = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageHeight || 1000, mapY));
+      const config = selectedMap.coordinateConfig;
+      const clampedX = Math.max(0, Math.min(config.imageWidth, mapX));
+      const clampedY = Math.max(0, Math.min(config.imageHeight, mapY));
 
       // Handle cell selection mode
       if (selectionMode === "cell") {
-        const cell = pixelToCell({ x: clampedX, y: clampedY }, selectedMap.coordinateConfig, zoom);
+        const cell = pixelToCell({ x: clampedX, y: clampedY }, config);
         
         // Check if clicking on an existing region
         const clickedRegion = regions
@@ -275,35 +390,48 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
       // TODO: Handle placement creation based on active tool
       console.log("Click at:", { x: finalX, y: finalY });
     },
-    [panX, panY, zoom, selectedMap, snapToGrid, selectionMode, selectCell]
+    [selectedMap, snapToGrid, selectionMode, selectCell, regions, selectRegion, pixelToCell]
   );
 
-  // Handle mouse down (start cell selection drag)
+  // Handle mouse down (start cell selection drag or pan)
   const handleMouseDown = useCallback(
     (e: any) => {
+      const stage = e.target.getStage();
+      if (!stage || !selectedMap) return;
+      
+      // Allow panning with space or middle mouse button even in cell selection mode
+      if (spacePressed.current || e.evt.button === 1) {
+        isDragging.current = true;
+        const pointer = stage.getPointerPosition();
+        if (pointer) {
+          lastPointerPosition.current = pointer;
+        }
+        return;
+      }
+      
       if (selectionMode !== "cell") return;
 
-      const stage = e.target.getStage();
-      const pointer = stage.getPointerPosition();
+      // Use getRelativePointerPosition - automatically accounts for Stage transform (zoom/pan)
+      const pointer = stage.getRelativePointerPosition();
+      if (!pointer) return;
 
-      if (!pointer || !selectedMap) return;
-
-      // Convert screen coordinates to map coordinates
-      const mapX = (pointer.x - panX) / zoom;
-      const mapY = (pointer.y - panY) / zoom;
+      // Pointer is already in map coordinates (accounting for zoom/pan transform)
+      const mapX = pointer.x;
+      const mapY = pointer.y;
 
       // Clamp to map bounds
-      const clampedX = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageWidth || 1000, mapX));
-      const clampedY = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageHeight || 1000, mapY));
+      const config = selectedMap.coordinateConfig;
+      const clampedX = Math.max(0, Math.min(config.imageWidth, mapX));
+      const clampedY = Math.max(0, Math.min(config.imageHeight, mapY));
 
-      const cell = pixelToCell({ x: clampedX, y: clampedY }, selectedMap.coordinateConfig, zoom);
+      const cell = pixelToCell({ x: clampedX, y: clampedY }, config);
       
       // Start cell selection (for drag)
       if (!e.evt.ctrlKey && !e.evt.shiftKey) {
         startCellSelection(cell.cellX, cell.cellY);
       }
     },
-    [panX, panY, zoom, selectedMap, selectionMode, startCellSelection]
+    [selectedMap, selectionMode, startCellSelection]
   );
 
   // Handle mouse move (update cell selection during drag)
@@ -312,22 +440,25 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
       if (!isSelectingCells || !selectedMap) return;
 
       const stage = e.target.getStage();
-      const pointer = stage.getPointerPosition();
+      if (!stage) return;
 
+      // Use getRelativePointerPosition - automatically accounts for Stage transform (zoom/pan)
+      const pointer = stage.getRelativePointerPosition();
       if (!pointer) return;
 
-      // Convert screen coordinates to map coordinates
-      const mapX = (pointer.x - panX) / zoom;
-      const mapY = (pointer.y - panY) / zoom;
+      // Pointer is already in map coordinates (accounting for zoom/pan transform)
+      const mapX = pointer.x;
+      const mapY = pointer.y;
 
       // Clamp to map bounds
-      const clampedX = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageWidth || 1000, mapX));
-      const clampedY = Math.max(0, Math.min(selectedMap.coordinateConfig?.imageHeight || 1000, mapY));
+      const config = selectedMap.coordinateConfig;
+      const clampedX = Math.max(0, Math.min(config.imageWidth, mapX));
+      const clampedY = Math.max(0, Math.min(config.imageHeight, mapY));
 
-      const cell = pixelToCell({ x: clampedX, y: clampedY }, selectedMap.coordinateConfig, zoom);
+      const cell = pixelToCell({ x: clampedX, y: clampedY }, config);
       updateCellSelection(cell.cellX, cell.cellY);
     },
-    [panX, panY, zoom, selectedMap, isSelectingCells, updateCellSelection]
+    [selectedMap, isSelectingCells, updateCellSelection]
   );
 
   // Handle mouse up (end cell selection drag)
@@ -371,8 +502,8 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
         ref={stageRef}
         width={width}
         height={height}
-        scaleX={zoom}
-        scaleY={zoom}
+        scaleX={selectionMode === "cell" ? 1.0 : zoom}
+        scaleY={selectionMode === "cell" ? 1.0 : zoom}
         x={panX}
         y={panY}
         onWheel={handleWheel}
@@ -393,39 +524,55 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
         style={{ cursor: spacePressed.current ? "grab" : "default" }}
       >
         <Layer>
-          {/* Map background image */}
+          {/* Map background image - always stretch to config dimensions */}
           {mapImage && selectedMap && (
             <KonvaImage
               image={mapImage}
               x={0}
               y={0}
-              width={selectedMap.coordinateConfig?.imageWidth || 1000}
-              height={selectedMap.coordinateConfig?.imageHeight || 1000}
+              width={selectedMap.coordinateConfig.imageWidth}
+              height={selectedMap.coordinateConfig.imageHeight}
+              // Stretch image to fit config dimensions
+              // This allows lower resolution images to still work with coordinate system
             />
           )}
 
-          {/* Grid layer */}
+          {/* Grid layer - use config dimensions */}
           {showGrid && selectedMap && (
             <GridLayer
-              width={selectedMap.coordinateConfig?.imageWidth || 1000}
-              height={selectedMap.coordinateConfig?.imageHeight || 1000}
+              width={selectedMap.coordinateConfig.imageWidth}
+              height={selectedMap.coordinateConfig.imageHeight}
               gridSize={useMapEditorStore.getState().gridSize}
               zoom={zoom}
             />
           )}
 
-          {/* Cell selection layer */}
-          <CellSelectionLayer zoom={zoom} />
+          {/* Cell selection layer - pass actual image for validation */}
+          {/* Use effective zoom: 1.0 in cell selection mode, otherwise use store zoom */}
+          {mapImage && <CellSelectionLayer zoom={selectionMode === "cell" ? 1.0 : zoom} actualImageWidth={mapImage.naturalWidth} actualImageHeight={mapImage.naturalHeight} />}
 
           {/* Placements layer - TODO */}
         </Layer>
       </Stage>
 
+      {/* Image size warning */}
+      {imageSizeWarning && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-yellow-500/90 border border-yellow-400 rounded-lg p-3 shadow-lg z-50 max-w-2xl">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-900 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold text-yellow-900 mb-1">Image Size Mismatch</div>
+              <div className="text-sm text-yellow-800">{imageSizeWarning}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Status bar */}
       <StatusBar mouseCoords={mouseCoords} />
 
       {/* Cell selection feedback */}
-      <CellSelectionFeedback />
+      <CellSelectionFeedback environments={environments} maps={maps} />
 
       {/* Map completion indicator */}
       <MapCompletionIndicator />

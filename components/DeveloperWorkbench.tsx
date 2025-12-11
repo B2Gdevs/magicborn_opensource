@@ -6,14 +6,15 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Workflow, Settings } from "lucide-react";
+import { BookOpen, Workflow, Settings, MessageSquare } from "lucide-react";
 import DocumentationViewer from "@components/DocumentationViewer";
 import { ViewerMode } from "@lib/config/content-types";
 import AutomationsTab from "@components/ai-stack/AutomationsTab";
 import AIStackStatus from "@components/ai-stack/AIStackStatus";
+import OpenWebUIChat from "@components/ai-stack/OpenWebUIChat";
 import { TabButton } from "@components/ui/TabButton";
 
-export type WorkbenchTab = "documentation" | "automations" | "ai-stack";
+export type WorkbenchTab = "documentation" | "automations" | "ai-stack" | "openwebui";
 export type DrawerSize = "minimized" | "short" | "medium" | "full";
 
 interface DeveloperWorkbenchProps {
@@ -104,6 +105,10 @@ export default function DeveloperWorkbench({
                   ) : currentTab === "automations" ? (
                     <div className="absolute inset-0">
                       <AutomationsTab />
+                    </div>
+                  ) : currentTab === "openwebui" ? (
+                    <div className="absolute inset-0">
+                      <OpenWebUIChat showManagementLink={true} compact={true} />
                     </div>
                   ) : (
                     <div className="absolute inset-0">
@@ -273,6 +278,13 @@ function DrawerTabs({ currentTab, onTabChange }: DrawerTabsProps) {
         onClick={() => onTabChange("ai-stack")}
       >
         AI Stack
+      </TabButton>
+      <TabButton
+        active={currentTab === "openwebui"}
+        icon={<MessageSquare className="w-4 h-4" />}
+        onClick={() => onTabChange("openwebui")}
+      >
+        OpenWebUI
       </TabButton>
     </div>
   );

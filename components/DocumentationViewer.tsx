@@ -24,6 +24,7 @@ import {
 import { getNextPage, getPreviousPage, type BookPage } from "@lib/utils/book-scanner";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { RotateCw } from "lucide-react";
 import MoodBoard from "@components/MoodBoard";
 import FloatingToolbar from "@components/FloatingToolbar";
 import VideoPlayer from "@components/VideoPlayer";
@@ -97,6 +98,9 @@ export default function DocumentationViewer({
   
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>("");
+  
+  // Refresh state
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Determine actual mode based on prop or path
   const actualMode: ViewerMode.DESIGN | ViewerMode.BOOKS | ViewerMode.DEVELOPER = mode === ViewerMode.AUTO 
@@ -105,6 +109,17 @@ export default function DocumentationViewer({
   
   // Get reading mode for special UI treatment (books get "fun" reading experience)
   const readingMode = initialPath ? getReadingMode(initialPath) : "documentation";
+
+  // Function to check if a document exists in the file tree
+  const docExistsInFiles = (docPath: string, files: DocFile[]): boolean => {
+    for (const file of files) {
+      if (file.path === docPath) return true;
+      if (file.isDirectory && file.children) {
+        if (docExistsInFiles(docPath, file.children)) return true;
+      }
+    }
+    return false;
+  };
 
   // Load documentation structure (only if not provided as initial props)
   useEffect(() => {
@@ -253,6 +268,43 @@ export default function DocumentationViewer({
       setFileMetadata(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to refresh documentation list
+  const refreshDocumentation = async () => {
+    setIsRefreshing(true);
+    try {
+      const files = await loadDocumentationList();
+      setDocFiles(files);
+      
+      // Filter files based on mode using strict validation
+      const filteredFiles = filterFilesByMode(files, actualMode);
+      
+      const organized = organizeByCategory(filteredFiles);
+      setCategories(organized);
+      
+      // Expand all categories by default
+      const allCategoryNames = new Set<string>();
+      organized.forEach(cat => {
+        allCategoryNames.add(cat.name);
+        cat.subcategories.forEach(sub => allCategoryNames.add(`${cat.name}/${sub.name}`));
+      });
+      setExpandedCategories(allCategoryNames);
+      
+      // Reload current document if it still exists
+      const currentDocPath = currentDoc;
+      if (currentDocPath) {
+        // Check if the current document still exists in the new file list
+        if (docExistsInFiles(currentDocPath, filteredFiles)) {
+          // Reload the current document to get any updates
+          await loadDocument(currentDocPath);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to refresh documentation:", error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
   
@@ -565,13 +617,26 @@ export default function DocumentationViewer({
           <div className="h-full overflow-y-auto p-4">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-glow">Documentation</h2>
-              <button
-                onClick={() => setIsSidebarOpen(false)}
-                className="text-text-muted hover:text-ember-glow transition-colors p-1"
-                aria-label="Collapse sidebar"
-              >
-                ←
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={refreshDocumentation}
+                  disabled={isRefreshing}
+                  className="text-text-muted hover:text-ember-glow transition-colors p-1.5 rounded hover:bg-deep disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Refresh documentation list"
+                  title="Refresh documentation list"
+                >
+                  <RotateCw 
+                    className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} 
+                  />
+                </button>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="text-text-muted hover:text-ember-glow transition-colors p-1"
+                  aria-label="Collapse sidebar"
+                >
+                  ←
+                </button>
+              </div>
             </div>
 
             {/* Search Input */}
@@ -609,17 +674,6 @@ export default function DocumentationViewer({
               )}
             </div>
 
-            {/* Table of Contents for Current Document */}
-            {toc.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wide">
-                  Contents
-                </h3>
-                <nav className="space-y-1">
-                  {toc.map((item) => renderTocItem(item))}
-                </nav>
-              </div>
-            )}
           </div>
         )}
       </aside>

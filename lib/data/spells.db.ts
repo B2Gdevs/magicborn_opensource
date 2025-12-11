@@ -337,6 +337,7 @@ function initializeSchema() {
     CREATE TABLE IF NOT EXISTS map_regions (
       id TEXT PRIMARY KEY,
       map_id TEXT NOT NULL,
+      parent_region_id TEXT,
       name TEXT NOT NULL,
       description TEXT,
       cells TEXT NOT NULL,
@@ -358,6 +359,28 @@ function initializeSchema() {
       UPDATE map_regions SET updated_at = datetime('now') WHERE id = NEW.id;
     END
   `);
+  
+  // Migration: Add parent_region_id column if it doesn't exist (for existing databases)
+  // This must happen before creating the index on it
+  try {
+    sqliteInstance.exec(`ALTER TABLE map_regions ADD COLUMN parent_region_id TEXT;`);
+  } catch (e: any) {
+    // Column already exists, ignore
+    if (!e.message?.includes("duplicate column") && !e.message?.includes("no such column")) {
+      // Re-throw if it's a different error
+      throw e;
+    }
+  }
+  
+  // Create index on parent_region_id after ensuring the column exists
+  try {
+    sqliteInstance.exec(`CREATE INDEX IF NOT EXISTS idx_map_regions_parent_region_id ON map_regions(parent_region_id);`);
+  } catch (e: any) {
+    // Index might already exist or column might not exist yet, ignore
+    if (!e.message?.includes("no such column")) {
+      throw e;
+    }
+  }
 }
 
 // Close database connection (useful for cleanup)

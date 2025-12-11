@@ -9,16 +9,30 @@ import { calculateMapCompletion } from "@/lib/utils/mapCompletion";
 import { BarChart3 } from "lucide-react";
 
 export function MapCompletionIndicator() {
-  const { selectedMap, regions, placements } = useMapEditorStore();
+  const { selectedMap, regions, placements, showMapCompletionDisplay } = useMapEditorStore();
 
   const completion = useMemo(() => {
     if (!selectedMap) return null;
     return calculateMapCompletion(selectedMap, regions, placements);
   }, [selectedMap, regions, placements]);
 
-  if (!completion || !selectedMap) return null;
+  if (!showMapCompletionDisplay || !completion || !selectedMap) return null;
 
   const { completionPercentage, eldenRingComparison, totalCells, cellsWithContent } = completion;
+  
+  // Check if we should hide - only 1 region and it's the base region (inheriting, no overrides)
+  const mapRegions = regions.filter(r => r.mapId === selectedMap.id);
+  const baseRegion = mapRegions.find(r => 
+    r.name === "Base Region" &&
+    !r.metadata?.biome && 
+    !r.metadata?.climate && 
+    r.metadata?.dangerLevel === undefined
+  );
+  
+  // Hide if only base region exists (no real content regions)
+  if (mapRegions.length === 1 && baseRegion) {
+    return null;
+  }
 
   return (
     <div className="absolute top-4 left-4 bg-deep border border-border rounded-lg p-3 shadow-lg z-10 min-w-64">

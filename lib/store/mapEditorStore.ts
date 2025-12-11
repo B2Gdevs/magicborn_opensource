@@ -5,6 +5,7 @@ import { create } from "zustand";
 import type { MapDefinition } from "@/lib/data/maps";
 import type { MapPlacement } from "@/lib/data/mapPlacements";
 import type { PrecisionLevel } from "@core/mapEnums";
+import { generateRegionColor } from "@/lib/data/mapRegions";
 
 export interface MapEditorHistoryEntry {
   type: "placement_created" | "placement_updated" | "placement_deleted" | "placements_moved" | "placements_copied";
@@ -19,6 +20,7 @@ export interface MapEditorState {
   // Current map
   selectedMapId: string | null;
   selectedMap: MapDefinition | null;
+  mapNavigationStack: Array<{ mapId: string; mapName: string; regionId?: string; regionName?: string }>; // For nested map navigation
   
   // Placements (loaded separately from API)
   placements: MapPlacement[];
@@ -38,7 +40,8 @@ export interface MapEditorState {
   clipboard: MapPlacement[];
   
   // Cell Selection (for regions/nested maps)
-  selectedCells: Array<{ cellX: number; cellY: number }>;
+  // Store as bounding box for efficiency (minX, minY, maxX, maxY)
+  selectedCellBounds: { minX: number; minY: number; maxX: number; maxY: number } | null;
   selectionMode: "placement" | "cell"; // What type of selection is active
   isSelectingCells: boolean; // Whether user is currently selecting cells (drag)
   selectionStartCell: { cellX: number; cellY: number } | null; // For drag selection
@@ -51,6 +54,7 @@ export interface MapEditorState {
     name: string;
     cells: Array<{ cellX: number; cellY: number }>; // Selected cells that define boundaries
     nestedMapId?: string; // Link to nested map (if created)
+    environmentId?: string; // Associated environment template
     color: string; // Unique color for visual distinction
     metadata: {
       // Environment properties that override parent map's default
@@ -67,6 +71,15 @@ export interface MapEditorState {
   }>;
   selectedRegionId: string | null; // Currently selected region (for editing)
   
+  // Display visibility controls
+  showCellSelectionDisplay: boolean;
+  showMapCompletionDisplay: boolean;
+  showInheritanceChainDisplay: boolean;
+  showRegions: boolean; // Toggle region visibility on map
+  
+  // Helper: Get selected cells array from bounds (for compatibility)
+  getSelectedCells: () => Array<{ cellX: number; cellY: number }>;
+  
   // History (undo/redo)
   history: MapEditorHistoryEntry[];
   historyIndex: number; // Current position in history (-1 = no history)
@@ -78,6 +91,8 @@ export interface MapEditorState {
   // Actions - Map
   setSelectedMap: (map: MapDefinition | null) => void;
   setSelectedMapId: (id: string | null) => void;
+  navigateToNestedMap: (nestedMapId: string, regionId?: string, regionName?: string) => Promise<void>;
+  navigateBackToParent: () => Promise<void>;
   
   // Actions - Viewport
   setZoom: (zoom: number) => void;
@@ -101,11 +116,18 @@ export interface MapEditorState {
   // Actions - Cell Selection
   selectCell: (cellX: number, cellY: number, addToSelection?: boolean) => void;
   selectCellRange: (startCell: { cellX: number; cellY: number }, endCell: { cellX: number; cellY: number }) => void;
+  selectAllCells: () => void;
   clearCellSelection: () => void;
   setSelectionMode: (mode: "placement" | "cell") => void;
   startCellSelection: (cellX: number, cellY: number) => void;
   updateCellSelection: (cellX: number, cellY: number) => void;
   endCellSelection: () => void;
+  
+  // Actions - Display Visibility
+  toggleCellSelectionDisplay: () => void;
+  toggleMapCompletionDisplay: () => void;
+  toggleInheritanceChainDisplay: () => void;
+  toggleRegions: () => void;
   
   // Actions - Regions
   loadRegions: (mapId: string) => Promise<void>;
@@ -115,6 +137,7 @@ export interface MapEditorState {
     name: string;
     cells: Array<{ cellX: number; cellY: number }>; // Selected cells
     nestedMapId?: string; // Link to nested map
+    environmentId?: string; // Associated environment template
     color: string; // Unique color
     metadata: {
       // Environment properties (override parent map's default)
@@ -128,7 +151,27 @@ export interface MapEditorState {
         percentage: number;
       };
     };
-  }) => void;
+  }) => Promise<void>;
+  updateRegion: (region: {
+    id: string;
+    mapId: string;
+    name: string;
+    cells: Array<{ cellX: number; cellY: number }>;
+    nestedMapId?: string;
+    environmentId?: string;
+    color: string;
+    metadata: {
+      biome?: string;
+      climate?: string;
+      dangerLevel?: number;
+      creatures?: string[];
+      completion?: {
+        totalCells: number;
+        completedCells: number;
+        percentage: number;
+      };
+    };
+  }) => Promise<void>;
   selectRegion: (regionId: string | null) => void;
   clearRegionSelection: () => void;
   
@@ -170,6 +213,7 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   // Initial state
   selectedMapId: null,
   selectedMap: null,
+  mapNavigationStack: [],
   placements: [],
   zoom: DEFAULT_ZOOM,
   panX: DEFAULT_PAN.x,
@@ -179,12 +223,16 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   gridSize: DEFAULT_GRID_SIZE,
   selectedPlacementIds: [],
   clipboard: [],
-  selectedCells: [],
+  selectedCellBounds: null,
   selectionMode: "placement",
   isSelectingCells: false,
   selectionStartCell: null,
   regions: [],
   selectedRegionId: null,
+  showCellSelectionDisplay: true,
+  showMapCompletionDisplay: true,
+  showInheritanceChainDisplay: true,
+  showRegions: true, // Regions visible by default
   history: [],
   historyIndex: -1,
   maxHistorySize: MAX_HISTORY_SIZE,
@@ -192,22 +240,77 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   
   // Map actions
   setSelectedMap: async (map) => {
+    // Preserve selectedRegionId before loading regions
+    const currentSelectedRegionId = get().selectedRegionId;
     set({ selectedMap: map, selectedMapId: map?.id || null, placements: [] });
-    // Reset viewport when changing maps
-    get().resetView();
+    // Don't reset viewport - let MapCanvas auto-fit
     get().clearSelection();
     get().clearHistory();
-    // Load regions for this map
+    // Load regions for this map (this will preserve selectedRegionId if valid)
     if (map?.id) {
       await get().loadRegions(map.id);
+      // After loading, if we had a selected region and it's not in the loaded regions,
+      // we need to check if it should be selected (e.g., if it's the region that uses this map)
+      const { selectedRegionId, regions } = get();
+      if (currentSelectedRegionId && !selectedRegionId) {
+        // Check if the previously selected region should be selected for this map
+        // This happens when selecting a region that uses this map as its parent
+        const shouldSelectRegion = regions.some(r => r.id === currentSelectedRegionId);
+        if (!shouldSelectRegion) {
+          // The selected region might be from a different map, try to find it in all regions
+          const { mapRegionClient } = await import("@/lib/api/clients");
+          const allRegions = await mapRegionClient.list();
+          const regionToSelect = allRegions.find(r => r.id === currentSelectedRegionId);
+          if (regionToSelect && (regionToSelect.mapId === map.id || regionToSelect.nestedMapId === map.id)) {
+            // This region uses this map, so select it
+            get().selectRegion(currentSelectedRegionId);
+          }
+        }
+      }
     }
   },
   
   setSelectedMapId: (id) => {
-    set({ selectedMapId: id, selectedMap: null, placements: [] });
+    set({ selectedMapId: id, selectedMap: null, placements: [], mapNavigationStack: [] });
     get().resetView();
     get().clearSelection();
     get().clearHistory();
+  },
+  
+  navigateToNestedMap: async (nestedMapId, regionId, regionName) => {
+    const { selectedMap } = get();
+    if (!selectedMap) return;
+    
+    // Add current map to navigation stack
+    const navigationEntry = {
+      mapId: selectedMap.id,
+      mapName: selectedMap.name,
+      regionId,
+      regionName,
+    };
+    
+    set((state) => ({
+      mapNavigationStack: [...state.mapNavigationStack, navigationEntry],
+    }));
+    
+    // Load the nested map
+    // TODO: Load from API - for now, we'll need to get it from maps list
+    // This will be handled by the component that calls this
+  },
+  
+  navigateBackToParent: async () => {
+    const { mapNavigationStack } = get();
+    if (mapNavigationStack.length === 0) return;
+    
+    // Pop the last entry
+    const parentEntry = mapNavigationStack[mapNavigationStack.length - 1];
+    const newStack = mapNavigationStack.slice(0, -1);
+    
+    set({ mapNavigationStack: newStack });
+    
+    // Load the parent map
+    // TODO: Load from API - for now, we'll need to get it from maps list
+    // This will be handled by the component that calls this
   },
   
   // Viewport actions
@@ -246,6 +349,15 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
     // This will be calculated based on viewport size in the component
     // For now, just reset
     get().resetView();
+    
+    // TODO: Calculate actual fit based on viewport and map dimensions
+    // const config = selectedMap.coordinateConfig;
+    // const viewportWidth = ...;
+    // const viewportHeight = ...;
+    // const scaleX = viewportWidth / config.imageWidth;
+    // const scaleY = viewportHeight / config.imageHeight;
+    // const zoom = Math.min(scaleX, scaleY, 1); // Don't zoom in beyond 100%
+    // set({ zoom, panX: 0, panY: 0 });
   },
   
   // Grid actions
@@ -279,7 +391,7 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   },
   
   clearSelection: () => {
-    set({ selectedPlacementIds: [], selectedCells: [] });
+    set({ selectedPlacementIds: [], selectedCellBounds: null });
   },
   
   selectAll: () => {
@@ -287,25 +399,25 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
     set({ selectedPlacementIds: placements.map((p) => p.id) });
   },
   
-  // Cell Selection actions
+  // Cell Selection actions - using bounding box for efficiency
   selectCell: (cellX, cellY, addToSelection = false) => {
-    const cell = { cellX, cellY };
     if (addToSelection) {
       set((state) => {
-        const exists = state.selectedCells.some(
-          (c) => c.cellX === cellX && c.cellY === cellY
-        );
-        if (exists) {
-          return {
-            selectedCells: state.selectedCells.filter(
-              (c) => !(c.cellX === cellX && c.cellY === cellY)
-            ),
-          };
+        if (!state.selectedCellBounds) {
+          return { selectedCellBounds: { minX: cellX, minY: cellY, maxX: cellX, maxY: cellY } };
         }
-        return { selectedCells: [...state.selectedCells, cell] };
+        // Expand bounds to include new cell
+        return {
+          selectedCellBounds: {
+            minX: Math.min(state.selectedCellBounds.minX, cellX),
+            minY: Math.min(state.selectedCellBounds.minY, cellY),
+            maxX: Math.max(state.selectedCellBounds.maxX, cellX),
+            maxY: Math.max(state.selectedCellBounds.maxY, cellY),
+          },
+        };
       });
     } else {
-      set({ selectedCells: [cell] });
+      set({ selectedCellBounds: { minX: cellX, minY: cellY, maxX: cellX, maxY: cellY } });
     }
   },
   
@@ -315,18 +427,11 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
     const minY = Math.min(startCell.cellY, endCell.cellY);
     const maxY = Math.max(startCell.cellY, endCell.cellY);
     
-    const cells: Array<{ cellX: number; cellY: number }> = [];
-    for (let x = minX; x <= maxX; x++) {
-      for (let y = minY; y <= maxY; y++) {
-        cells.push({ cellX: x, cellY: y });
-      }
-    }
-    
-    set({ selectedCells: cells });
+    set({ selectedCellBounds: { minX, minY, maxX, maxY } });
   },
   
   clearCellSelection: () => {
-    set({ selectedCells: [], isSelectingCells: false, selectionStartCell: null });
+    set({ selectedCellBounds: null, isSelectingCells: false, selectionStartCell: null });
   },
   
   setSelectionMode: (mode) => {
@@ -334,8 +439,8 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
     set({ 
       selectionMode: mode,
       selectedPlacementIds: mode === "cell" ? [] : state.selectedPlacementIds,
-      // Don't clear selectedCells if we have a selected region - keep it visible
-      selectedCells: mode === "placement" && !state.selectedRegionId ? [] : state.selectedCells,
+      // Don't clear selectedCellBounds if we have a selected region - keep it visible
+      selectedCellBounds: mode === "placement" && !state.selectedRegionId ? null : state.selectedCellBounds,
     });
   },
   
@@ -343,7 +448,7 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
     set({
       isSelectingCells: true,
       selectionStartCell: { cellX, cellY },
-      selectedCells: [{ cellX, cellY }],
+      selectedCellBounds: { minX: cellX, minY: cellY, maxX: cellX, maxY: cellY },
       selectionMode: "cell",
     });
   },
@@ -359,39 +464,205 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
     set({ isSelectingCells: false, selectionStartCell: null });
   },
   
+  selectAllCells: () => {
+    const { selectedMap } = get();
+    if (!selectedMap?.coordinateConfig) return;
+    
+    const config = selectedMap.coordinateConfig;
+    const totalCellsX = Math.floor(config.imageWidth / config.baseCellSize);
+    const totalCellsY = Math.floor(config.imageHeight / config.baseCellSize);
+    
+    // Select all cells from (0,0) to (totalCellsX-1, totalCellsY-1)
+    set({
+      selectedCellBounds: {
+        minX: 0,
+        minY: 0,
+        maxX: totalCellsX - 1,
+        maxY: totalCellsY - 1,
+      },
+      selectionMode: "cell",
+    });
+  },
+  
   // Region actions
   loadRegions: async (mapId) => {
     try {
-      // TODO: Load from API when ready
-      // For now, keep regions in memory only
-      // This will be implemented with API integration
-      set({ regions: [], selectedRegionId: null });
+      const { selectedMap, selectedRegionId } = get();
+      
+      if (!selectedMap || selectedMap.id !== mapId) {
+        set({ regions: [], selectedRegionId: null });
+        return;
+      }
+      
+      // Load regions from database
+      const { mapRegionClient } = await import("@/lib/api/clients");
+      const savedRegions = await mapRegionClient.list(mapId);
+      
+      // ALWAYS ensure a base region exists for every map
+      // If no base region exists, create one that spans the entire image
+      const hasBaseRegion = savedRegions.some(r => r.name === "Base Region");
+      
+      let finalRegions = savedRegions;
+      
+      if (!hasBaseRegion) {
+        // If map doesn't have coordinateConfig, we can't create a base region
+        if (!selectedMap.coordinateConfig) {
+          console.warn(`Map ${mapId} has no coordinateConfig, cannot create base region`);
+          set({ regions: savedRegions, selectedRegionId: selectedRegionId && savedRegions.some(r => r.id === selectedRegionId) ? selectedRegionId : null });
+          return;
+        }
+        // Create base region covering all cells that fit within the image
+        // Use config dimensions (image will be stretched to fit)
+        const config = selectedMap.coordinateConfig;
+        const totalCellsX = Math.floor(config.imageWidth / config.baseCellSize);
+        const totalCellsY = Math.floor(config.imageHeight / config.baseCellSize);
+        
+        // Validate that cells fit properly
+        if (totalCellsX <= 0 || totalCellsY <= 0) {
+          console.warn(`Invalid cell calculation for map ${mapId}: ${totalCellsX}x${totalCellsY} cells`);
+          set({ regions: savedRegions, selectedRegionId: selectedRegionId && savedRegions.some(r => r.id === selectedRegionId) ? selectedRegionId : null });
+          return;
+        }
+        
+        // Base region should only include cells that fit within the image bounds
+        // This ensures base region never exceeds map boundaries
+        const allCells: Array<{ cellX: number; cellY: number }> = [];
+        for (let y = 0; y < totalCellsY; y++) {
+          for (let x = 0; x < totalCellsX; x++) {
+            // Only add cells that are within bounds
+            if (x < totalCellsX && y < totalCellsY) {
+              allCells.push({ cellX: x, cellY: y });
+            }
+          }
+        }
+        
+        const baseRegionId = `${mapId}-base-region`;
+        const baseRegion = {
+          id: baseRegionId,
+          mapId: mapId,
+          name: "Base Region", // Always use "Base Region" as the name
+          cells: allCells,
+          color: generateRegionColor(baseRegionId),
+          metadata: {
+            // Base region inherits from map's environment (empty metadata = inherits all)
+          },
+        };
+        
+        // Save base region to database
+        try {
+          await mapRegionClient.create(baseRegion);
+        } catch (error) {
+          console.error("Failed to save base region to database:", error);
+          // Continue anyway
+        }
+        
+        finalRegions = [...savedRegions, baseRegion];
+      }
+      
+      // Preserve selectedRegionId if it's still valid (region exists in loaded regions)
+      // The selected region should be preserved if it's in the loaded regions for this map
+      const preserveSelectedId = selectedRegionId && finalRegions.some(r => r.id === selectedRegionId)
+        ? selectedRegionId
+        : null;
+      
+      set({ 
+        regions: finalRegions,
+        selectedRegionId: preserveSelectedId
+      });
     } catch (error) {
       console.error("Failed to load regions:", error);
-      set({ regions: [], selectedRegionId: null });
+      const { selectedRegionId } = get();
+      set({ 
+        regions: [], 
+        selectedRegionId: null // Clear on error
+      });
     }
   },
   
-  addRegion: (region) => {
+  addRegion: async (region) => {
+    // Save to database first
+    try {
+      const { mapRegionClient } = await import("@/lib/api/clients");
+      await mapRegionClient.create(region);
+    } catch (error) {
+      console.error("Failed to save region to database:", error);
+      // Continue anyway - we still want the UI to update
+    }
+    
+    // Update in-memory state
     set((state) => ({
       regions: [...state.regions, region],
       // Keep cells selected so region is visible, but mark region as selected
       selectedRegionId: region.id,
-      // Don't clear selectedCells - keep them visible for the region
+      // Don't clear selectedCellBounds - keep them visible for the region
     }));
   },
   
+  updateRegion: async (updatedRegion) => {
+    // Update in-memory state
+    set((state) => ({
+      regions: state.regions.map((r) =>
+        r.id === updatedRegion.id ? updatedRegion : r
+      ),
+      // Update selected cells to match updated region
+      // Convert region cells to bounds for display
+      selectedCellBounds: updatedRegion.cells.length > 0 
+        ? (() => {
+            const xs = updatedRegion.cells.map(c => c.cellX);
+            const ys = updatedRegion.cells.map(c => c.cellY);
+            return {
+              minX: Math.min(...xs),
+              minY: Math.min(...ys),
+              maxX: Math.max(...xs),
+              maxY: Math.max(...ys),
+            };
+          })()
+        : null,
+    }));
+    
+    // Save to database
+    try {
+      const { mapRegionClient } = await import("@/lib/api/clients");
+      await mapRegionClient.update(updatedRegion);
+    } catch (error) {
+      console.error("Failed to save region to database:", error);
+      // Don't throw - we still want the UI to update even if save fails
+    }
+  },
+  
   selectRegion: (regionId) => {
-    set({ selectedRegionId: regionId });
-    const { regions } = get();
+    const { regions, selectedMap } = get();
     const region = regions.find((r) => r.id === regionId);
     if (region) {
-      set({ selectedCells: region.cells, selectionMode: "cell" });
+      // Just select the region for viewing - don't switch to cell selection mode
+      // Clear selectedCellBounds so we don't double-highlight the region
+      // The region will be highlighted by the region rendering, not by cell selection
+      set({ 
+        selectedRegionId: regionId,
+        selectedCellBounds: null, // Clear cell selection to prevent double highlighting
+        // Don't change selection mode - stay in current mode (placement or cell)
+      });
+    } else {
+      set({ selectedRegionId: null, selectedCellBounds: null });
     }
   },
   
   clearRegionSelection: () => {
-    set({ selectedRegionId: null, selectedCells: [] });
+    set({ selectedRegionId: null, selectedCellBounds: null });
+  },
+  
+  // Helper: Get selected cells array from bounds
+  getSelectedCells: () => {
+    const { selectedCellBounds } = get();
+    if (!selectedCellBounds) return [];
+    
+    const cells: Array<{ cellX: number; cellY: number }> = [];
+    for (let x = selectedCellBounds.minX; x <= selectedCellBounds.maxX; x++) {
+      for (let y = selectedCellBounds.minY; y <= selectedCellBounds.maxY; y++) {
+        cells.push({ cellX: x, cellY: y });
+      }
+    }
+    return cells;
   },
   
   // Clipboard actions
@@ -584,8 +855,23 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   
   loadPlacements: async (mapId: string) => {
     // This will be called by the component to load placements from API
-    // For now, just clear placements
-    set({ placements: [] });
+  },
+  
+  // Display visibility toggles
+  toggleCellSelectionDisplay: () => {
+    set((state) => ({ showCellSelectionDisplay: !state.showCellSelectionDisplay }));
+  },
+  
+  toggleMapCompletionDisplay: () => {
+    set((state) => ({ showMapCompletionDisplay: !state.showMapCompletionDisplay }));
+  },
+  
+  toggleInheritanceChainDisplay: () => {
+    set((state) => ({ showInheritanceChainDisplay: !state.showInheritanceChainDisplay }));
+  },
+  
+  toggleRegions: () => {
+    set((state) => ({ showRegions: !state.showRegions }));
   },
 }));
 

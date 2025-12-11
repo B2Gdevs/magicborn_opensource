@@ -10,6 +10,7 @@ import type { CreatureDefinition } from "@/lib/data/creatures";
 import type { EnvironmentDefinition } from "@/lib/data/environments";
 import type { MapDefinition } from "@/lib/data/maps";
 import type { MapPlacement } from "@/lib/data/mapPlacements";
+import type { MapRegion } from "@/lib/data/mapRegions";
 
 // Base API client with error handling
 async function apiRequest<T>(
@@ -392,6 +393,50 @@ export const mapPlacementClient = {
     await apiRequest<void>(`/api/game-data/map-placements?mapId=${encodeURIComponent(mapId)}`, {
       method: "DELETE",
     });
+  },
+};
+
+// Map Region API Client
+export const mapRegionClient = {
+  async list(mapId?: string): Promise<MapRegion[]> {
+    if (mapId) {
+      const result = await apiRequest<{ regions: MapRegion[] }>(`/api/game-data/map-regions?mapId=${encodeURIComponent(mapId)}`);
+      return result.regions;
+    }
+    const result = await apiRequest<{ regions: MapRegion[] }>("/api/game-data/map-regions");
+    return result.regions;
+  },
+
+  async get(id: string): Promise<MapRegion> {
+    const result = await apiRequest<{ region: MapRegion }>(`/api/game-data/map-regions?id=${encodeURIComponent(id)}`);
+    return result.region;
+  },
+
+  async create(region: MapRegion): Promise<MapRegion> {
+    const result = await apiRequest<{ region: MapRegion }>("/api/game-data/map-regions", {
+      method: "POST",
+      body: JSON.stringify(region),
+    });
+    return result.region;
+  },
+
+  async update(region: MapRegion): Promise<MapRegion> {
+    const result = await apiRequest<{ region: MapRegion }>("/api/game-data/map-regions", {
+      method: "PUT",
+      body: JSON.stringify(region),
+    });
+    return result.region;
+  },
+
+  async delete(id: string): Promise<void> {
+    await apiRequest<void>(`/api/game-data/map-regions?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+
+  async listByNestedMapId(nestedMapId: string): Promise<MapRegion[]> {
+    const result = await apiRequest<{ regions: MapRegion[] }>(`/api/game-data/map-regions?nestedMapId=${encodeURIComponent(nestedMapId)}`);
+    return result.regions;
   },
 };
 

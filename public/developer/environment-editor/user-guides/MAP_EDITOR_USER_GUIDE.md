@@ -2,53 +2,105 @@
 
 ## 🎯 Overview
 
-The Map Editor lets you build hierarchical game worlds by creating maps, defining regions with different environment properties, and placing content. This guide covers both **first-time setup** (no data) and **working with existing data**.
+The Map Editor is a **region-first** workflow for building hierarchical game worlds. You work with **regions** (which define areas with specific environment properties), but you **edit using maps** (images that provide visual context and coordinate systems). Every map is associated with a region, and regions can have nested maps for more granular detail.
+
+## 📐 Coordinate System & Hierarchy
+
+The Map Editor uses a **hierarchical coordinate system** that scales from world-level down to granular regions:
+
+### **World Region (Top Level)**
+- Represents the **entire game world** (e.g., 12km × 12km)
+- Defined by:
+  - **World Dimensions**: Total width/height in Unreal Engine meters (e.g., 12000m = 12km)
+  - **Map Image**: Visual representation (e.g., 4096×4096px)
+  - **Cell Size**: Pixel size of each cell (e.g., 16px)
+- **Grid Calculation**: The image is divided into cells based on cell size
+  - Example: 4096px image ÷ 16px cells = 256×256 cells
+- **Cell-to-World Mapping**: Each cell represents a portion of the world
+  - Example: 12km world ÷ 256 cells = ~46.9m per cell
+
+### **Nested Regions (More Granular)**
+- When you select cells on a map and create a region, that region represents a **smaller area** within the parent
+- **Inheritance**: Regions inherit the parent map's coordinate system but represent a subset
+- **Example Flow**:
+  1. **World Region**: 12km × 12km, 256×256 cells, ~46.9m per cell
+  2. **Select 64×64 cells** → Create "Frozen Loom" region
+     - This region = 64 cells × 46.9m = ~3km × 3km area
+  3. **Create nested map** for "Frozen Loom" region
+     - New map might be 2km × 2km (more granular)
+     - Same cell size (16px) but smaller total area
+     - Now each cell = ~31.25m per cell (more detail)
+  4. **Select 32×32 cells** on nested map → Create "Ice Cave" region
+     - This region = 32 cells × 31.25m = ~1km × 1km area
+
+### **Key Principles**
+- **Top-Down Hierarchy**: World → Regions → Nested Maps → More Regions
+- **Increasing Granularity**: Each level down provides more detail in a smaller area
+- **Consistent Cell Size**: Cell size (in pixels) typically stays the same, but world-space per cell decreases
+- **Coordinate Mapping**: The system automatically calculates world coordinates based on the hierarchy
 
 ---
 
-## 🚀 First Time Setup: Building Your World from Scratch
+## 🚀 First Time Setup: Creating Your World
 
-### **Scenario: You have no maps, no regions, nothing. Starting fresh.**
+### **Scenario: You have no regions, no maps, nothing. Starting fresh.**
 
 ---
 
-### **Step 1: Create Your World Map**
+### **Step 1: Create Your World Region**
 
-**What you're doing:** Creating the foundation - the main map where players start.
+**What you're doing:** Creating the foundation - a world region with a world map and world environment.
 
 1. Go to **"Maps"** section (top tab)
-2. Click **"+ New Map"** button
+2. Click **"+ New World Region"** button
 3. Fill in the form:
-   - **ID:** `world-map` (unique identifier)
-   - **Name:** `World Map`
-   - **Type:** Select **"World Map"** preset
-     - This auto-fills: 12km × 12km, 4096×4096px image
-   - **Environment:** Select **"world-environment"** (default)
-     - This is the baseline environment (safe, neutral)
-   - **Image:** Upload your world map image (4096×4096px recommended)
-4. Click **"Create"**
+   - **Region Name:** `World` (or your world name)
+   - **Region ID:** Auto-generated from name
+   - **Description:** Optional description
+   - **Environment:** Select from existing environments or click "+ Create New" to create one inline
+     - If no environments exist, a default one is automatically created
+     - When creating new: Enter ID, Name, Biome, Climate, and Danger Level
+   - **Map Image:** Upload your world map image (4096×4096px recommended)
+     - Image dimensions are automatically detected and cannot be changed
+   - **World Map Configuration:**
+     - **World Width/Height:** Total world size in meters (e.g., 12000m = 12km)
+     - **Cell Size:** Pixel size of each cell (e.g., 16px)
+     - The system calculates: Grid size, cells per world meter, etc.
+4. Click **"Create World Region"**
 
 **What just happened:**
-- World Map created with default "World Environment"
-- Default properties: Safe (Danger 0), neutral biome/climate
-- This is your foundation - everything else builds on this
+- **World Environment** created with default properties
+- **World Map** created with your image and coordinate system
+- **Base Region** created covering the entire map
+- All three are linked together
 
 **Visual feedback:**
-- Map appears in dropdown
+- World region appears in the region selector
 - Canvas shows your world map image
+- Base region covers the entire map (visible with low opacity)
 - Grid overlay visible
-- Status bar shows coordinates
 
 ---
 
-### **Step 2: Select Cells for Your First Region**
+### **Step 2: Select a Region to Edit**
 
-**What you're doing:** Defining an area on the world map that will have different environment properties.
+**What you're doing:** Choosing which region's map you want to edit.
 
-1. Select **"World Map"** from the dropdown (top left)
+1. In the **region selector** (searchable combobox in toolbar), select **"Base Region (World Map)"**
+   - This loads the world map for editing
+2. The map canvas displays the world map image
+3. You can now create more granular regions on this map
+
+---
+
+### **Step 3: Create a Granular Region**
+
+**What you're doing:** Defining a sub-region within the world that has different environment properties.
+
+1. Make sure the **world map** is loaded (from Step 2)
 2. Click **Cell Selection** tool (square icon - turns blue when active)
 3. **Click and drag** on the map to select cells
-   - Example: Drag to select the area covering "Frozen Loom" region
+   - Example: Drag to select the area covering "Frozen Loom"
    - You'll see blue highlighted cells as you drag
 4. Release mouse - selection stays visible
 
@@ -57,228 +109,211 @@ The Map Editor lets you build hierarchical game worlds by creating maps, definin
 - Feedback panel (top-right) shows:
   - Selected cell count
   - Area size in km²
-  - Recommended nested map configuration
-  - Warnings/recommendations
-
-**Visual feedback:**
-- Selected cells highlighted in blue
-- Status bar shows: "Cells: X" (number of selected cells)
-- Mode indicator shows: "Cell Selection" (blue border)
+  - Inheritance information (inheriting from Base Region)
+  - Environment selector
 
 ---
 
-### **Step 3: Create Region with Environment Properties**
+### **Step 4: Create Region with Environment Override**
 
 **What you're doing:** Creating a region that overrides the world's default environment.
 
-1. In the feedback panel (top-right), click **"Create Region from Selection"**
-2. A dialog appears - fill in:
-   - **Name:** `Frozen Loom`
-   - **Environment Properties:**
-     - **Biome:** `Mountain` (overrides world default)
-     - **Climate:** `Cold` (overrides world default)
-     - **Danger Level:** `3` (overrides world default of 0)
-     - **Creatures:** `Ice Wolf, Frost Giant` (specific to this area)
-3. Click **"Create"**
+1. In the feedback panel (top-right), enter a **region name** (e.g., `Frozen Loom`)
+2. **Select an environment** from the dropdown (or create a new one)
+   - The environment defines: Biome, Climate, Danger Level
+   - If no environment is selected, it will inherit from the parent region
+3. Click **"Create Region"**
 
 **What just happened:**
 - Region created with unique color (you'll see it on the map)
 - Selection persists (cells stay highlighted)
 - Region boundaries = edges of selected cells
-- When player enters these cells → environment changes to Mountain, Cold, Danger 3
+- When player enters these cells → environment changes to the region's environment
+- If parent region had different properties, this region overrides them
 
 **Visual feedback:**
 - Region appears with unique color (not blue anymore)
 - Region list shows in feedback panel (if no active selection)
-- Status bar shows: "Regions: 1"
+- Status bar shows: "Regions: X"
 
 ---
 
-### **Step 4: Create Nested Map from Region**
+### **Step 5: Create Nested Map for Granular Detail**
 
-**What you're doing:** Creating a detailed view of the region that inherits its environment properties.
+**What you're doing:** Creating a detailed map for the region so you can add even more granular regions.
 
 1. Click on the **"Frozen Loom"** region (on map or in region list)
    - Region highlights (more opaque)
    - Cells show region color
-2. Click **"Create Nested Map"** button (in feedback panel)
-3. Fill in the form:
-   - **Name:** `Frozen Loom Map`
-   - **Type:** Select **"Town"** preset (2km × 2km)
-   - **Environment:** Inherits from "Frozen Loom" region
-     - Biome: Mountain (inherited)
-     - Climate: Cold (inherited)
-     - Danger Level: 3 (inherited)
-     - Creatures: Ice Wolves, Frost Giants (inherited)
-   - **Image:** Upload Frozen Loom detailed map image (2048×2048px)
-4. Click **"Create"**
+2. In the feedback panel, you'll see options to **add a map** to this region
+3. **Drag and drop** or **upload** a map image for this region
+   - The region will snap to a square based on the image dimensions
+4. The map is now associated with this region
 
 **What just happened:**
-- Nested map created
-- Linked to parent region (`nestedMapId` set)
-- Inherits all environment properties from region
-- When player enters region cells → Frozen Loom Map loads
+- Map created and linked to the region (`nestedMapId` set)
+- Region now has its own map for more granular editing
+- When player enters region cells → this map loads (if visible to player)
+- You can now select this region from the dropdown to edit its map
 
 **Visual feedback:**
-- Region shows link icon (indicates it has nested map)
-- Nested map appears in map dropdown
-- Can now select nested map to edit it
+- Region shows it has a nested map
+- Region appears in the region selector dropdown
+- Can now select this region to edit its map
 
 ---
 
-### **Step 5: Add More Regions (Repeat Pattern)**
+### **Step 6: Edit Nested Map and Create More Granular Regions**
 
-**What you're doing:** Adding more areas with different properties.
+**What you're doing:** Adding even more detail by creating sub-regions within the nested map.
 
-1. Select **"World Map"** again (from dropdown)
-2. Click **Cell Selection** tool
-3. Drag to select different area (e.g., "Xingdom Huld")
-4. Create Region:
-   - Name: `Xingdom Huld`
-   - Biome: `Forest` (different from Frozen Loom!)
-   - Climate: `Temperate` (different from Frozen Loom!)
-   - Danger Level: `1` (safer than Frozen Loom!)
-   - Creatures: `Deer, Wolf`
-5. Create nested map if needed
+1. In the **region selector**, select **"Frozen Loom"** (the region you just created)
+   - This loads the Frozen Loom map for editing
+2. The canvas now shows the Frozen Loom map image
+3. Use **Cell Selection** tool to select a smaller area
+   - Example: Select a single cell or small area within Frozen Loom
+4. Create a new region:
+   - Name: `Warm Inn` (or whatever you're creating)
+   - Select environment (or inherit from Frozen Loom)
+   - This region will override Frozen Loom's environment if different
+5. Optionally add a map to this new region for even more granular detail
 
-**Pattern:** Same workflow for each region. Each can have different properties.
-
----
-
-### **Step 6: Place Content on Nested Maps**
-
-**What you're doing:** Adding landmarks, props, and spawn points to your nested maps.
-
-1. Select **"Frozen Loom Map"** from dropdown
-2. Click **Placement Tool** (pointer icon - turns orange when active)
-3. Click on map where you want to place something
-   - Example: Click on "Lilaran" location
-4. Placement dialog appears:
-   - **Type:** Select `Landmark`
-   - **Landmark Type:** Select `Town`
-   - **Create nested map:** `Yes`
-   - **Name:** `Lilaran`
-   - **Image:** Upload Lilaran map image
-5. Click **"Place"**
-
-**What just happened:**
-- Landmark placed at clicked location
-- Nested map "Lilaran" created automatically
-- When player interacts with landmark → Lilaran map loads
-
-**Visual feedback:**
-- Landmark icon appears on map
-- Can click landmark to edit or navigate to nested map
+**Pattern:** 
+- Each nested level gets more granular
+- Regions inherit from parent regions unless overridden
+- Maps are inherited unless a region has its own map
+- You can nest as deep as needed
 
 ---
 
 ## 📂 Working with Existing Data
 
-### **Scenario: You already have maps, regions, and content. Editing existing world.**
+### **Scenario: You already have regions and maps. Editing existing world.**
 
 ---
 
-### **Understanding What You Have**
+### **Understanding the Region-First Workflow**
 
 **When you open the Map Editor:**
 
-1. **Maps Section:**
-   - Dropdown shows all existing maps
-   - Select a map to view/edit it
-   - See map hierarchy (parent maps, nested maps)
+1. **Region Selector:**
+   - Shows all regions that have maps
+   - Searchable combobox for easy selection
+   - Includes the world region (Base Region) if it exists
+   - Select a region to load its map for editing
 
 2. **Regions:**
    - Regions show on map with unique colors
-   - Region list appears in feedback panel (when no active selection)
-   - Click region to select it and see its properties
+   - Each region can have its own map
+   - Regions inherit environment properties from parent regions
+   - Regions can override inherited properties
 
-3. **Placements:**
-   - Icons/markers show on map
-   - Click placement to edit it
-   - See placement list in sidebar (if implemented)
-
----
-
-### **Editing Existing Maps**
-
-1. **Select map** from dropdown
-2. **View map** on canvas
-3. **See existing regions** (colored areas)
-4. **See existing placements** (icons/markers)
-5. **Edit:**
-   - Click region → Edit properties
-   - Click placement → Edit placement
-   - Use tools to add more content
+3. **Maps:**
+   - Maps are always associated with regions
+   - Maps provide the image and coordinate system for editing
+   - Maps can be hidden from players but still used for editing
+   - Nested maps allow for granular detail at deeper levels
 
 ---
 
-### **Editing Existing Regions**
+### **Selecting a Region to Edit**
 
-1. **Click on region** (on map or in region list)
-   - Region highlights
-   - Feedback panel shows region info
-2. **Edit properties:**
-   - Click "Edit Region" button
-   - Change biome, climate, danger level, creatures
-   - Changes apply immediately
-3. **Edit nested map:**
-   - Click "Edit Nested Map" button
-   - Navigate to nested map editor
-   - Make changes there
+1. **Open region selector** (searchable combobox in toolbar)
+2. **Search or scroll** to find the region you want to edit
+3. **Select the region** - its map loads automatically
+4. **Canvas shows** the region's map image
+5. **You can now:**
+   - View existing sub-regions on this map
+   - Create new sub-regions
+   - Edit existing regions
+   - Add placements
 
 ---
 
-### **Adding to Existing Maps**
+### **Understanding Inheritance**
 
-**Add new region:**
-1. Select map
-2. Use Cell Selection tool
-3. Select new area
-4. Create region (same as first-time setup)
+**Environment Inheritance:**
+- Regions inherit environment properties from their parent region
+- If a region doesn't override a property, it inherits from parent
+- Inheritance chain: World Region → Frozen Loom → Warm Inn
+- Each level can override specific properties
 
-**Add new placement:**
-1. Select map
-2. Use Placement tool
-3. Click location
-4. Place item (same as first-time setup)
+**Map Inheritance:**
+- If a region has a map (`nestedMapId`), that map is used when player enters
+- If a region doesn't have a map, it uses the parent region's map
+- Maps cascade down the hierarchy unless overridden
+- Maps can be hidden from players but still used for editing granular details
+
+**Example:**
+- World Region has World Map
+- Frozen Loom region (on World Map) has Frozen Loom Map
+- Warm Inn region (on Frozen Loom Map) has Warm Inn Map
+- When player is in Warm Inn cells:
+  - If Warm Inn has a map → Warm Inn Map loads
+  - Otherwise → Frozen Loom Map loads
+  - Otherwise → World Map loads
 
 ---
 
-### **Navigating Map Hierarchy**
+### **Creating More Granular Regions**
 
-**Understanding the structure:**
-- World Map (top level)
-  - Region: Frozen Loom → Nested Map: Frozen Loom Map
-    - Region: Warm Inn → Nested Map: Warm Inn Map
-  - Region: Xingdom Huld → Nested Map: Xingdom Huld Map
+**On any map, you can create sub-regions:**
 
-**How to navigate:**
-1. **Breadcrumb trail** (if implemented) shows: World Map > Frozen Loom Map > Warm Inn Map
-2. **Click region** → Navigate to nested map
-3. **Click landmark** → Navigate to nested map
-4. **Use map dropdown** → Jump to any map directly
+1. **Select the region** whose map you want to edit
+2. **Map loads** on canvas
+3. **Use Cell Selection** tool to select cells
+4. **Create new region** with environment properties
+5. **Optionally add a map** to the new region for even more detail
+6. **Repeat** to create deeper nesting
+
+**Each level gets more granular:**
+- World Map: Large regions (kingdoms, continents)
+- Town Map: Medium regions (districts, neighborhoods)
+- Building Map: Small regions (rooms, areas)
+
+---
+
+### **Coordinate System and Scaling**
+
+**How coordinates work at nested levels:**
+
+- Each map has its own coordinate system
+- Coordinates are calculated relative to the map's image size
+- When nesting maps, coordinates scale appropriately
+- Cell sizes are calculated based on:
+  - Image dimensions
+  - Unreal world size
+  - Base cell size
+- The system maintains precision at all nesting levels
+
+**Example:**
+- World Map: 4096×4096px, 12km×12km, 16px cells = ~47m per cell
+- Town Map: 2048×2048px, 2km×2km, 10px cells = ~9.8m per cell
+- Building Map: 1024×1024px, 500m×500m, 8px cells = ~3.9m per cell
 
 ---
 
 ## 🎨 Visual Guide: What You See
 
-### **On World Map (First Time):**
+### **Region Selector:**
+- Searchable dropdown showing all regions with maps
+- Shows region name and associated map name
+- Shows environment properties (biome, climate)
+- Select to load that region's map for editing
+
+### **On World Map:**
 - Map image as background
 - Grid overlay
-- No regions yet (empty)
+- Base region visible (low opacity, covers entire map)
+- Sub-regions visible with unique colors
 - Status bar shows coordinates
-
-### **After Creating Regions:**
-- Colored regions visible (each unique color)
-- Region boundaries highlighted
-- Region list in feedback panel
-- Status bar shows: "Regions: X"
 
 ### **On Nested Maps:**
 - Detailed map image
 - Inherited environment properties shown
-- Regions (if any) with different properties
+- Sub-regions (if any) with different properties
 - Placements (landmarks, props, spawn points)
+- Each level shows more detail
 
 ### **Mode Indicators:**
 - **Blue border** = Cell Selection Mode (selecting cells)
@@ -288,6 +323,12 @@ The Map Editor lets you build hierarchical game worlds by creating maps, definin
 ---
 
 ## 🛠️ Tools Explained
+
+### **Region Selector** (Searchable Combobox)
+- **What it does:** Select which region's map to edit
+- **When to use:** Always - this is how you navigate between maps
+- **How:** Search or scroll to find region, click to select
+- **Visual:** Selected region's map loads on canvas
 
 ### **Cell Selection Tool** (Square Icon)
 - **What it does:** Select cells to create regions
@@ -316,78 +357,88 @@ The Map Editor lets you build hierarchical game worlds by creating maps, definin
 - **Reset View:** `0` key
 - **Fit to Viewport:** `F` key
 
-### **Undo/Redo**
-- **Undo:** `Ctrl+Z`
-- **Redo:** `Ctrl+Shift+Z`
-
 ---
 
-## 📋 Complete Workflow: First Time vs Existing
+## 📋 Complete Workflow
 
 ### **First Time (No Data):**
-1. Create World Map → Set default environment
-2. Select cells → Create region → Set environment properties
-3. Create nested map → Inherits from region
-4. Add more regions → Repeat pattern
-5. Place content → Add landmarks, props
+1. Create World Region (creates environment + map + base region)
+2. Select World Region from dropdown
+3. Use Cell Selection to create sub-regions
+4. Add maps to regions for more granular detail
+5. Select nested regions to edit their maps
+6. Create even more granular regions
+7. Repeat to build hierarchy
 
-### **Existing Data:**
-1. Select map → View existing content
-2. Click region → Edit properties or nested map
-3. Click placement → Edit placement
-4. Add more → Use same tools to add regions/placements
-5. Navigate hierarchy → Use breadcrumbs or dropdown
+### **Working with Existing:**
+1. Select region from dropdown
+2. Map loads on canvas
+3. View existing sub-regions
+4. Create new sub-regions or edit existing ones
+5. Navigate to nested regions to edit their maps
+6. Add more detail as needed
 
 ---
 
 ## ❓ Common Questions
 
-**Q: I don't see any maps. What do I do?**
-- Click "+ New Map" to create your first map
-- Start with World Map
+**Q: I don't see any regions. What do I do?**
+- Click "+ New World Region" to create your first region
+- This creates the world environment, world map, and base region
 
-**Q: How do I know which mode I'm in?**
-- Look at toolbar icons - blue border = Cell Selection, orange border = Placement
-- Status bar shows current mode
+**Q: How do I edit a specific region's map?**
+- Select the region from the region selector dropdown
+- The region's map loads automatically
+- You can now edit that map
 
-**Q: I selected cells but they disappeared.**
-- Make sure you're in Cell Selection mode (blue border)
-- Selection should persist after drag
-- If it disappears, try selecting again
+**Q: How does inheritance work?**
+- Regions inherit environment properties from parent regions
+- If a property isn't set, it inherits from parent
+- Maps are inherited unless a region has its own map
+- Each level can override inherited values
 
-**Q: How do I edit a region?**
-- Click on the region (on map or in region list)
-- Feedback panel shows region info
-- Click "Edit Region" button
+**Q: Can I have maps that players don't see?**
+- Yes! Maps can be used for editing granular details
+- Even if not visible to players, they help you organize regions
+- The map provides the coordinate system for editing
 
-**Q: How do I navigate to a nested map?**
-- Click on region → Click "Edit Nested Map" button
-- Or select nested map from dropdown
+**Q: How do coordinates work at nested levels?**
+- Each map has its own coordinate system
+- Coordinates are calculated relative to the map's dimensions
+- The system maintains precision at all nesting levels
+- Cell sizes scale appropriately for each level
 
-**Q: Can I have multiple regions with same properties?**
-- Yes! Create multiple regions with same environment properties
-- Each region can have its own nested map
+**Q: How do I navigate between regions?**
+- Use the region selector dropdown
+- Search for the region you want
+- Select it to load its map
+- The canvas updates to show that region's map
 
-**Q: How do I delete a region?**
-- Select region → Click "Delete" button (to be implemented)
-- Or edit region → Delete option
+**Q: Can I delete a region?**
+- Yes, select the region and use the delete option
+- This will also delete its associated map and sub-regions
+- Be careful - this is permanent
 
 ---
 
 ## ✅ Quick Reference
 
 ### **First Time Setup:**
-1. Create World Map
-2. Select cells → Create region
-3. Create nested map
-4. Repeat for more regions
-5. Place content
+1. Create World Region
+2. Select World Region from dropdown
+3. Create sub-regions with Cell Selection
+4. Add maps to regions for detail
+5. Select nested regions to edit their maps
+6. Create more granular regions
+7. Repeat to build hierarchy
 
 ### **Working with Existing:**
-1. Select map
-2. View regions/placements
-3. Click to edit
-4. Add more as needed
+1. Select region from dropdown
+2. Map loads on canvas
+3. View/edit existing regions
+4. Create new regions
+5. Navigate to nested regions
+6. Add more detail
 
 ### **Keyboard Shortcuts:**
 - `G` - Toggle grid
@@ -400,4 +451,21 @@ The Map Editor lets you build hierarchical game worlds by creating maps, definin
 
 ---
 
-This guide covers both scenarios. Start with first-time setup if you're new, or jump to "Working with Existing Data" if you already have content.
+## 🔄 The Region-First Workflow
+
+**Key Concepts:**
+- **Regions** are the primary entities (define areas with environment properties)
+- **Maps** are always associated with regions (provide images and coordinate systems)
+- **Editing** is done on maps, but you select regions to edit
+- **Inheritance** flows from parent regions to child regions
+- **Nesting** allows for granular detail at deeper levels
+- **Coordinates** scale appropriately at each nesting level
+
+**Remember:**
+- Start with World Region (creates everything you need)
+- Select regions to edit their maps
+- Create sub-regions for more granular detail
+- Add maps to regions when you need more detail
+- Maps can be hidden from players but still used for editing
+
+This guide covers the region-first workflow. Regions are the foundation, maps are the editing interface.

@@ -67,6 +67,7 @@ function rowToRegion(row: typeof mapRegions.$inferSelect): MapRegion {
   return {
     id: row.id,
     mapId: row.mapId,
+    parentRegionId: row.parentRegionId || undefined,
     name: row.name,
     description: row.description || undefined,
     cells: JSON.parse(row.cells),
@@ -81,6 +82,7 @@ function regionToRow(region: MapRegion): typeof mapRegions.$inferInsert {
   return {
     id: region.id,
     mapId: region.mapId,
+    parentRegionId: region.parentRegionId || null,
     name: region.name,
     description: region.description || null,
     cells: JSON.stringify(region.cells),
@@ -90,4 +92,5 @@ function regionToRow(region: MapRegion): typeof mapRegions.$inferInsert {
     metadata: JSON.stringify(region.metadata),
   };
 }
+
 

@@ -3,6 +3,7 @@
 
 "use client";
 
+import { useMemo } from "react";
 import { useMapEditorStore } from "@/lib/store/mapEditorStore";
 import { useEffect } from "react";
 import { pixelToUnreal } from "@/lib/utils/coordinateSystem";
@@ -16,7 +17,8 @@ export function StatusBar({ mouseCoords = null }: StatusBarProps) {
   const {
     zoom,
     selectedPlacementIds,
-    selectedCells,
+    selectedCellBounds,
+    getSelectedCells,
     selectionMode,
     regions,
     selectedRegionId,
@@ -26,6 +28,8 @@ export function StatusBar({ mouseCoords = null }: StatusBarProps) {
     selectedMap,
   } = useMapEditorStore();
   
+  const selectedCells = useMemo(() => getSelectedCells(), [selectedCellBounds, getSelectedCells]);
+  
   const currentMapRegions = regions.filter((r) => r.mapId === selectedMap?.id);
   
   // Calculate Unreal coordinates from pixel coordinates
@@ -34,9 +38,10 @@ export function StatusBar({ mouseCoords = null }: StatusBarProps) {
     : null;
   
   // Calculate cell coordinates from pixel coordinates
+  // Cells are absolute - zoom doesn't affect cell size
   const cellCoords = mouseCoords && selectedMap?.coordinateConfig
     ? (() => {
-        const cellSize = selectedMap.coordinateConfig.baseCellSize / zoom;
+        const cellSize = selectedMap.coordinateConfig.baseCellSize;
         return {
           cellX: Math.floor(mouseCoords.x / cellSize),
           cellY: Math.floor(mouseCoords.y / cellSize),

@@ -10,6 +10,7 @@ import type { CellCoordinates } from "@/lib/utils/coordinateSystem";
 export interface MapRegion {
   id: string;
   mapId: string; // Parent map
+  parentRegionId?: string; // Parent region (if nested within another region)
   
   // Region definition
   name: string;

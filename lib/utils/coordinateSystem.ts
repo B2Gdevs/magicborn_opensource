@@ -99,13 +99,15 @@ export function unrealToPixel(
 
 /**
  * Get cell coordinates from pixel coordinates
+ * Note: Cells are absolute - zoom doesn't affect cell size, only display
  */
 export function pixelToCell(
   pixel: PixelCoordinates,
   config: CoordinateSystemConfig,
   zoom: number = 1
 ): CellCoordinates {
-  const cellSize = config.baseCellSize / zoom;
+  // Cell size is always baseCellSize - zoom only affects visual display
+  const cellSize = config.baseCellSize;
   return {
     cellX: Math.floor(pixel.x / cellSize),
     cellY: Math.floor(pixel.y / cellSize),
@@ -114,13 +116,15 @@ export function pixelToCell(
 
 /**
  * Get pixel coordinates from cell coordinates
+ * Note: Cells are absolute - zoom only affects display, not cell positions
  */
 export function cellToPixel(
   cell: CellCoordinates,
   config: CoordinateSystemConfig,
   zoom: number = 1
 ): PixelCoordinates {
-  const cellSize = config.baseCellSize / zoom;
+  // Cell size is always based on baseCellSize - zoom only affects visual display
+  const cellSize = config.baseCellSize;
   return {
     x: cell.cellX * cellSize,
     y: cell.cellY * cellSize,

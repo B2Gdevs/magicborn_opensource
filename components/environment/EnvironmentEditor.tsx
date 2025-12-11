@@ -11,10 +11,12 @@ import { mapPlacementClient } from "@/lib/api/clients";
 import type { MapDefinition } from "@/lib/data/maps";
 import { useHotkeys } from "react-hotkeys-hook";
 import { MapForm } from "./MapForm";
+import { WorldRegionForm } from "./WorldRegionForm";
 import { EnvironmentForm } from "./EnvironmentForm";
 import { Modal } from "@/components/ui/Modal";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { Plus, X, Globe, Map } from "lucide-react";
+import { SearchableCombobox } from "@/components/ui/SearchableCombobox";
+import { Plus, X, Globe, Map, Info, ChevronDown } from "lucide-react";
 import { environmentClient } from "@/lib/api/clients";
 import type { EnvironmentDefinition } from "@/lib/data/environments";
 
@@ -46,22 +48,28 @@ import {
 export default function EnvironmentEditor() {
   const [environments, setEnvironments] = useState<EnvironmentDefinition[]>([]);
   const [maps, setMaps] = useState<MapDefinition[]>([]);
+  const [allRegions, setAllRegions] = useState<any[]>([]); // All regions from all maps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<"environments" | "maps">("environments");
+  const [activeSection, setActiveSection] = useState<"maps" | "environments">("maps");
   const [showCreateEnvironmentModal, setShowCreateEnvironmentModal] = useState(false);
   const [showEditEnvironmentModal, setShowEditEnvironmentModal] = useState(false);
   const [selectedEnvironmentForEdit, setSelectedEnvironmentForEdit] = useState<EnvironmentDefinition | null>(null);
+  const [showCreateWorldRegionModal, setShowCreateWorldRegionModal] = useState(false);
   const [showCreateMapModal, setShowCreateMapModal] = useState(false);
   const [showEditMapModal, setShowEditMapModal] = useState(false);
   const [selectedMapForEdit, setSelectedMapForEdit] = useState<MapDefinition | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showDisplayDropdown, setShowDisplayDropdown] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
   const {
     selectedMap,
     selectedMapId,
     setSelectedMap,
+    regions,
+    selectedRegionId,
+    selectRegion,
     placements,
     zoom,
     panX,
@@ -69,7 +77,8 @@ export default function EnvironmentEditor() {
     showGrid,
     snapToGrid,
     selectionMode,
-    selectedCells,
+    selectedCellBounds,
+    getSelectedCells,
     toggleGrid,
     toggleSnap,
     setSelectionMode,
@@ -85,9 +94,15 @@ export default function EnvironmentEditor() {
     canRedo,
     undo,
     redo,
+    showCellSelectionDisplay,
+    showMapCompletionDisplay,
+    showRegions,
+    toggleCellSelectionDisplay,
+    toggleMapCompletionDisplay,
+    toggleRegions,
   } = useMapEditorStore();
 
-  // Load environments and maps on mount
+  // Load environments, maps, and all regions on mount
   useEffect(() => {
     async function loadData() {
       try {
@@ -105,6 +120,14 @@ export default function EnvironmentEditor() {
         ]);
         setEnvironments(loadedEnvironments);
         setMaps(loadedMaps);
+        
+        // Load all regions from all maps
+        const { mapRegionClient } = await import("@/lib/api/clients");
+        const allRegionsList = await mapRegionClient.list().catch((err) => {
+          console.error("Failed to load regions:", err);
+          return [];
+        });
+        setAllRegions(allRegionsList);
         
         // Load placements for selected map
         if (selectedMapId) {
@@ -145,6 +168,27 @@ export default function EnvironmentEditor() {
     }
     loadPlacements();
   }, [selectedMapId]);
+
+  // Refresh all regions list when regions change in the store
+  useEffect(() => {
+    async function refreshAllRegions() {
+      if (maps.length === 0) return;
+      
+      const { mapRegionClient } = await import("@/lib/api/clients");
+      const allRegionsList = await mapRegionClient.list().catch((err) => {
+        console.error("Failed to load regions:", err);
+        return [];
+      });
+      setAllRegions(allRegionsList);
+    }
+    
+    // Refresh when regions in store change (debounced)
+    const timeoutId = setTimeout(() => {
+      refreshAllRegions();
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [regions, maps]);
 
   const handleCreateEnvironment = async (environment: EnvironmentDefinition) => {
     setSaving(true);
@@ -193,6 +237,56 @@ export default function EnvironmentEditor() {
     }
   };
 
+  const handleCreateWorldRegion = async (data: { environment: EnvironmentDefinition; map: MapDefinition; region: any }) => {
+    setSaving(true);
+    try {
+      // Create environment first
+      await environmentClient.create(data.environment);
+      
+      // Create map
+      await mapClient.create(data.map);
+      
+      // Update environment's mapIds
+      const updatedEnvironment: EnvironmentDefinition = {
+        ...data.environment,
+        mapIds: [data.map.id],
+      };
+      await environmentClient.update(updatedEnvironment);
+      
+      // Create region
+      const { mapRegionClient } = await import("@/lib/api/clients");
+      await mapRegionClient.create(data.region);
+      
+      // Refresh data
+      const [refreshedEnvironments, refreshedMaps, refreshedRegions] = await Promise.all([
+        environmentClient.list(),
+        mapClient.list(),
+        mapRegionClient.list(),
+      ]);
+      setEnvironments(refreshedEnvironments);
+      setMaps(refreshedMaps);
+      setAllRegions(refreshedRegions);
+      
+      // Select the new map and base region
+      setSelectedMap(data.map);
+      selectRegion(data.region.id);
+      
+      // Set zoom to 100% and switch to cell selection mode for immediate editing
+      // This will be handled by MapCanvas's effect when selectionMode changes to "cell"
+      const store = useMapEditorStore.getState();
+      store.setZoom(1.0);
+      store.setSelectionMode("cell");
+      // MapCanvas will handle centering when entering cell selection mode
+      
+      setShowCreateWorldRegionModal(false);
+    } catch (error) {
+      console.error("Error creating world region:", error);
+      alert(`Failed to create world region: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCreateMap = async (map: MapDefinition) => {
     setSaving(true);
     try {
@@ -234,6 +328,52 @@ export default function EnvironmentEditor() {
     } catch (error) {
       console.error("Error updating map:", error);
       alert(`Failed to update map: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteMap = async (map: MapDefinition) => {
+    if (!confirm(`Delete ${map.name}? This will also delete all regions associated with this map.`)) return;
+    
+    setSaving(true);
+    try {
+      // Delete all regions for this map
+      const { mapRegionClient } = await import("@/lib/api/clients");
+      const regions = await mapRegionClient.list(map.id);
+      for (const region of regions) {
+        await mapRegionClient.delete(region.id);
+      }
+      
+      // Delete the map
+      await mapClient.delete(map.id);
+      
+      // Update environment's mapIds
+      const environment = environments.find((e) => e.id === map.environmentId);
+      if (environment) {
+        const updatedEnvironment: EnvironmentDefinition = {
+          ...environment,
+          mapIds: environment.mapIds.filter((id) => id !== map.id),
+        };
+        await environmentClient.update(updatedEnvironment);
+      }
+      
+      // Refresh data
+      const [refreshedMaps, refreshedEnvironments] = await Promise.all([
+        mapClient.list(),
+        environmentClient.list(),
+      ]);
+      setMaps(refreshedMaps);
+      setEnvironments(refreshedEnvironments);
+      
+      // Clear selection if deleted map was selected
+      if (selectedMap?.id === map.id) {
+        setSelectedMap(null);
+        useMapEditorStore.getState().setSelectedMap(null);
+      }
+    } catch (error) {
+      console.error("Error deleting map:", error);
+      alert(`Failed to delete map: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -347,17 +487,6 @@ export default function EnvironmentEditor() {
       <div className="border-b border-border bg-shadow px-4 py-2">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setActiveSection("environments")}
-            className={`px-4 py-2 rounded text-sm font-semibold transition-all flex items-center gap-2 ${
-              activeSection === "environments"
-                ? "bg-ember-glow text-black"
-                : "bg-deep text-text-muted hover:text-text-primary"
-            }`}
-          >
-            <Globe className="w-4 h-4" />
-            Environments
-          </button>
-          <button
             onClick={() => setActiveSection("maps")}
             className={`px-4 py-2 rounded text-sm font-semibold transition-all flex items-center gap-2 ${
               activeSection === "maps"
@@ -368,28 +497,45 @@ export default function EnvironmentEditor() {
             <Map className="w-4 h-4" />
             Maps
           </button>
+          <button
+            onClick={() => setActiveSection("environments")}
+            className={`px-4 py-2 rounded text-sm font-semibold transition-all flex items-center gap-2 ${
+              activeSection === "environments"
+                ? "bg-ember-glow text-black"
+                : "bg-deep text-text-muted hover:text-text-primary"
+            }`}
+          >
+            <Globe className="w-4 h-4" />
+            Environments
+          </button>
         </div>
       </div>
 
       {/* Environments Section */}
       {activeSection === "environments" && (
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-glow">Environments</h2>
-            <button
-              onClick={() => setShowCreateEnvironmentModal(true)}
-              className="px-4 py-2 bg-ember-glow text-black rounded font-semibold hover:opacity-90 flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              New Environment
-            </button>
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-bold text-glow">Environments</h2>
+              <button
+                onClick={() => setShowCreateEnvironmentModal(true)}
+                className="px-4 py-2 bg-ember-glow text-black rounded font-semibold hover:opacity-90 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                New Environment
+              </button>
+            </div>
+            <p className="text-sm text-text-muted mb-4">
+              Environments define characteristics (biome, climate, danger level) that can be applied to maps. 
+              Maps have a default environment, and regions can override with different environment properties.
+            </p>
           </div>
 
           {environments.length === 0 ? (
             <div className="text-center py-12 text-text-muted">
               <Globe className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg mb-2">No environments yet</p>
-              <p className="text-sm">Create your first environment to get started</p>
+              <p className="text-sm">Create environments that can be applied to maps</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -399,23 +545,26 @@ export default function EnvironmentEditor() {
                   className="bg-shadow border border-border rounded-lg p-4 hover:border-ember/50 transition-colors"
                 >
                   {env.imagePath && (
-                    <div className="w-full h-32 mb-3 rounded overflow-hidden bg-deep">
+                    <div className="w-full h-24 mb-3 rounded overflow-hidden bg-deep border border-border">
                       <img
                         src={env.imagePath}
                         alt={env.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover opacity-60"
                       />
                     </div>
                   )}
                   <h3 className="font-semibold text-text-primary mb-1">{env.name}</h3>
                   <p className="text-sm text-text-muted mb-3 line-clamp-2">{env.description}</p>
-                  <div className="flex items-center gap-2 text-xs text-text-muted mb-3">
-                    <span>{env.metadata.biome}</span>
-                    <span>•</span>
-                    <span>{env.metadata.climate}</span>
-                    <span>•</span>
-                    <span>Danger: {env.metadata.dangerLevel}</span>
+                  <div className="flex items-center gap-2 text-xs text-text-muted mb-3 flex-wrap">
+                    <span className="px-2 py-1 bg-deep rounded border border-border">{env.metadata.biome}</span>
+                    <span className="px-2 py-1 bg-deep rounded border border-border">{env.metadata.climate}</span>
+                    <span className="px-2 py-1 bg-deep rounded border border-border">Danger: {env.metadata.dangerLevel}</span>
                   </div>
+                  {env.mapIds && env.mapIds.length > 0 && (
+                    <div className="text-xs text-text-muted mb-3">
+                      Used by {env.mapIds.length} map{env.mapIds.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
@@ -445,7 +594,7 @@ export default function EnvironmentEditor() {
         <div className="flex-1 flex flex-col bg-deep">
           {/* Toolbar */}
           <div className="border-b border-border bg-shadow px-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1">
               {/* Help Button */}
               <Tooltip content="Open User Guide - Learn how to use the Map Editor">
                 <button
@@ -460,35 +609,168 @@ export default function EnvironmentEditor() {
               
               <div className="w-px h-6 bg-border mx-1" />
 
-              {/* Map selector */}
-              <select
-                value={selectedMapId || ""}
-                onChange={(e) => {
-                  const map = maps.find((m) => m.id === e.target.value);
-                  if (map) {
-                    setSelectedMap(map);
+              {/* Region selector - show all regions */}
+              {(() => {
+                // Show all regions, including base regions and nested regions
+                const regionOptions = allRegions.map(region => {
+                  // Determine which map this region uses
+                  let map: MapDefinition | undefined;
+                  let mapLabel: string;
+                  
+                  if (region.nestedMapId) {
+                    // Region has its own nested map
+                    map = maps.find(m => m.id === region.nestedMapId);
+                    mapLabel = map ? map.name : "Unknown map";
                   } else {
-                    useMapEditorStore.getState().setSelectedMapId(null);
+                    // Region uses its parent map
+                    map = maps.find(m => m.id === region.mapId);
+                    mapLabel = map ? map.name : "Unknown map";
                   }
-                }}
-                className="px-3 py-1.5 bg-deep border border-border rounded text-text-primary text-sm"
-              >
-                <option value="">Select a map...</option>
-                {maps.map((map) => (
-                  <option key={map.id} value={map.id}>
-                    {map.name}
-                  </option>
-                ))}
-              </select>
+                  
+                  // Get parent region info if it exists
+                  const parentRegion = region.parentRegionId 
+                    ? allRegions.find(r => r.id === region.parentRegionId)
+                    : null;
+                  
+                  const env = region.environmentId 
+                    ? environments.find(e => e.id === region.environmentId)
+                    : null;
+                  const envInfo = env 
+                    ? `${env.metadata.biome} • ${env.metadata.climate} • Danger: ${env.metadata.dangerLevel}`
+                    : "No environment";
+                  
+                  // Build description with parent region info if available
+                  let description = envInfo;
+                  if (parentRegion) {
+                    description = `${description} • Parent: ${parentRegion.name}`;
+                  }
+                  
+                  return {
+                    value: region.id,
+                    label: `${region.name} (${mapLabel})`,
+                    description: description
+                  };
+                });
+                
+                // Find the "world region" for default selection (top-level region, not "Base Region")
+                const worldRegion = allRegions.find(r => {
+                  if (r.name === "Base Region") return false; // Skip base region
+                  if (r.nestedMapId) return false; // Must not have nested map
+                  if (!r.mapId) return false; // Must have parent map
+                  const parentMap = maps.find(m => m.id === r.mapId);
+                  return parentMap && parentMap.imagePath && parentMap.imagePath.trim() !== '';
+                });
+                
+                return (
+                  <div className="w-64">
+                    <SearchableCombobox
+                      options={regionOptions}
+                      value={selectedRegionId || (worldRegion ? worldRegion.id : null)}
+                      onChange={async (regionId) => {
+                        if (!regionId) {
+                          selectRegion(null);
+                          useMapEditorStore.getState().setSelectedMap(null);
+                          return;
+                        }
+                        
+                        const region = allRegions.find(r => r.id === regionId);
+                        if (!region) {
+                          console.error(`Region ${regionId} not found`);
+                          return;
+                        }
+                        
+                        // Determine which map to load for this region
+                        // Priority: nestedMapId > mapId
+                        let mapToLoad: MapDefinition | undefined;
+                        
+                        if (region.nestedMapId) {
+                          mapToLoad = maps.find(m => m.id === region.nestedMapId);
+                        } else if (region.mapId) {
+                          mapToLoad = maps.find(m => m.id === region.mapId);
+                        }
+                        
+                        if (mapToLoad) {
+                          // Select the region first (this sets selectedRegionId in the store)
+                          selectRegion(regionId);
+                          // Then load the map (this will call loadRegions, which should preserve selectedRegionId)
+                          await setSelectedMap(mapToLoad);
+                          // After loading, ensure the region is still selected
+                          // (loadRegions should preserve it, but ensure it's set)
+                          const store = useMapEditorStore.getState();
+                          if (store.selectedRegionId !== regionId) {
+                            selectRegion(regionId);
+                          }
+                          // Refresh all regions list to keep it fresh
+                          const { mapRegionClient } = await import("@/lib/api/clients");
+                          const allRegionsList = await mapRegionClient.list().catch((err) => {
+                            console.error("Failed to load regions:", err);
+                            return [];
+                          });
+                          setAllRegions(allRegionsList);
+                        } else {
+                          console.error(`Map not found for region ${regionId} (${region.name}). nestedMapId: ${region.nestedMapId}, mapId: ${region.mapId}`);
+                        }
+                      }}
+                      placeholder="Select a region to edit..."
+                      searchPlaceholder="Search regions..."
+                    />
+                  </div>
+                );
+              })()}
+              
+              {/* Environment info for selected map (from base region) */}
+              {selectedMap && (() => {
+                // Get base region for this map
+                const baseRegion = useMapEditorStore.getState().regions.find(
+                  r => r.mapId === selectedMap.id && r.name === "Base Region"
+                );
+                const mapEnvironment = baseRegion?.environmentId 
+                  ? environments.find(e => e.id === baseRegion.environmentId)
+                  : null;
+                return mapEnvironment ? (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-deep/50 border border-border rounded text-xs">
+                    <Globe className="w-3 h-3 text-text-muted" />
+                    <span className="text-text-muted">Environment:</span>
+                    <span className="text-text-primary font-medium">{mapEnvironment.name}</span>
+                    <span className="text-text-muted">•</span>
+                    <span className="text-text-muted">{mapEnvironment.metadata.biome}</span>
+                    <span className="text-text-muted">•</span>
+                    <span className="text-text-muted">Danger: {mapEnvironment.metadata.dangerLevel}</span>
+                  </div>
+                ) : null;
+              })()}
               
               <button
-                onClick={() => setShowCreateMapModal(true)}
+                onClick={() => setShowCreateWorldRegionModal(true)}
                 className="px-3 py-1.5 bg-ember-glow text-black rounded text-sm font-semibold hover:opacity-90 flex items-center gap-1"
-                title="Create New Map"
+                title="Create World Region (creates environment + map + region)"
               >
                 <Plus className="w-4 h-4" />
-                New Map
+                New World Region
               </button>
+              
+              {selectedMap && (
+                <>
+                  <div className="w-px h-6 bg-border mx-1" />
+                  <button
+                    onClick={() => {
+                      setSelectedMapForEdit(selectedMap);
+                      setShowEditMapModal(true);
+                    }}
+                    className="px-3 py-1.5 bg-deep border border-border rounded text-text-primary text-sm hover:bg-shadow transition-colors"
+                    title="Edit Map"
+                  >
+                    Edit Map
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMap(selectedMap)}
+                    className="px-3 py-1.5 bg-deep border border-border rounded text-red-400 text-sm hover:bg-shadow transition-colors"
+                    title="Delete Map"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -594,6 +876,57 @@ export default function EnvironmentEditor() {
 
               <div className="w-px h-6 bg-border mx-1" />
 
+              {/* Display Visibility Dropdown */}
+              <div className="relative">
+                <Tooltip content="Toggle Info Displays - Show/hide information panels">
+                  <button
+                    className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all relative"
+                    onClick={() => setShowDisplayDropdown(!showDisplayDropdown)}
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                {showDisplayDropdown && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowDisplayDropdown(false)}
+                    />
+                    <div className="absolute top-full right-0 mt-1 w-48 bg-shadow border border-border rounded-lg shadow-lg z-50 p-1">
+                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-deep rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={showCellSelectionDisplay}
+                          onChange={toggleCellSelectionDisplay}
+                          className="rounded border-border"
+                        />
+                        <span className="text-sm text-text-primary">Cell Selection</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-deep rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={showMapCompletionDisplay}
+                          onChange={toggleMapCompletionDisplay}
+                          className="rounded border-border"
+                        />
+                        <span className="text-sm text-text-primary">Map Completion</span>
+                      </label>
+                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-deep rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={showRegions}
+                          onChange={toggleRegions}
+                          className="rounded border-border"
+                        />
+                        <span className="text-sm text-text-primary">Regions</span>
+                      </label>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
               <Tooltip content="Copy Selected - Copy selected placements to clipboard (Ctrl+C)">
                 <button
                   onClick={copySelected}
@@ -644,7 +977,7 @@ export default function EnvironmentEditor() {
             <ContextMenu.Trigger asChild>
               <div className="w-full h-full">
                 {dimensions.width > 0 && dimensions.height > 0 ? (
-                  <MapCanvas width={dimensions.width} height={dimensions.height - 32} />
+                  <MapCanvas width={dimensions.width} height={dimensions.height - 32} environments={environments} maps={maps} />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full bg-deep text-text-muted gap-2">
                     <div className="w-8 h-8 border-4 border-ember border-t-transparent rounded-full animate-spin"></div>
@@ -724,7 +1057,7 @@ export default function EnvironmentEditor() {
       <Modal
         isOpen={showCreateEnvironmentModal}
         onClose={() => setShowCreateEnvironmentModal(false)}
-        title="Create New Environment"
+        title="Create Environment"
         footer={
           <div className="flex gap-2">
             <button
@@ -733,7 +1066,7 @@ export default function EnvironmentEditor() {
               disabled={saving}
               className="px-4 py-2 bg-ember-glow text-black rounded font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Saving..." : "Create Environment"}
+              {saving ? "Saving..." : "Create Template"}
             </button>
             <button
               type="button"
@@ -761,7 +1094,7 @@ export default function EnvironmentEditor() {
             setShowEditEnvironmentModal(false);
             setSelectedEnvironmentForEdit(null);
           }}
-          title={`Edit ${selectedEnvironmentForEdit.name}`}
+          title={`Edit Environment: ${selectedEnvironmentForEdit.name}`}
           footer={
             <div className="flex gap-2">
               <button
@@ -799,7 +1132,41 @@ export default function EnvironmentEditor() {
         </Modal>
       )}
 
-      {/* Create Map Modal */}
+      {/* Create World Region Modal */}
+      <Modal
+        isOpen={showCreateWorldRegionModal}
+        onClose={() => setShowCreateWorldRegionModal(false)}
+        title="Create World Region"
+        footer={
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              form="world-region-form"
+              disabled={saving}
+              className="px-4 py-2 bg-ember-glow text-black rounded font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Creating..." : "Create World Region"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateWorldRegionModal(false)}
+              disabled={saving}
+              className="px-4 py-2 bg-deep border border-border rounded text-text-primary hover:bg-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+          </div>
+        }
+      >
+        <WorldRegionForm
+          onSubmit={handleCreateWorldRegion}
+          onCancel={() => setShowCreateWorldRegionModal(false)}
+          saving={saving}
+          existingEnvironments={environments}
+        />
+      </Modal>
+
+      {/* Create Map Modal (for nested maps) */}
       <Modal
         isOpen={showCreateMapModal}
         onClose={() => setShowCreateMapModal(false)}

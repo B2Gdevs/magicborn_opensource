@@ -83,7 +83,7 @@ export function EnvironmentForm({
         isEdit={isEdit}
         autoGenerateFrom={name}
         placeholder="e.g., tarro"
-        label="Environment ID"
+        label="Template ID"
         disabled={saving}
       />
 
@@ -116,17 +116,28 @@ export function EnvironmentForm({
         />
       </div>
 
-      <ImageUpload
-        currentImagePath={imagePath}
-        contentType="environments"
-        entityId={id || "new"}
-        onImageUploaded={setImagePath}
-        label="Environment Image"
-        disabled={saving}
-      />
+      <div>
+        <label className="block text-sm font-semibold text-text-secondary mb-1">
+          Icon Image (Optional)
+        </label>
+        <p className="text-xs text-text-muted mb-2">
+          Optional reference icon for this environment template. Maps have their own images.
+        </p>
+        <ImageUpload
+          currentImagePath={imagePath}
+          contentType="environments"
+          entityId={id || "new"}
+          onImageUploaded={setImagePath}
+          label=""
+          disabled={saving}
+        />
+      </div>
 
       <div className="border-t border-border pt-4">
-        <h3 className="text-lg font-semibold text-text-primary mb-3">Metadata</h3>
+        <h3 className="text-lg font-semibold text-text-primary mb-2">Environment Characteristics</h3>
+        <p className="text-sm text-text-muted mb-3">
+          These properties define the environmental characteristics that will be applied to maps using this template.
+        </p>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
