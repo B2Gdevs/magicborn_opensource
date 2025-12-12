@@ -40,6 +40,7 @@ export interface MapDefinition {
   // Hierarchical map support
   parentMapId?: string; // If nested map, reference to parent
   parentCellCoordinates?: CellCoordinates; // Where this map is placed on parent
+  baseRegionId?: string; // The region that owns this map (becomes base region when editing)
   
   name: string;
   description: string;

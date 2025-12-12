@@ -24,7 +24,7 @@ import {
 import { getNextPage, getPreviousPage, type BookPage } from "@lib/utils/book-scanner";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { RotateCw } from "lucide-react";
+import { RotateCw, FileText, Clock, ExternalLink, BookOpen } from "lucide-react";
 import MoodBoard from "@components/MoodBoard";
 import FloatingToolbar from "@components/FloatingToolbar";
 import VideoPlayer from "@components/VideoPlayer";
@@ -96,6 +96,14 @@ export default function DocumentationViewer({
   // File metadata state
   const [fileMetadata, setFileMetadata] = useState<{ created: Date; modified: Date } | null>(initialMetadata || null);
   
+  // Recent files state (for developer mode top bar)
+  const [recentFiles, setRecentFiles] = useState<Array<{
+    name: string;
+    path: string;
+    created: Date;
+    modified: Date;
+  }>>([]);
+  
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>("");
   
@@ -120,6 +128,29 @@ export default function DocumentationViewer({
     }
     return false;
   };
+
+  // Load recent files for developer mode
+  useEffect(() => {
+    if (actualMode === ViewerMode.DEVELOPER) {
+      async function loadRecentFiles() {
+        try {
+          const response = await fetch('/api/docs/recent?mode=developer&limit=3');
+          if (response.ok) {
+            const data = await response.json();
+            const files = (data.files || []).map((file: any) => ({
+              ...file,
+              created: new Date(file.created),
+              modified: new Date(file.modified),
+            }));
+            setRecentFiles(files);
+          }
+        } catch (error) {
+          console.error('Failed to load recent files:', error);
+        }
+      }
+      loadRecentFiles();
+    }
+  }, [actualMode]);
 
   // Load documentation structure (only if not provided as initial props)
   useEffect(() => {
@@ -689,25 +720,58 @@ export default function DocumentationViewer({
             →
           </button>
         )}
-        {/* File Metadata */}
-        {fileMetadata && !loading && (
-          <div className="absolute top-4 right-4 z-40 bg-shadow/90 backdrop-blur-sm border border-border rounded-lg px-3 py-2 text-xs text-text-muted">
-            <div className="space-y-1">
-              <div>
-                <span className="text-text-secondary">Created: </span>
-                <span className="text-ember-glow">
-                  {formatDateForDisplay(fileMetadata.created)}
-                </span>
+        {/* Recent Files Top Bar - Only for Developer Mode */}
+        {actualMode === ViewerMode.DEVELOPER && recentFiles.length > 0 && (
+          <div className="sticky top-0 z-30 bg-shadow/95 backdrop-blur-sm border-b border-border">
+            <div className="max-w-7xl mx-auto px-6 py-2">
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-text-muted" />
+                  <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                    Recent
+                  </h3>
+                </div>
+                <Link
+                  href="/api/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-text-muted hover:text-ember-glow transition-colors group"
+                  title="View API Documentation (Swagger UI)"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">API Docs</span>
+                  <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
               </div>
-              <div>
-                <span className="text-text-secondary">Updated: </span>
-                <span className="text-ember-glow">
-                  {formatDateForDisplay(fileMetadata.modified)}
-                </span>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {recentFiles.map((file) => {
+                  const baseRoute = getBaseRoute();
+                  const normalizedPath = normalizeFilePath(file.path, actualMode);
+                  const modeParam = (mode !== ViewerMode.AUTO && baseRoute === "/docs") ? `?mode=${actualMode}` : "";
+                  const fileUrl = `${baseRoute}/${normalizedPath}${modeParam}`;
+                  
+                  return (
+                    <Link
+                      key={file.path}
+                      href={fileUrl}
+                      className="flex items-center gap-2 bg-deep border border-border rounded px-2.5 py-1.5 hover:border-ember-glow hover:bg-shadow transition-all group whitespace-nowrap flex-shrink-0"
+                      onClick={() => {
+                        setCurrentDoc(file.path);
+                      }}
+                      title={`${file.name} - Updated ${formatDateForDisplay(file.modified)}`}
+                    >
+                      <FileText className="w-3.5 h-3.5 text-text-muted group-hover:text-ember-glow transition-colors flex-shrink-0" />
+                      <span className="text-xs font-medium text-glow group-hover:text-ember-glow transition-colors">
+                        {file.name}
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </div>
         )}
+        
         <div className="max-w-4xl mx-auto px-8 py-8">
           {loading ? (
             <div className="flex items-center justify-center h-64">
@@ -715,6 +779,24 @@ export default function DocumentationViewer({
             </div>
           ) : (
             <>
+              {/* File Metadata */}
+              {fileMetadata && !loading && (
+                <div className="mb-4 flex items-center gap-4 text-xs text-text-muted">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-text-secondary">Created:</span>
+                    <span className="text-ember-glow">
+                      {formatDateForDisplay(fileMetadata.created)}
+                    </span>
+                  </div>
+                  <div className="h-3 w-px bg-border"></div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-text-secondary">Updated:</span>
+                    <span className="text-ember-glow">
+                      {formatDateForDisplay(fileMetadata.modified)}
+                    </span>
+                  </div>
+                </div>
+              )}
               {/* Book Page Navigation */}
               {currentBookPage && (
                 <div className="mb-8 pb-6 border-b border-border">

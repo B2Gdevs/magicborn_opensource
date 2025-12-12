@@ -66,3 +66,4 @@ export function getEffectiveEnvironmentId(
     ? selectedEnvironmentId 
     : (inheritedEnvironment?.id || null);
 }
+

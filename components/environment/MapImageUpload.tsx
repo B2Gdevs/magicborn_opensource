@@ -200,3 +200,4 @@ export function MapImageUpload({
     </div>
   );
 }
+

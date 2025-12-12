@@ -96,10 +96,11 @@ export default function EnvironmentEditor() {
     redo,
     showCellSelectionDisplay,
     showMapCompletionDisplay,
-    showRegions,
+    visibleRegionIds,
+    toggleRegionVisibility,
+    setRegionVisibility,
     toggleCellSelectionDisplay,
     toggleMapCompletionDisplay,
-    toggleRegions,
   } = useMapEditorStore();
 
   // Load environments, maps, and all regions on mount
@@ -120,6 +121,56 @@ export default function EnvironmentEditor() {
         ]);
         setEnvironments(loadedEnvironments);
         setMaps(loadedMaps);
+        
+        console.log("[EnvironmentEditor] Maps loaded:", {
+          count: loadedMaps.length,
+          maps: loadedMaps.map(m => ({ id: m.id, name: m.name, imagePath: m.imagePath }))
+        });
+        
+        // Restore selected map if selectedMapId exists but selectedMap is null
+        console.log("[EnvironmentEditor] Checking if map needs restoration:", {
+          selectedMapId,
+          selectedMap: selectedMap ? { id: selectedMap.id, name: selectedMap.name } : null,
+          loadedMapsCount: loadedMaps.length
+        });
+        
+        if (selectedMapId && !selectedMap) {
+          console.log("[EnvironmentEditor] Map needs restoration. Looking for map with id:", selectedMapId);
+          const mapToRestore = loadedMaps.find(m => m.id === selectedMapId);
+          if (mapToRestore) {
+            console.log("[EnvironmentEditor] Found map to restore:", { id: mapToRestore.id, name: mapToRestore.name, imagePath: mapToRestore.imagePath });
+            await setSelectedMap(mapToRestore);
+            console.log("[EnvironmentEditor] Map restoration completed");
+          } else {
+            console.warn("[EnvironmentEditor] Map not found for restoration, clearing selectedMapId");
+            // Map not found, clear the selectedMapId
+            useMapEditorStore.getState().setSelectedMapId(null);
+          }
+        } else if (!selectedMapId && !selectedMap && loadedMaps.length > 0) {
+          // Auto-select first map with image if no map is selected
+          const defaultMap = loadedMaps.find(m => m.imagePath && m.imagePath.trim() !== '') || loadedMaps[0];
+          if (defaultMap) {
+            console.log("[EnvironmentEditor] Auto-selecting default map:", { id: defaultMap.id, name: defaultMap.name, imagePath: defaultMap.imagePath });
+            console.log("[EnvironmentEditor] Calling setSelectedMap for default map...");
+            // Call setSelectedMap which will set the map and load regions
+            await setSelectedMap(defaultMap);
+            console.log("[EnvironmentEditor] Default map selected. Verifying store state...");
+            const afterSelect = useMapEditorStore.getState();
+            console.log("[EnvironmentEditor] Store state after auto-select:", {
+              selectedMapId: afterSelect.selectedMapId,
+              selectedMap: afterSelect.selectedMap ? { id: afterSelect.selectedMap.id, name: afterSelect.selectedMap.name } : null,
+              regionsCount: afterSelect.regions.length
+            });
+          } else {
+            console.log("[EnvironmentEditor] No default map available to auto-select");
+          }
+        } else {
+          console.log("[EnvironmentEditor] No map restoration needed. State:", {
+            selectedMapId,
+            hasSelectedMap: !!selectedMap,
+            mapsCount: loadedMaps.length
+          });
+        }
         
         // Load all regions from all maps
         const { mapRegionClient } = await import("@/lib/api/clients");
@@ -281,7 +332,7 @@ export default function EnvironmentEditor() {
       setShowCreateWorldRegionModal(false);
     } catch (error) {
       console.error("Error creating world region:", error);
-      alert(`Failed to create world region: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(`Failed to create region: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -609,110 +660,75 @@ export default function EnvironmentEditor() {
               
               <div className="w-px h-6 bg-border mx-1" />
 
-              {/* Region selector - show all regions */}
+              {/* Map selector - select maps, not regions */}
               {(() => {
-                // Show all regions, including base regions and nested regions
-                const regionOptions = allRegions.map(region => {
-                  // Determine which map this region uses
-                  let map: MapDefinition | undefined;
-                  let mapLabel: string;
-                  
-                  if (region.nestedMapId) {
-                    // Region has its own nested map
-                    map = maps.find(m => m.id === region.nestedMapId);
-                    mapLabel = map ? map.name : "Unknown map";
-                  } else {
-                    // Region uses its parent map
-                    map = maps.find(m => m.id === region.mapId);
-                    mapLabel = map ? map.name : "Unknown map";
-                  }
-                  
-                  // Get parent region info if it exists
-                  const parentRegion = region.parentRegionId 
-                    ? allRegions.find(r => r.id === region.parentRegionId)
-                    : null;
-                  
-                  const env = region.environmentId 
-                    ? environments.find(e => e.id === region.environmentId)
-                    : null;
-                  const envInfo = env 
-                    ? `${env.metadata.biome} • ${env.metadata.climate} • Danger: ${env.metadata.dangerLevel}`
-                    : "No environment";
-                  
-                  // Build description with parent region info if available
-                  let description = envInfo;
-                  if (parentRegion) {
-                    description = `${description} • Parent: ${parentRegion.name}`;
-                  }
-                  
+                // Show all maps
+                const mapOptions = maps.map(map => {
+                  const description = map.description || "No description";
                   return {
-                    value: region.id,
-                    label: `${region.name} (${mapLabel})`,
+                    value: map.id,
+                    label: map.name,
                     description: description
                   };
                 });
                 
-                // Find the "world region" for default selection (top-level region, not "Base Region")
-                const worldRegion = allRegions.find(r => {
-                  if (r.name === "Base Region") return false; // Skip base region
-                  if (r.nestedMapId) return false; // Must not have nested map
-                  if (!r.mapId) return false; // Must have parent map
-                  const parentMap = maps.find(m => m.id === r.mapId);
-                  return parentMap && parentMap.imagePath && parentMap.imagePath.trim() !== '';
+                // Find default map (first map with image, or first map)
+                const defaultMap = maps.find(m => m.imagePath && m.imagePath.trim() !== '') || maps[0];
+                
+                console.log("[MapSelector] Rendering combobox:", {
+                  mapsCount: maps.length,
+                  selectedMapId,
+                  defaultMap: defaultMap ? { id: defaultMap.id, name: defaultMap.name } : null,
+                  comboboxValue: selectedMapId || (defaultMap ? defaultMap.id : null)
                 });
                 
                 return (
                   <div className="w-64">
                     <SearchableCombobox
-                      options={regionOptions}
-                      value={selectedRegionId || (worldRegion ? worldRegion.id : null)}
-                      onChange={async (regionId) => {
-                        if (!regionId) {
-                          selectRegion(null);
+                      options={mapOptions}
+                      value={selectedMapId || (defaultMap ? defaultMap.id : null)}
+                      onChange={async (mapId) => {
+                        console.log("[MapSelector] onChange called with mapId:", mapId);
+                        if (!mapId) {
+                          console.log("[MapSelector] Clearing map selection");
                           useMapEditorStore.getState().setSelectedMap(null);
+                          selectRegion(null);
                           return;
                         }
                         
-                        const region = allRegions.find(r => r.id === regionId);
-                        if (!region) {
-                          console.error(`Region ${regionId} not found`);
+                        console.log("[MapSelector] Looking for map in maps array (length:", maps.length, ")");
+                        const mapToLoad = maps.find(m => m.id === mapId);
+                        if (!mapToLoad) {
+                          console.error(`[MapSelector] Map ${mapId} not found in maps array`);
+                          console.log("[MapSelector] Available maps:", maps.map(m => ({ id: m.id, name: m.name })));
                           return;
                         }
                         
-                        // Determine which map to load for this region
-                        // Priority: nestedMapId > mapId
-                        let mapToLoad: MapDefinition | undefined;
+                        console.log("[MapSelector] Found map:", { id: mapToLoad.id, name: mapToLoad.name, imagePath: mapToLoad.imagePath });
+                        console.log("[MapSelector] Calling setSelectedMap...");
                         
-                        if (region.nestedMapId) {
-                          mapToLoad = maps.find(m => m.id === region.nestedMapId);
-                        } else if (region.mapId) {
-                          mapToLoad = maps.find(m => m.id === region.mapId);
-                        }
+                        // Load the map (this will call loadRegions)
+                        await setSelectedMap(mapToLoad);
                         
-                        if (mapToLoad) {
-                          // Select the region first (this sets selectedRegionId in the store)
-                          selectRegion(regionId);
-                          // Then load the map (this will call loadRegions, which should preserve selectedRegionId)
-                          await setSelectedMap(mapToLoad);
-                          // After loading, ensure the region is still selected
-                          // (loadRegions should preserve it, but ensure it's set)
-                          const store = useMapEditorStore.getState();
-                          if (store.selectedRegionId !== regionId) {
-                            selectRegion(regionId);
-                          }
-                          // Refresh all regions list to keep it fresh
-                          const { mapRegionClient } = await import("@/lib/api/clients");
-                          const allRegionsList = await mapRegionClient.list().catch((err) => {
-                            console.error("Failed to load regions:", err);
-                            return [];
-                          });
-                          setAllRegions(allRegionsList);
-                        } else {
-                          console.error(`Map not found for region ${regionId} (${region.name}). nestedMapId: ${region.nestedMapId}, mapId: ${region.mapId}`);
-                        }
+                        console.log("[MapSelector] setSelectedMap completed. Checking store state...");
+                        const storeState = useMapEditorStore.getState();
+                        console.log("[MapSelector] Store state after setSelectedMap:", {
+                          selectedMapId: storeState.selectedMapId,
+                          selectedMap: storeState.selectedMap ? { id: storeState.selectedMap.id, name: storeState.selectedMap.name } : null,
+                          regionsCount: storeState.regions.length
+                        });
+                        
+                        // Refresh all regions list to keep it fresh
+                        const { mapRegionClient } = await import("@/lib/api/clients");
+                        const allRegionsList = await mapRegionClient.list().catch((err) => {
+                          console.error("[MapSelector] Failed to load regions:", err);
+                          return [];
+                        });
+                        console.log("[MapSelector] Loaded", allRegionsList.length, "total regions");
+                        setAllRegions(allRegionsList);
                       }}
-                      placeholder="Select a region to edit..."
-                      searchPlaceholder="Search regions..."
+                      placeholder="Select a map to edit..."
+                      searchPlaceholder="Search maps..."
                     />
                   </div>
                 );
@@ -720,12 +736,14 @@ export default function EnvironmentEditor() {
               
               {/* Environment info for selected map (from base region) */}
               {selectedMap && (() => {
-                // Get base region for this map
-                const baseRegion = useMapEditorStore.getState().regions.find(
-                  r => r.mapId === selectedMap.id && r.name === "Base Region"
-                );
+                // Get base region for this map (the region referenced by baseRegionId)
+                const baseRegion = selectedMap.baseRegionId
+                  ? useMapEditorStore.getState().regions.find(r => r.id === selectedMap.baseRegionId)
+                  : null;
                 const mapEnvironment = baseRegion?.environmentId 
                   ? environments.find(e => e.id === baseRegion.environmentId)
+                  : selectedMap.environmentId
+                  ? environments.find(e => e.id === selectedMap.environmentId)
                   : null;
                 return mapEnvironment ? (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-deep/50 border border-border rounded text-xs">
@@ -740,14 +758,25 @@ export default function EnvironmentEditor() {
                 ) : null;
               })()}
               
-              <button
-                onClick={() => setShowCreateWorldRegionModal(true)}
-                className="px-3 py-1.5 bg-ember-glow text-black rounded text-sm font-semibold hover:opacity-90 flex items-center gap-1"
-                title="Create World Region (creates environment + map + region)"
-              >
-                <Plus className="w-4 h-4" />
-                New World Region
-              </button>
+              <Tooltip content="Create Region - Create a new region on the selected map">
+                <button
+                  onClick={() => {
+                    // If we have a selected map, we can create a region on it
+                    // The create region dialog will be shown by CellSelectionFeedback when cells are selected
+                    // If no map is selected, show the world region modal (creates environment + map + region)
+                    if (selectedMap) {
+                      // Switch to cell selection mode so user can select cells
+                      setSelectionMode("cell");
+                    } else {
+                      // No map selected, create a new world region (environment + map + region)
+                      setShowCreateWorldRegionModal(true);
+                    }
+                  }}
+                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </Tooltip>
               
               {selectedMap && (
                 <>
@@ -910,15 +939,6 @@ export default function EnvironmentEditor() {
                           className="rounded border-border"
                         />
                         <span className="text-sm text-text-primary">Map Completion</span>
-                      </label>
-                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-deep rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={showRegions}
-                          onChange={toggleRegions}
-                          className="rounded border-border"
-                        />
-                        <span className="text-sm text-text-primary">Regions</span>
                       </label>
                     </div>
                   </>
@@ -1132,11 +1152,11 @@ export default function EnvironmentEditor() {
         </Modal>
       )}
 
-      {/* Create World Region Modal */}
+      {/* Create Region Modal (with map if no map exists) */}
       <Modal
         isOpen={showCreateWorldRegionModal}
         onClose={() => setShowCreateWorldRegionModal(false)}
-        title="Create World Region"
+        title="Create Region"
         footer={
           <div className="flex gap-2">
             <button
@@ -1145,7 +1165,7 @@ export default function EnvironmentEditor() {
               disabled={saving}
               className="px-4 py-2 bg-ember-glow text-black rounded font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Creating..." : "Create World Region"}
+              {saving ? "Creating..." : "Create Region"}
             </button>
             <button
               type="button"

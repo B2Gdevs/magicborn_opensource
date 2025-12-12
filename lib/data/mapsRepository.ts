@@ -34,6 +34,10 @@ function rowToMap(row: typeof maps.$inferSelect): MapDefinition {
     };
   }
 
+  if (row.baseRegionId) {
+    map.baseRegionId = row.baseRegionId;
+  }
+
   if (row.environmentalModifiers) {
     map.environmentalModifiers = JSON.parse(row.environmentalModifiers) as MapDefinition["environmentalModifiers"];
   }
@@ -48,6 +52,7 @@ function mapToRow(map: MapDefinition): typeof maps.$inferInsert {
     parentMapId: map.parentMapId || null,
     parentCellX: map.parentCellCoordinates?.cellX ?? null,
     parentCellY: map.parentCellCoordinates?.cellY ?? null,
+    baseRegionId: map.baseRegionId || null,
     name: map.name,
     description: map.description,
     imagePath: map.imagePath || null,

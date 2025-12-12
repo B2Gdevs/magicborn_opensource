@@ -10,6 +10,7 @@ export const maps = sqliteTable("maps", {
   parentMapId: text("parent_map_id"), // If nested map, reference to parent
   parentCellX: real("parent_cell_x"), // Where this map is placed on parent (cell X)
   parentCellY: real("parent_cell_y"), // Where this map is placed on parent (cell Y)
+  baseRegionId: text("base_region_id"), // The region that owns this map (becomes base region when editing)
   
   name: text("name").notNull(),
   description: text("description").notNull(),

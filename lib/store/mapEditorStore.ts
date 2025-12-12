@@ -51,9 +51,9 @@ export interface MapEditorState {
   regions: Array<{
     id: string;
     mapId: string; // Parent map
+    parentRegionId?: string; // Parent region (if nested within another region)
     name: string;
     cells: Array<{ cellX: number; cellY: number }>; // Selected cells that define boundaries
-    nestedMapId?: string; // Link to nested map (if created)
     environmentId?: string; // Associated environment template
     color: string; // Unique color for visual distinction
     metadata: {
@@ -75,7 +75,7 @@ export interface MapEditorState {
   showCellSelectionDisplay: boolean;
   showMapCompletionDisplay: boolean;
   showInheritanceChainDisplay: boolean;
-  showRegions: boolean; // Toggle region visibility on map
+  visibleRegionIds: Set<string>; // Set of region IDs that are visible on map
   
   // Helper: Get selected cells array from bounds (for compatibility)
   getSelectedCells: () => Array<{ cellX: number; cellY: number }>;
@@ -127,7 +127,8 @@ export interface MapEditorState {
   toggleCellSelectionDisplay: () => void;
   toggleMapCompletionDisplay: () => void;
   toggleInheritanceChainDisplay: () => void;
-  toggleRegions: () => void;
+  toggleRegionVisibility: (regionId: string) => void;
+  setRegionVisibility: (regionId: string, visible: boolean) => void;
   
   // Actions - Regions
   loadRegions: (mapId: string) => Promise<void>;
@@ -232,7 +233,7 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   showCellSelectionDisplay: true,
   showMapCompletionDisplay: true,
   showInheritanceChainDisplay: true,
-  showRegions: true, // Regions visible by default
+  visibleRegionIds: new Set<string>(), // Start with empty set - regions must be explicitly shown
   history: [],
   historyIndex: -1,
   maxHistorySize: MAX_HISTORY_SIZE,
@@ -240,15 +241,28 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   
   // Map actions
   setSelectedMap: async (map) => {
+    console.log("[setSelectedMap] Called with map:", map ? { id: map.id, name: map.name, imagePath: map.imagePath } : null);
     // Preserve selectedRegionId before loading regions
     const currentSelectedRegionId = get().selectedRegionId;
+    console.log("[setSelectedMap] Current selectedRegionId:", currentSelectedRegionId);
+    
+    console.log("[setSelectedMap] Setting map in store...");
     set({ selectedMap: map, selectedMapId: map?.id || null, placements: [] });
+    
+    const afterSet = get();
+    console.log("[setSelectedMap] Store state after set:", {
+      selectedMapId: afterSet.selectedMapId,
+      selectedMap: afterSet.selectedMap ? { id: afterSet.selectedMap.id, name: afterSet.selectedMap.name } : null
+    });
+    
     // Don't reset viewport - let MapCanvas auto-fit
     get().clearSelection();
     get().clearHistory();
     // Load regions for this map (this will preserve selectedRegionId if valid)
     if (map?.id) {
+      console.log("[setSelectedMap] Calling loadRegions for mapId:", map.id);
       await get().loadRegions(map.id);
+      console.log("[setSelectedMap] loadRegions completed");
       // After loading, if we had a selected region and it's not in the loaded regions,
       // we need to check if it should be selected (e.g., if it's the region that uses this map)
       const { selectedRegionId, regions } = get();
@@ -486,17 +500,38 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
   
   // Region actions
   loadRegions: async (mapId) => {
+    console.log("[loadRegions] Called with mapId:", mapId);
     try {
-      const { selectedMap, selectedRegionId } = get();
+      const { selectedMap, selectedRegionId, selectedMapId } = get();
+      console.log("[loadRegions] Current store state:", {
+        selectedMapId,
+        selectedMap: selectedMap ? { id: selectedMap.id, name: selectedMap.name } : null,
+        selectedRegionId,
+        currentRegionsCount: get().regions.length
+      });
       
-      if (!selectedMap || selectedMap.id !== mapId) {
+      // If selectedMap doesn't exist but selectedMapId matches, that's okay
+      // We might be loading regions before the map is fully set
+      // But if selectedMap exists and doesn't match, that's an error
+      if (selectedMap && selectedMap.id !== mapId) {
+        console.warn(`[loadRegions] Map mismatch: selectedMap.id (${selectedMap.id}) !== mapId (${mapId})`);
         set({ regions: [], selectedRegionId: null });
         return;
       }
       
+      // If we don't have selectedMap, we can't create a base region
+      // Wait for selectedMap to be set before loading regions
+      if (!selectedMap) {
+        console.warn(`[loadRegions] Cannot load regions: selectedMap is null for mapId ${mapId}, selectedMapId is ${selectedMapId}`);
+        // Don't clear regions - just return and wait for map to be set
+        return;
+      }
+      
+      console.log("[loadRegions] selectedMap is valid, loading regions from database...");
       // Load regions from database
       const { mapRegionClient } = await import("@/lib/api/clients");
       const savedRegions = await mapRegionClient.list(mapId);
+      console.log("[loadRegions] Loaded", savedRegions.length, "regions from database");
       
       // ALWAYS ensure a base region exists for every map
       // If no base region exists, create one that spans the entire image
@@ -565,16 +600,42 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
         ? selectedRegionId
         : null;
       
+      // Auto-add all non-base regions to visibleRegionIds so they show by default
+      const baseRegionId = selectedMap.baseRegionId;
+      const newVisibleIds = new Set<string>();
+      finalRegions.forEach(region => {
+        // Don't auto-show base region - it should always be hidden
+        if (baseRegionId && region.id === baseRegionId) {
+          return;
+        }
+        // Auto-show all other regions
+        newVisibleIds.add(region.id);
+      });
+      
+      console.log("[loadRegions] Setting regions in store. Final regions count:", finalRegions.length);
+      console.log("[loadRegions] Auto-visible region IDs:", Array.from(newVisibleIds));
+      console.log("[loadRegions] Preserving selectedRegionId:", preserveSelectedId);
       set({ 
         regions: finalRegions,
-        selectedRegionId: preserveSelectedId
+        selectedRegionId: preserveSelectedId,
+        visibleRegionIds: newVisibleIds
+      });
+      
+      const afterLoad = get();
+      console.log("[loadRegions] Store state after setting regions:", {
+        regionsCount: afterLoad.regions.length,
+        selectedRegionId: afterLoad.selectedRegionId,
+        selectedMap: afterLoad.selectedMap ? { id: afterLoad.selectedMap.id, name: afterLoad.selectedMap.name } : null
       });
     } catch (error) {
       console.error("Failed to load regions:", error);
-      const { selectedRegionId } = get();
+      const { selectedRegionId, selectedMap } = get();
+      // Don't clear selectedMap on error - only clear regions
+      // The map should still be selected even if regions fail to load
       set({ 
         regions: [], 
         selectedRegionId: null // Clear on error
+        // Keep selectedMap - don't clear it
       });
     }
   },
@@ -870,8 +931,27 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
     set((state) => ({ showInheritanceChainDisplay: !state.showInheritanceChainDisplay }));
   },
   
-  toggleRegions: () => {
-    set((state) => ({ showRegions: !state.showRegions }));
+  toggleRegionVisibility: (regionId: string) => {
+    set((state) => {
+      const newVisibleIds = new Set(state.visibleRegionIds);
+      if (newVisibleIds.has(regionId)) {
+        newVisibleIds.delete(regionId);
+      } else {
+        newVisibleIds.add(regionId);
+      }
+      return { visibleRegionIds: newVisibleIds };
+    });
+  },
+  setRegionVisibility: (regionId: string, visible: boolean) => {
+    set((state) => {
+      const newVisibleIds = new Set(state.visibleRegionIds);
+      if (visible) {
+        newVisibleIds.add(regionId);
+      } else {
+        newVisibleIds.delete(regionId);
+      }
+      return { visibleRegionIds: newVisibleIds };
+    });
   },
 }));
 

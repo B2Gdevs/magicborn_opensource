@@ -1,4 +1,4 @@
-// app/api-docs/page.tsx
+// app/api/docs/page.tsx
 // Swagger UI documentation page
 
 "use client";
@@ -24,6 +24,7 @@ const SwaggerUI = dynamic(
 export default function ApiDocsPage() {
   useEffect(() => {
     // Import CSS dynamically to avoid SSR issues
+    // @ts-ignore - CSS import doesn't have type definitions
     import("swagger-ui-react/swagger-ui.css").catch(() => {});
   }, []);
 
@@ -35,4 +36,3 @@ export default function ApiDocsPage() {
     </main>
   );
 }
-

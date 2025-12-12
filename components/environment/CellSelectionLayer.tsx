@@ -18,12 +18,17 @@ interface CellSelectionLayerProps {
 }
 
 export function CellSelectionLayer({ zoom, actualImageWidth, actualImageHeight }: CellSelectionLayerProps) {
-  const { selectedCellBounds, getSelectedCells, selectedMap, selectionMode, regions, selectedRegionId, showRegions } = useMapEditorStore();
+  const { selectedCellBounds, getSelectedCells, selectedMap, selectionMode, regions, selectedRegionId, visibleRegionIds } = useMapEditorStore();
   
   // Get selected cells array from bounds
   const selectedCells = useMemo(() => getSelectedCells(), [selectedCellBounds, getSelectedCells]);
 
-  if (!selectedMap) return null;
+  // Early return if no map - but return empty fragment, not null
+  // Returning null can cause Konva issues
+  if (!selectedMap) {
+    console.log("[CellSelectionLayer] No selectedMap, returning empty fragment");
+    return <></>;
+  }
 
   const config = selectedMap.coordinateConfig;
   // Use config dimensions for rendering
@@ -40,25 +45,38 @@ export function CellSelectionLayer({ zoom, actualImageWidth, actualImageHeight }
   const actualMaxCellsX = actualImageWidth ? Math.floor(actualImageWidth / config.baseCellSize) : maxCellsX;
   const actualMaxCellsY = actualImageHeight ? Math.floor(actualImageHeight / config.baseCellSize) : maxCellsY;
 
-  // Check if a region is the base region (covers entire map and has no overrides)
+  // Find the base region - the region referenced by the map's baseRegionId
+  // The base region is the one that "owns" the map we're editing
+  // When a map is loaded, the region with id === map.baseRegionId becomes the base region
+  // For editing purposes, we call it "base region" but it keeps its original name and ID
+  const baseRegion = useMemo(() => {
+    if (!selectedMap || !selectedMap.baseRegionId) return null;
+    // Find the region with id matching the map's baseRegionId
+    // This is the region that "owns" this map - when we load this map, this region becomes the base
+    return regions.find(r => r.id === selectedMap.baseRegionId) || null;
+  }, [regions, selectedMap]);
+
+  // Check if a region is the base region
+  // If baseRegion is null (map has no baseRegionId or region not loaded), no region is considered base
   const isBaseRegion = (region: typeof regions[0]): boolean => {
-    if (!selectedMap) return false;
-    // Base region is always named "Base Region"
-    const isBaseRegionName = region.name === "Base Region";
-    const hasNoOverrides = !region.metadata?.biome && !region.metadata?.climate && region.metadata?.dangerLevel === undefined;
-    // Also check if it covers all expected cells (base region should cover all config cells)
-    const configCellsX = Math.floor(config.imageWidth / config.baseCellSize);
-    const configCellsY = Math.floor(config.imageHeight / config.baseCellSize);
-    const expectedCellCount = configCellsX * configCellsY;
-    const coversAllCells = region.cells.length >= (expectedCellCount * 0.9); // Allow some tolerance
-    return isBaseRegionName && hasNoOverrides && coversAllCells;
+    if (!baseRegion || !selectedMap?.baseRegionId) return false;
+    return baseRegion.id === region.id;
   };
 
   // Render persistent regions (each with unique color)
   // Show regions at all zoom levels - they scale with zoom
   const regionRects = useMemo(() => {
-    // Don't render regions if visibility is off
-    if (!showRegions) return [];
+    console.log("[CellSelectionLayer] Computing regionRects:", {
+      hasSelectedMap: !!selectedMap,
+      hasBaseRegion: !!baseRegion,
+      regionsCount: regions.length,
+      visibleRegionIdsCount: visibleRegionIds.size
+    });
+    
+    if (!selectedMap) {
+      console.log("[CellSelectionLayer] Missing selectedMap, returning empty array");
+      return [];
+    }
     
     const rects: Array<{
       x: number;
@@ -72,17 +90,24 @@ export function CellSelectionLayer({ zoom, actualImageWidth, actualImageHeight }
       isBoundary: boolean;
     }> = [];
 
+    // Show all regions on this map except the base region
+    // The base region is the one referenced by map.baseRegionId
     regions
-      .filter((r) => r.mapId === selectedMap.id)
+      .filter((r) => {
+        // Must be on the current map
+        if (r.mapId !== selectedMap.id) return false;
+        
+        // NEVER render base region - it should always be hidden
+        // Base region represents the entire map being edited, not a visible region
+        if (isBaseRegion(r)) return false;
+        
+        // Only render if visible (checked in visibility controls)
+        if (!visibleRegionIds.has(r.id)) return false;
+        
+        return true;
+      })
       .forEach((region) => {
         const isSelected = region.id === selectedRegionId;
-        const isBase = isBaseRegion(region);
-        
-        // Only render base region when it's selected - don't render it when deselected
-        // This prevents the orange tint on the grid
-        if (isBase && !isSelected) {
-          return; // Skip rendering base region when not selected
-        }
         
         region.cells.forEach((cell) => {
           // Filter out cells that are beyond actual image bounds (if image is smaller than config)
@@ -104,18 +129,18 @@ export function CellSelectionLayer({ zoom, actualImageWidth, actualImageHeight }
           };
           const isBoundary = isCellOnBoundary(cell, fullRegion);
 
-          // Base region gets subtle styling, other regions more visible
-          const opacity = isBase ? 0.1 : (isSelected ? 0.5 : 0.3);
-          const strokeOpacity = isBase ? 0.2 : (isBoundary ? 1.0 : 0.7);
+          // Child regions get different opacity based on selection state
+          // Base region is never rendered (filtered out above)
+          const opacity = isSelected ? 0.5 : 0.3;  // Selected: 50%, Normal: 30%
+          const strokeOpacity = isBoundary ? 1.0 : 0.7;  // Boundary: 100%, Interior: 70%
 
-          // Cell size scales with zoom for visual display (but we're at 100% so it's just cellSize)
-          const displayCellSize = cellSize * zoom;
-
+          // Cell size is absolute - Konva Stage handles zoom transformation
+          // Don't scale manually, let Konva's scaleX/scaleY handle it
           rects.push({
-            x: pixel.x * zoom, // Scale position with zoom
-            y: pixel.y * zoom,
-            width: displayCellSize,
-            height: displayCellSize,
+            x: pixel.x, // Absolute position - Konva will scale
+            y: pixel.y, // Absolute position - Konva will scale
+            width: cellSize, // Absolute size - Konva will scale
+            height: cellSize, // Absolute size - Konva will scale
             fill: hslToRgba(region.color, opacity),
             stroke: hslToRgba(region.color, strokeOpacity),
             regionId: region.id,
@@ -125,20 +150,18 @@ export function CellSelectionLayer({ zoom, actualImageWidth, actualImageHeight }
         });
       });
 
+    console.log("[CellSelectionLayer] Computed", rects.length, "region rects");
     return rects;
-  }, [regions, selectedMap, selectedRegionId, config, zoom, cellSize, actualMaxCellsX, actualMaxCellsY, showRegions]);
+  }, [regions, selectedMap, selectedRegionId, config, cellSize, actualMaxCellsX, actualMaxCellsY, visibleRegionIds, baseRegion]);
 
   // Render temporary selection (blue, only when actively selecting and NOT a region)
-  // Only show at 100% zoom
+  // Show at all zoom levels - Konva Stage handles scaling
   const tempSelectionRects = useMemo(() => {
     if (selectionMode !== "cell" || selectedCells.length === 0) {
       return [];
     }
 
-    // Only show selection at 100% zoom (allow small tolerance for floating point)
-    if (Math.abs(zoom - 1.0) > 0.01) {
-      return [];
-    }
+    // Show selection at all zoom levels - Konva Stage scales it automatically
 
     // Don't show temp selection if we're viewing a selected region
     // Also check if the selected cells match an existing region - if so, don't show temp selection
@@ -147,6 +170,8 @@ export function CellSelectionLayer({ zoom, actualImageWidth, actualImageHeight }
     }
     
     // Check if selected cells match an existing region - if so, don't show temp selection
+    if (!selectedMap) return [];
+    
     const matchesRegion = regions
       .filter((r) => r.mapId === selectedMap.id)
       .some((region) => {
@@ -166,17 +191,19 @@ export function CellSelectionLayer({ zoom, actualImageWidth, actualImageHeight }
       })
       .map((cell) => {
         const pixel = cellToPixel(cell, config); // Cells are absolute
-        const displayCellSize = cellSize * zoom; // Scale for display
+        // Don't scale manually - Konva Stage handles zoom transformation
         return {
-          x: pixel.x * zoom, // Scale position with zoom
-          y: pixel.y * zoom,
-          width: displayCellSize,
-          height: displayCellSize,
+          x: pixel.x, // Absolute position - Konva will scale
+          y: pixel.y, // Absolute position - Konva will scale
+          width: cellSize, // Absolute size - Konva will scale
+          height: cellSize, // Absolute size - Konva will scale
           cellX: cell.cellX,
           cellY: cell.cellY,
         };
       });
-  }, [selectedCells, selectionMode, selectedRegionId, regions, selectedMap.id, config, zoom, cellSize, actualMaxCellsX, actualMaxCellsY]);
+  }, [selectedCells, selectionMode, selectedRegionId, regions, selectedMap?.id, config, cellSize, actualMaxCellsX, actualMaxCellsY]);
+  
+  console.log("[CellSelectionLayer] Rendering with", regionRects.length, "region rects and", tempSelectionRects.length, "temp selection rects");
 
   return (
     <>

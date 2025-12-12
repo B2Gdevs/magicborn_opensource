@@ -235,3 +235,4 @@ To add a new folder from your `public/` directory to OpenWebUI:
 4. **Content Writing** - Get style-consistent content suggestions
 5. **Development Help** - Understand code and architecture
 
+

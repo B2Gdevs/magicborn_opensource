@@ -120,6 +120,7 @@ export function RegionEditForm({
         <AreaInfoDisplay
           estimatedAreaInUnreal={estimatedAreaInUnreal}
           unrealBounds={unrealBounds}
+          coordinateConfig={map.coordinateConfig}
         />
       )}
       

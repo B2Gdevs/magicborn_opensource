@@ -2,6 +2,14 @@
 
 This guide explains how the Magicborn Assistant (powered by OpenWebUI) connects to your REST API as a tool server to access and manage your game database.
 
+## Quick Reference
+
+**⚠️ Important**: When configuring the tool server in OpenWebUI admin settings, use:
+- **Base URL**: `http://web:3000` (NOT `localhost:4300`)
+- **OpenAPI Spec URL**: `http://web:3000/api/docs/openapi.json`
+
+**Why?** OpenWebUI runs in a Docker container. The admin verification makes requests from inside the container, so it needs to use Docker's service name (`web`) and internal port (`3000`), not the host-mapped port (`4300`).
+
 ## Overview
 
 OpenWebUI connects to your Next.js REST API as an external tool server. The API exposes game data operations (creatures, characters, environments, maps, regions, runes, effects) that OpenWebUI can call through function calling.
@@ -30,22 +38,38 @@ OpenWebUI reads the OpenAPI specification to discover available endpoints and ma
    - Navigate to `http://localhost:8080/`
    - Or click "Open in New Tab" from the chat interface
 
-2. **Navigate to External Tools Settings**:
+2. **Navigate to Admin Settings**:
+   - Click on the **Settings** icon in the sidebar (or use the admin panel)
    - Go to **Settings** → **External Tools** (app-wide settings)
-   - Look for **Tool Servers** section
-   - Click **+** to add a new tool server
+   
+   ![Admin Settings](/developer/images/admin_settings.png)
 
-3. **Configure the Tool Server**:
+3. **Access Tool Servers Section**:
+   - Look for **Tool Servers** section in the External Tools settings
+   - Click **+** to add a new tool server
+   
+   ![Admin Tool Server](/developer/images/admin_tool_server.png)
+
+4. **Configure the Tool Server**:
    - **Name**: `Magicborn Game Data API`
-   - **Base URL**: `http://web:3000` (use Docker service name when OpenWebUI is containerized)
+   - **Base URL**: `http://web:3000` ⚠️ **Important: Use `web:3000`, NOT `localhost:4300`**
    - **OpenAPI Spec URL**: `http://web:3000/api/docs/openapi.json`
    - **Authentication**: None (or configure if you add API keys later)
    
-   **Important**: Since OpenWebUI runs in a Docker container, use the Docker service name `web` with the container port `3000` instead of `localhost:4300`. The container port mapping (4300:3000) only applies to host access, not inter-container communication.
+   ![Tool Server Configuration](/developer/images/admin_panel_setting.png)
+   
+   **Why `web:3000` instead of `localhost:4300`?**
+   
+   OpenWebUI runs in a Docker container. When the admin section verifies the tool server, it makes requests from **inside the container**. Here's what happens:
+   
+   - ❌ **`localhost:4300`**: When OpenWebUI tries this, it looks for port 4300 **inside its own container**, which doesn't exist
+   - ✅ **`web:3000`**: Uses Docker's internal networking. `web` is the service name from `docker-compose.yml`, and `3000` is the container's internal port
+   
+   The port mapping `4300:3000` in docker-compose only applies to **host access** (your browser), not inter-container communication. Both services are on the same Docker network (`demo`), so they can communicate using service names.
    
    OpenWebUI will read the OpenAPI specification to discover all available endpoints and their operations.
 
-4. **Save and Verify**:
+5. **Save and Verify**:
    - Save the tool server configuration
    - OpenWebUI should automatically fetch the OpenAPI specification
    - Verify that tools are discovered and listed
@@ -60,6 +84,8 @@ OpenWebUI reads the OpenAPI specification to discover available endpoints and ma
    - Find "Magicborn Game Data API" in the available tool servers
    - Enable it for your model
    - Save
+   
+   ![Model Configuration](/developer/images/mb_assistant_edit.png)
 
 3. **Test**:
    - Start a chat with your model
@@ -185,6 +211,8 @@ The API endpoints include CORS headers to allow requests from OpenWebUI (`localh
      - Change OpenAPI Spec URL from `http://localhost:4300/api/docs/openapi.json` to `http://web:3000/api/docs/openapi.json`
    - The service name `web` is defined in `docker-compose.yml` and works for inter-container communication
    - Port `3000` is the container's internal port (not the host-mapped port `4300`)
+   
+   **Why this happens**: The user section works fine because browser requests can reach `localhost:4300` on the host. However, the admin section's verification runs from the OpenWebUI container, which needs to use Docker's internal networking.
 
 ### Tools Not Appearing
 
@@ -194,7 +222,7 @@ The API endpoints include CORS headers to allow requests from OpenWebUI (`localh
    ```
 
 2. **Check Tool Server Configuration**:
-   - Verify base URL is correct (`http://localhost:4300`)
+   - Verify base URL is correct (`http://web:3000` for containerized setup, or `http://localhost:4300` for host access)
    - Verify OpenAPI spec URL is correct
    - Check that tool server is enabled for your model
 

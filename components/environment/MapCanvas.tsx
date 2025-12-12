@@ -11,7 +11,6 @@ import { StatusBar } from "./StatusBar";
 import { CellSelectionLayer } from "./CellSelectionLayer";
 import { CellSelectionFeedback } from "./CellSelectionFeedback";
 import type { EnvironmentDefinition } from "@/lib/data/environments";
-import { MapCompletionIndicator } from "./MapCompletionIndicator";
 import type { MapDefinition } from "@/lib/data/maps";
 import type { PixelCoordinates } from "@/lib/utils/coordinateSystem";
 import { pixelToCell } from "@/lib/utils/coordinateSystem";
@@ -34,6 +33,7 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
 
   const {
     selectedMap,
+    selectedMapId,
     zoom,
     panX,
     panY,
@@ -56,13 +56,19 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
     selectAllCells,
   } = useMapEditorStore();
   
-  // Lock zoom to 100% when in cell selection mode
-  // Use a more lenient check to handle floating point precision
+  // Log map state changes
   useEffect(() => {
-    if (selectionMode === "cell" && Math.abs(zoom - 1.0) > 0.001) {
-      setZoom(1.0);
-    }
-  }, [selectionMode, zoom, setZoom]);
+    console.log("[MapCanvas] Map state changed:", {
+      selectedMapId,
+      selectedMap: selectedMap ? { id: selectedMap.id, name: selectedMap.name, imagePath: selectedMap.imagePath } : null,
+      regionsCount: regions.length,
+      width,
+      height
+    });
+  }, [selectedMap, selectedMapId, regions.length, width, height]);
+  
+  // Don't lock zoom in cell selection mode - allow zooming for better visibility
+  // Cell selection now works at all zoom levels thanks to Konva Stage scaling
   
   // Auto-fit viewport when map loads (only on initial load, not when selection mode changes)
   const hasAutoFitted = useRef<string | null>(null);
@@ -83,28 +89,39 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
     }
   }, [selectedMap?.id, width, height, setZoom, setPan, selectionMode]);
   
-  // When entering cell selection mode, set zoom to 100% and center map
+  // When entering cell selection mode, center map at current zoom level
+  // Only run when selectionMode changes to "cell", not on every zoom change
+  const prevSelectionMode = useRef(selectionMode);
   useEffect(() => {
-    if (selectionMode === "cell" && selectedMap && width > 0 && height > 0) {
-      setZoom(1.0);
-      // Center the map at 100% zoom
+    // Only center when entering cell selection mode (not on every zoom change)
+    if (selectionMode === "cell" && prevSelectionMode.current !== "cell" && selectedMap && width > 0 && height > 0) {
+      // Center the map at current zoom level (use current zoom from store, not from dependency)
       const config = selectedMap.coordinateConfig;
-      const centerX = (width - config.imageWidth) / 2;
-      const centerY = (height - config.imageHeight) / 2;
+      const currentZoom = useMapEditorStore.getState().zoom;
+      const centerX = (width - config.imageWidth * currentZoom) / 2;
+      const centerY = (height - config.imageHeight * currentZoom) / 2;
       setPan(centerX, centerY);
     }
-  }, [selectionMode, selectedMap?.id, width, height, setZoom, setPan]);
+    prevSelectionMode.current = selectionMode;
+  }, [selectionMode, selectedMap?.id, width, height, setPan]);
 
   // Load map image
   const [mapImage, setMapImage] = useState<HTMLImageElement | null>(null);
   const [imageSizeWarning, setImageSizeWarning] = useState<string | null>(null);
-  
+
   useEffect(() => {
+    console.log("[MapCanvas] Image loading effect triggered:", {
+      selectedMap: selectedMap ? { id: selectedMap.id, name: selectedMap.name, imagePath: selectedMap.imagePath } : null
+    });
+    
     if (!selectedMap?.imagePath) {
+      console.log("[MapCanvas] No image path, clearing map image");
       setMapImage(null);
       setImageSizeWarning(null);
       return;
     }
+    
+    console.log("[MapCanvas] Loading image from path:", selectedMap.imagePath);
     
     const img = new window.Image();
     img.crossOrigin = "anonymous";
@@ -151,14 +168,29 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
         setImageSizeWarning(null);
       }
     };
-    img.onerror = () => {
-      console.error("Failed to load map image:", selectedMap.imagePath);
+    img.onerror = (error) => {
+      console.error("[MapCanvas] Failed to load map image:", {
+        imagePath: selectedMap.imagePath,
+        error,
+        attemptedSrc: img.src
+      });
       setMapImage(null);
       setImageSizeWarning(null);
     };
-    img.src = selectedMap.imagePath.startsWith("/") 
+    
+    const imageSrc = selectedMap.imagePath.startsWith("/") 
       ? selectedMap.imagePath 
       : `/${selectedMap.imagePath}`;
+    
+    console.log("[MapCanvas] Setting image src to:", imageSrc);
+    img.src = imageSrc;
+    
+    return () => {
+      // Cleanup: cancel image loading if component unmounts or map changes
+      img.onload = null;
+      img.onerror = null;
+      img.src = "";
+    };
   }, [selectedMap?.imagePath, selectedMap?.coordinateConfig]);
 
   // Keyboard shortcuts handler
@@ -366,7 +398,8 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
           );
         
         if (clickedRegion) {
-          // Clicked on a region - select it for editing
+          // Clicked on a region - select it for editing (but don't navigate to nested map)
+          // Only select it in the store, don't trigger map navigation
           selectRegion(clickedRegion.id);
           return;
         }
@@ -474,7 +507,17 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
     }
   }, [isSelectingCells, endCellSelection]);
 
-  if (!selectedMap) {
+  // Only show "no map selected" if we truly don't have a map
+  // Check both selectedMap and selectedMapId to handle async loading
+  console.log("[MapCanvas] Render check:", {
+    selectedMap: selectedMap ? { id: selectedMap.id, name: selectedMap.name } : null,
+    selectedMapId,
+    width,
+    height
+  });
+  
+  if (!selectedMap && !selectedMapId) {
+    console.log("[MapCanvas] Rendering 'No map selected' message");
     return (
       <div className="flex items-center justify-center h-full bg-deep text-text-muted">
         <div className="text-center">
@@ -484,6 +527,40 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
       </div>
     );
   }
+  
+  // If we have a selectedMapId but not selectedMap yet, show loading
+  if (selectedMapId && !selectedMap) {
+    console.log("[MapCanvas] Rendering 'Loading map' message. selectedMapId:", selectedMapId);
+    return (
+      <div className="flex items-center justify-center h-full bg-deep text-text-muted">
+        <div className="text-center">
+          <p className="mb-2">Loading map...</p>
+          <p className="text-xs opacity-50">Map ID: {selectedMapId}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If we still don't have selectedMap here, something went wrong
+  if (!selectedMap) {
+    console.error("[MapCanvas] selectedMapId exists but selectedMap is null! selectedMapId:", selectedMapId);
+    return (
+      <div className="flex items-center justify-center h-full bg-deep text-text-muted">
+        <div className="text-center">
+          <p className="mb-2 text-red-400">Error: Map ID set but map object is null</p>
+          <p className="text-xs opacity-50">Map ID: {selectedMapId}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  console.log("[MapCanvas] Rendering map canvas for:", {
+    mapId: selectedMap.id,
+    mapName: selectedMap.name,
+    imagePath: selectedMap.imagePath,
+    hasImage: !!mapImage,
+    regionsCount: regions.length
+  });
 
   if (width <= 0 || height <= 0) {
     return (
@@ -536,24 +613,40 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
               // This allows lower resolution images to still work with coordinate system
             />
           )}
+          
+          {/* Loading indicator - rendered outside Konva Layer */}
 
-          {/* Grid layer - use config dimensions */}
+          {/* Grid layer - use config dimensions and baseCellSize */}
           {showGrid && selectedMap && (
             <GridLayer
               width={selectedMap.coordinateConfig.imageWidth}
               height={selectedMap.coordinateConfig.imageHeight}
-              gridSize={useMapEditorStore.getState().gridSize}
+              gridSize={selectedMap.coordinateConfig.baseCellSize}
               zoom={zoom}
             />
           )}
 
           {/* Cell selection layer - pass actual image for validation */}
-          {/* Use effective zoom: 1.0 in cell selection mode, otherwise use store zoom */}
-          {mapImage && <CellSelectionLayer zoom={selectionMode === "cell" ? 1.0 : zoom} actualImageWidth={mapImage.naturalWidth} actualImageHeight={mapImage.naturalHeight} />}
+          {/* Use store zoom - Konva Stage handles scaling automatically */}
+          {/* Only render CellSelectionLayer when we have a map and image - ensures proper Konva tree */}
+          {selectedMap && mapImage && (
+            <CellSelectionLayer 
+              zoom={zoom} 
+              actualImageWidth={mapImage.naturalWidth} 
+              actualImageHeight={mapImage.naturalHeight} 
+            />
+          )}
 
           {/* Placements layer - TODO */}
         </Layer>
       </Stage>
+
+      {/* Loading indicator - outside Konva Layer */}
+      {selectedMap && !mapImage && (
+        <div className="absolute inset-0 flex items-center justify-center bg-deep/50 pointer-events-none z-10">
+          <p className="text-text-muted text-sm">Loading image: {selectedMap.imagePath}</p>
+        </div>
+      )}
 
       {/* Image size warning */}
       {imageSizeWarning && (
@@ -574,8 +667,6 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
       {/* Cell selection feedback */}
       <CellSelectionFeedback environments={environments} maps={maps} />
 
-      {/* Map completion indicator */}
-      <MapCompletionIndicator />
     </div>
   );
 }

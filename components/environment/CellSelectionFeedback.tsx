@@ -33,6 +33,8 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
     placements, 
     regions, 
     selectedRegionId,
+    visibleRegionIds,
+    toggleRegionVisibility,
     addRegion,
     updateRegion,
     selectRegion,
@@ -54,16 +56,28 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
   const [regionName, setRegionName] = useState("");
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(null);
   
-  const currentMapRegions = regions.filter((r) => r.mapId === selectedMap?.id);
   const selectedRegion = regions.find((r) => r.id === selectedRegionId);
   
-  // Get base region for this map
+  // Get base region for this map - the region referenced by the map's baseRegionId
+  // When a map is loaded, the region with id === map.baseRegionId becomes the base region
   const baseRegion = useMemo(() => {
-    if (!selectedMap) return null;
-    return regions.find(
-      r => r.mapId === selectedMap.id && r.name === "Base Region"
-    ) || null;
+    if (!selectedMap || !selectedMap.baseRegionId) return null;
+    // Find the region with id matching the map's baseRegionId
+    // This is the region that "owns" this map - when we load this map, this region becomes the base
+    return regions.find(r => r.id === selectedMap.baseRegionId) || null;
   }, [regions, selectedMap]);
+
+  // Get all regions on this map except the base region
+  // The base region is the one referenced by map.baseRegionId
+  const visibleRegions = useMemo(() => {
+    if (!selectedMap) return [];
+    // Show all regions where mapId matches selected map, except the base region
+    return regions.filter(r => {
+      if (r.mapId !== selectedMap.id) return false;
+      if (baseRegion && r.id === baseRegion.id) return false; // Exclude base region
+      return true;
+    });
+  }, [regions, selectedMap, baseRegion]);
   
   // Check if we're selecting within an existing region (for nested regions)
   const parentRegion = useMemo(() => {
@@ -95,10 +109,9 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
     }
     
     // If we're selecting a region with a nested map, show the nested map's image
-    if (parentRegion?.nestedMapId) {
-      const nestedMap = maps.find(m => m.id === parentRegion.nestedMapId);
-      return nestedMap?.imagePath || null;
-    }
+    // TODO: Check if parent region has a map (when we implement map-region linking)
+    // For now, return null
+    return null;
     
     return null;
   }, [selectedMap, baseRegion, selectedCells, parentRegion, maps]);
@@ -138,37 +151,52 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
   }, [selectedCells, selectedMap, placements]);
 
 
-  // Show region list if no active selection
-  if (selectedCells.length === 0 && currentMapRegions.length > 0) {
+  // Show region list if no active selection and we have visible regions
+  if (selectedCells.length === 0 && visibleRegions.length > 0) {
     return (
       <>
         <div className="absolute top-4 right-4 w-96 bg-deep border border-border rounded-lg p-4 shadow-lg z-10 max-h-96 overflow-y-auto">
-          <h3 className="font-semibold text-text-primary mb-3">Map Regions ({currentMapRegions.length})</h3>
+          <h3 className="font-semibold text-text-primary mb-3">
+            Regions ({visibleRegions.length})
+            {baseRegion && (
+              <span className="text-xs text-text-muted font-normal ml-2">
+                Base: {baseRegion.name}
+              </span>
+            )}
+          </h3>
           <div className="space-y-2">
-            {currentMapRegions.map((region) => {
-              // Base region is not selectable - it's just the entire map
-              const isBaseRegion = region.name === "Base Region";
+            {visibleRegions.map((region) => {
+              const isVisible = visibleRegionIds.has(region.id);
               
               return (
               <div
                 key={region.id}
                 className={`p-2 rounded border-2 transition-all ${
-                  isBaseRegion
-                    ? "border-border opacity-50 cursor-not-allowed"
-                    : selectedRegionId === region.id
+                  selectedRegionId === region.id
                     ? "border-ember-glow bg-ember-glow/10 cursor-pointer"
                     : "border-border hover:border-ember-glow/40 cursor-pointer"
                 }`}
                 onClick={() => {
-                  if (isBaseRegion) return; // Base region is not selectable
                   if (selectedRegionId === region.id) {
                     clearRegionSelection();
                   } else {
+                    // Select region but don't navigate to nested map
+                    // Only select it for highlighting/editing, not for map navigation
                     selectRegion(region.id);
                   }
                 }}
               >
                 <div className="flex items-center gap-2 mb-1">
+                  <input
+                    type="checkbox"
+                    checked={isVisible}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleRegionVisibility(region.id);
+                    }}
+                    className="rounded border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  />
                   <div
                     className="w-4 h-4 rounded border-2"
                     style={{
@@ -177,29 +205,25 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
                     }}
                   />
                   <span className="font-semibold text-text-primary">{region.name}</span>
-                  {region.nestedMapId && (
-                    <ExternalLink className="w-3 h-3 text-ember-glow" />
-                  )}
                 </div>
                 <div className="text-xs text-text-muted">
                   {region.cells.length} cells
-                  {region.nestedMapId && " • Has nested map"}
                 </div>
-                {!isBaseRegion && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Store the region to edit and open dialog without selecting it on the map
-                        setEditingRegion(region);
-                        setShowEditDialog(true);
-                      }}
-                      className="px-2 py-1 text-xs bg-deep border border-border rounded text-text-primary hover:bg-shadow transition-colors"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Store the region to edit and open dialog without selecting it on the map
+                      // Don't call selectRegion - just open the edit dialog
+                      setEditingRegion(region);
+                      setShowEditDialog(true);
+                      // Explicitly don't select the region - user can edit without selecting
+                    }}
+                    className="px-2 py-1 text-xs bg-deep border border-border rounded text-text-primary hover:bg-shadow transition-colors"
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
               );
             })}
@@ -357,6 +381,7 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
           <AreaInfoDisplay
             estimatedAreaInUnreal={estimatedAreaInUnreal}
             unrealBounds={validation.unrealBounds}
+            coordinateConfig={selectedMap?.coordinateConfig}
           />
 
 
@@ -402,17 +427,6 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
                 </div>
                 <div className="text-xs text-text-muted space-y-1">
                   <div>{selectedRegion.cells.length} cells selected</div>
-                  {selectedRegion.nestedMapId && (() => {
-                    const nestedMap = maps.find(m => m.id === selectedRegion.nestedMapId);
-                    return (
-                      <div className="text-text-secondary">
-                        Has nested map: {nestedMap?.name || selectedRegion.nestedMapId}
-                        {nestedMap?.imagePath && (
-                          <span className="text-text-muted ml-1">({nestedMap.imagePath})</span>
-                        )}
-                      </div>
-                    );
-                  })()}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -423,28 +437,15 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
                   <Edit className="w-4 h-4" />
                   Edit Coordinates
                 </button>
-                {selectedRegion.nestedMapId ? (
-                  <button
-                    onClick={() => {
-                      // TODO: Navigate to nested map
-                      alert(`Navigate to nested map: ${selectedRegion.nestedMapId}`);
-                    }}
-                    className="px-4 py-2 bg-blue-500 text-white rounded font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Nested Map
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      // TODO: Create nested map for this region
-                      alert("Create nested map for this region");
-                    }}
-                    className="px-4 py-2 bg-blue-500 text-white rounded font-semibold hover:opacity-90 transition-opacity"
-                  >
-                    Create Map
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    // TODO: Create nested map for this region
+                    alert("Create nested map for this region");
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Create Map
+                </button>
                 <button
                   onClick={clearRegionSelection}
                   className="px-4 py-2 bg-deep border border-border rounded text-text-primary hover:bg-shadow transition-colors"

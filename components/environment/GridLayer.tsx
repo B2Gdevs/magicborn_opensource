@@ -13,17 +13,19 @@ interface GridLayerProps {
 }
 
 export function GridLayer({ width, height, gridSize, zoom }: GridLayerProps) {
-  // Calculate effective grid size (adjusts with zoom)
-  const effectiveGridSize = gridSize * zoom;
+  // Grid lines are drawn at absolute positions (gridSize intervals)
+  // Konva Stage handles zoom transformation automatically via scaleX/scaleY
+  // gridSize should always be baseCellSize from map config
   
   // Show sub-grid when zoomed in enough
   const showSubGrid = zoom > 2;
   const subGridSize = gridSize / 5;
   
-  // Generate grid lines
+  // Generate grid lines at cell boundaries
+  // Lines are drawn at: 0, gridSize, 2*gridSize, 3*gridSize, ...
   const lines: Array<{ x1: number; y1: number; x2: number; y2: number; opacity: number }> = [];
   
-  // Vertical lines
+  // Vertical lines (at cell boundaries)
   for (let x = 0; x <= width; x += gridSize) {
     lines.push({
       x1: x,
@@ -34,7 +36,7 @@ export function GridLayer({ width, height, gridSize, zoom }: GridLayerProps) {
     });
   }
   
-  // Horizontal lines
+  // Horizontal lines (at cell boundaries)
   for (let y = 0; y <= height; y += gridSize) {
     lines.push({
       x1: 0,

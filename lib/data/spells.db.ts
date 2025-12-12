@@ -210,6 +210,7 @@ function initializeSchema() {
       parent_map_id TEXT,
       parent_cell_x REAL,
       parent_cell_y REAL,
+      base_region_id TEXT,
       name TEXT NOT NULL,
       description TEXT NOT NULL,
       image_path TEXT,
@@ -221,6 +222,19 @@ function initializeSchema() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Add base_region_id column to maps table if it doesn't exist (for existing databases)
+  try {
+    sqliteInstance.exec(`
+      ALTER TABLE maps ADD COLUMN base_region_id TEXT;
+    `);
+  } catch (e: any) {
+    // Column already exists, ignore
+    if (!e.message?.includes("duplicate column") && !e.cause?.message?.includes("duplicate column")) {
+      // Re-throw if it's a different error
+      throw e;
+    }
+  }
 
   // Create map_placements table if it doesn't exist
   sqliteInstance.exec(`

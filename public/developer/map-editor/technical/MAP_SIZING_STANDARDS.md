@@ -7,6 +7,12 @@ Different map levels (World → Town → Interior) have different scales:
 - **Town level:** Medium cells → medium Unreal areas (for buildings, districts)
 - **Interior level:** Small cells → small Unreal areas (for furniture, props)
 
+**Key Principles:**
+1. **Unreal units (meters) are the source of truth** - Everything calculates down to Unreal units
+2. **Image sizes are flexible** - Images are just visual reference, they get stretched to fit the coordinate config
+3. **Cell count depends on image size** - But cell size in Unreal meters is what matters
+4. **Nested maps get more granular** - Each level has smaller Unreal units per cell
+
 **Challenge:** A "cell" at world level = huge area, but a "cell" at interior level = small area. We need standardized sizing to ensure proper translation to Unreal Engine.
 
 ---
@@ -19,18 +25,21 @@ Different map levels (World → Town → Interior) have different scales:
 **Standard Configuration:**
 ```typescript
 {
-  imageWidth: 4096,      // or 8192 for high detail
-  imageHeight: 4096,     // or 8192 for high detail
-  unrealWidth: 12000,    // 12km in Unreal units
-  unrealHeight: 12000,   // 12km in Unreal units
-  baseCellSize: 16,      // 16 pixels per cell
+  imageWidth: 4096,      // Any size - just visual reference (gets stretched)
+  imageHeight: 4096,     // Any size - just visual reference (gets stretched)
+  unrealWidth: 12000,    // 12km in Unreal units - SOURCE OF TRUTH
+  unrealHeight: 12000,   // 12km in Unreal units - SOURCE OF TRUTH
+  baseCellSize: 16,      // 16 pixels per cell (fixed)
   zoneSize: 16,          // 16 cells per zone
 }
 ```
 
-**Cell Size in Unreal:**
-- 1 cell = ~47m × 47m (16 pixels × 7.5 Unreal units per pixel)
+**Cell Size in Unreal (Calculated):**
+- Cell size = `baseCellSize × (unrealWidth / imageWidth)`
+- Example: `16 × (12000 / 4096) = 46.875m × 46.875m`
 - 1 zone = ~750m × 750m (16 cells × 47m)
+
+**Note:** Image size doesn't affect cell size in Unreal meters. A 1024×1024px image stretched to 4096×4096px still gives 46.875m × 46.875m cells.
 
 **Use Cases:**
 - Place huge 3D models (entire town as one model - wall + tree stump)
@@ -52,17 +61,18 @@ Different map levels (World → Town → Interior) have different scales:
 **Standard Configuration:**
 ```typescript
 {
-  imageWidth: 2048,      // or 4096 for high detail
-  imageHeight: 2048,     // or 4096 for high detail
-  unrealWidth: 2000,     // 2km in Unreal units
-  unrealHeight: 2000,    // 2km in Unreal units
-  baseCellSize: 10,      // 10 pixels per cell
+  imageWidth: 2048,      // Any size - just visual reference (gets stretched)
+  imageHeight: 2048,     // Any size - just visual reference (gets stretched)
+  unrealWidth: 2000,     // 2km in Unreal units - SOURCE OF TRUTH
+  unrealHeight: 2000,    // 2km in Unreal units - SOURCE OF TRUTH
+  baseCellSize: 10,      // 10 pixels per cell (fixed)
   zoneSize: 10,          // 10 cells per zone
 }
 ```
 
-**Cell Size in Unreal:**
-- 1 cell = ~9.8m × 9.8m (10 pixels × 0.98 Unreal units per pixel)
+**Cell Size in Unreal (Calculated):**
+- Cell size = `baseCellSize × (unrealWidth / imageWidth)`
+- Example: `10 × (2000 / 2048) = 9.77m × 9.77m`
 - 1 zone = ~98m × 98m (10 cells × 9.8m)
 
 **Use Cases:**
@@ -85,17 +95,18 @@ Different map levels (World → Town → Interior) have different scales:
 **Standard Configuration:**
 ```typescript
 {
-  imageWidth: 1024,      // or 2048 for high detail
-  imageHeight: 1024,     // or 2048 for high detail
-  unrealWidth: 500,      // 500m in Unreal units
-  unrealHeight: 500,     // 500m in Unreal units
-  baseCellSize: 8,       // 8 pixels per cell
+  imageWidth: 1024,      // Any size - just visual reference (gets stretched)
+  imageHeight: 1024,     // Any size - just visual reference (gets stretched)
+  unrealWidth: 500,      // 500m in Unreal units - SOURCE OF TRUTH
+  unrealHeight: 500,     // 500m in Unreal units - SOURCE OF TRUTH
+  baseCellSize: 8,       // 8 pixels per cell (fixed)
   zoneSize: 8,           // 8 cells per zone
 }
 ```
 
-**Cell Size in Unreal:**
-- 1 cell = ~3.9m × 3.9m (8 pixels × 0.49 Unreal units per pixel)
+**Cell Size in Unreal (Calculated):**
+- Cell size = `baseCellSize × (unrealWidth / imageWidth)`
+- Example: `8 × (500 / 1024) = 3.91m × 3.91m`
 - 1 zone = ~31m × 31m (8 cells × 3.9m)
 
 **Use Cases:**
@@ -201,12 +212,14 @@ Placements:
 
 ## 📊 Standard Cell Size Reference
 
-| Map Level | Image Size | Unreal Size | Cell Size (px) | Cell Size (Unreal) | Zone Size (Unreal) |
-|-----------|------------|-------------|----------------|-------------------|-------------------|
-| **World** | 4096×4096 | 12km × 12km | 16px | ~47m × 47m | ~750m × 750m |
-| **Town** | 2048×2048 | 2km × 2km | 10px | ~9.8m × 9.8m | ~98m × 98m |
-| **Interior** | 1024×1024 | 500m × 500m | 8px | ~3.9m × 3.9m | ~31m × 31m |
-| **Small Interior** | 512×512 | 100m × 100m | 5px | ~0.98m × 0.98m | ~4.9m × 4.9m |
+| Map Level | Image Size (Example) | Unreal Size | Cell Size (px) | Cell Size (Unreal) | Zone Size (Unreal) |
+|-----------|---------------------|-------------|----------------|-------------------|-------------------|
+| **World** | 4096×4096 (flexible) | 12km × 12km | 16px | ~47m × 47m | ~750m × 750m |
+| **Town** | 2048×2048 (flexible) | 2km × 2km | 10px | ~9.8m × 9.8m | ~98m × 98m |
+| **Interior** | 1024×1024 (flexible) | 500m × 500m | 8px | ~3.9m × 3.9m | ~31m × 31m |
+| **Small Interior** | 512×512 (flexible) | 100m × 100m | 5px | ~0.98m × 0.98m | ~4.9m × 4.9m |
+
+**Note:** Image sizes are flexible - they're just visual reference. Images get stretched to fit the coordinate config. Cell size in Unreal meters is calculated as `baseCellSize × (unrealWidth / imageWidth)`.
 
 ---
 

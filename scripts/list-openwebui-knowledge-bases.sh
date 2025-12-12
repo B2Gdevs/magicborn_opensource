@@ -22,3 +22,4 @@ else
   echo "  3. Visit http://localhost:8080/api/v1/knowledge/ in your browser to see the API response"
 fi
 
+
