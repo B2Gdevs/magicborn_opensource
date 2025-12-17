@@ -230,3 +230,4 @@ console.log(`Formatted: ${formatCellSizeInMeters(config)}`); // "47m"
 - [coordinateSystem.ts](../../../lib/utils/coordinateSystem.ts) - Coordinate system implementation
 - [cellSizeCalculator.ts](../../../lib/utils/cellSizeCalculator.ts) - Cell size calculations
 
+

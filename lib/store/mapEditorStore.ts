@@ -48,12 +48,16 @@ export interface MapEditorState {
   
   // Map Regions (persistent cell selections with nested maps)
   // Regions override parent map's environment properties
+  // All regions are squares stored as minX, minY, width, height
   regions: Array<{
     id: string;
     mapId: string; // Parent map
     parentRegionId?: string; // Parent region (if nested within another region)
     name: string;
-    cells: Array<{ cellX: number; cellY: number }>; // Selected cells that define boundaries
+    minX: number; // Left edge of square (cell X coordinate)
+    minY: number; // Top edge of square (cell Y coordinate)
+    width: number; // Width of square in cells
+    height: number; // Height of square in cells
     environmentId?: string; // Associated environment template
     color: string; // Unique color for visual distinction
     metadata: {
@@ -116,6 +120,8 @@ export interface MapEditorState {
   // Actions - Cell Selection
   selectCell: (cellX: number, cellY: number, addToSelection?: boolean) => void;
   selectCellRange: (startCell: { cellX: number; cellY: number }, endCell: { cellX: number; cellY: number }) => void;
+  // Force selection to be a square (use the larger dimension for both width and height)
+  selectCellSquare: (startCell: { cellX: number; cellY: number }, endCell: { cellX: number; cellY: number }) => void;
   selectAllCells: () => void;
   clearCellSelection: () => void;
   setSelectionMode: (mode: "placement" | "cell") => void;
@@ -444,6 +450,21 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
     set({ selectedCellBounds: { minX, minY, maxX, maxY } });
   },
   
+  // Select a square region (always creates a square by using the larger dimension)
+  selectCellSquare: (startCell, endCell) => {
+    const minX = Math.min(startCell.cellX, endCell.cellX);
+    const maxX = Math.max(startCell.cellX, endCell.cellX);
+    const minY = Math.min(startCell.cellY, endCell.cellY);
+    const maxY = Math.max(startCell.cellY, endCell.cellY);
+    
+    // Make it a square by using the larger dimension for both width and height
+    const width = maxX - minX + 1;
+    const height = maxY - minY + 1;
+    const size = Math.max(width, height);
+    
+    set({ selectedCellBounds: { minX, minY, maxX: minX + size - 1, maxY: minY + size - 1 } });
+  },
+  
   clearCellSelection: () => {
     set({ selectedCellBounds: null, isSelectingCells: false, selectionStartCell: null });
   },
@@ -559,24 +580,16 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
           return;
         }
         
-        // Base region should only include cells that fit within the image bounds
-        // This ensures base region never exceeds map boundaries
-        const allCells: Array<{ cellX: number; cellY: number }> = [];
-        for (let y = 0; y < totalCellsY; y++) {
-          for (let x = 0; x < totalCellsX; x++) {
-            // Only add cells that are within bounds
-            if (x < totalCellsX && y < totalCellsY) {
-              allCells.push({ cellX: x, cellY: y });
-            }
-          }
-        }
-        
+        // Base region covers entire map as a square
         const baseRegionId = `${mapId}-base-region`;
         const baseRegion = {
           id: baseRegionId,
           mapId: mapId,
           name: "Base Region", // Always use "Base Region" as the name
-          cells: allCells,
+          minX: 0,
+          minY: 0,
+          width: totalCellsX,
+          height: totalCellsY,
           color: generateRegionColor(baseRegionId),
           metadata: {
             // Base region inherits from map's environment (empty metadata = inherits all)
@@ -600,15 +613,10 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
         ? selectedRegionId
         : null;
       
-      // Auto-add all non-base regions to visibleRegionIds so they show by default
-      const baseRegionId = selectedMap.baseRegionId;
+      // Auto-add all regions to visibleRegionIds so they show by default (including base region for editing)
       const newVisibleIds = new Set<string>();
       finalRegions.forEach(region => {
-        // Don't auto-show base region - it should always be hidden
-        if (baseRegionId && region.id === baseRegionId) {
-          return;
-        }
-        // Auto-show all other regions
+        // Auto-show all regions (including base region - it can be toggled but won't highlight on map)
         newVisibleIds.add(region.id);
       });
       
@@ -665,20 +673,13 @@ export const useMapEditorStore = create<MapEditorState>((set, get) => ({
       regions: state.regions.map((r) =>
         r.id === updatedRegion.id ? updatedRegion : r
       ),
-      // Update selected cells to match updated region
-      // Convert region cells to bounds for display
-      selectedCellBounds: updatedRegion.cells.length > 0 
-        ? (() => {
-            const xs = updatedRegion.cells.map(c => c.cellX);
-            const ys = updatedRegion.cells.map(c => c.cellY);
-            return {
-              minX: Math.min(...xs),
-              minY: Math.min(...ys),
-              maxX: Math.max(...xs),
-              maxY: Math.max(...ys),
-            };
-          })()
-        : null,
+      // Update selected cells to match updated region (square)
+      selectedCellBounds: {
+        minX: updatedRegion.minX,
+        minY: updatedRegion.minY,
+        maxX: updatedRegion.minX + updatedRegion.width - 1,
+        maxY: updatedRegion.minY + updatedRegion.height - 1,
+      },
     }));
     
     // Save to database

@@ -29,18 +29,10 @@ const MapCanvas = dynamic(() => import("./MapCanvas").then((mod) => ({ default: 
     </div>
   ),
 });
-import * as ContextMenu from "@radix-ui/react-context-menu";
 import { 
   Trash2, 
-  Copy, 
-  ClipboardPaste, 
-  Move, 
   Grid, 
   MousePointer,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
-  Maximize2,
   Square,
   HelpCircle
 } from "lucide-react";
@@ -60,7 +52,6 @@ export default function EnvironmentEditor() {
   const [showEditMapModal, setShowEditMapModal] = useState(false);
   const [selectedMapForEdit, setSelectedMapForEdit] = useState<MapDefinition | null>(null);
   const [saving, setSaving] = useState(false);
-  const [showDisplayDropdown, setShowDisplayDropdown] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
   const {
@@ -71,9 +62,6 @@ export default function EnvironmentEditor() {
     selectedRegionId,
     selectRegion,
     placements,
-    zoom,
-    panX,
-    panY,
     showGrid,
     snapToGrid,
     selectionMode,
@@ -83,24 +71,9 @@ export default function EnvironmentEditor() {
     toggleSnap,
     setSelectionMode,
     clearCellSelection,
-    zoomIn,
-    zoomOut,
-    resetView,
-    fitToViewport,
-    copySelected,
-    paste,
-    deleteSelectedPlacements,
-    canUndo,
-    canRedo,
-    undo,
-    redo,
-    showCellSelectionDisplay,
-    showMapCompletionDisplay,
     visibleRegionIds,
     toggleRegionVisibility,
     setRegionVisibility,
-    toggleCellSelectionDisplay,
-    toggleMapCompletionDisplay,
   } = useMapEditorStore();
 
   // Load environments, maps, and all regions on mount
@@ -433,15 +406,6 @@ export default function EnvironmentEditor() {
   // Keyboard shortcuts
   useHotkeys("g", () => toggleGrid(), { preventDefault: true });
   useHotkeys("s", () => toggleSnap(), { preventDefault: true });
-  useHotkeys("equal", () => zoomIn(), { preventDefault: true }); // + key
-  useHotkeys("minus", () => zoomOut(), { preventDefault: true }); // - key
-  useHotkeys("0", () => resetView(), { preventDefault: true });
-  useHotkeys("f", () => fitToViewport(), { preventDefault: true });
-  useHotkeys("ctrl+c", () => copySelected(), { preventDefault: true });
-  useHotkeys("ctrl+v", () => paste(), { preventDefault: true });
-  useHotkeys("ctrl+z", () => undo(), { preventDefault: true, enabled: canUndo() });
-  useHotkeys("ctrl+shift+z", () => redo(), { preventDefault: true, enabled: canRedo() });
-  useHotkeys("delete", () => deleteSelectedPlacements(), { preventDefault: true });
   useHotkeys("escape", () => useMapEditorStore.getState().clearSelection(), { preventDefault: true });
 
   // Get container dimensions
@@ -734,30 +698,6 @@ export default function EnvironmentEditor() {
                 );
               })()}
               
-              {/* Environment info for selected map (from base region) */}
-              {selectedMap && (() => {
-                // Get base region for this map (the region referenced by baseRegionId)
-                const baseRegion = selectedMap.baseRegionId
-                  ? useMapEditorStore.getState().regions.find(r => r.id === selectedMap.baseRegionId)
-                  : null;
-                const mapEnvironment = baseRegion?.environmentId 
-                  ? environments.find(e => e.id === baseRegion.environmentId)
-                  : selectedMap.environmentId
-                  ? environments.find(e => e.id === selectedMap.environmentId)
-                  : null;
-                return mapEnvironment ? (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-deep/50 border border-border rounded text-xs">
-                    <Globe className="w-3 h-3 text-text-muted" />
-                    <span className="text-text-muted">Environment:</span>
-                    <span className="text-text-primary font-medium">{mapEnvironment.name}</span>
-                    <span className="text-text-muted">•</span>
-                    <span className="text-text-muted">{mapEnvironment.metadata.biome}</span>
-                    <span className="text-text-muted">•</span>
-                    <span className="text-text-muted">Danger: {mapEnvironment.metadata.dangerLevel}</span>
-                  </div>
-                ) : null;
-              })()}
-              
               <Tooltip content="Create Region - Create a new region on the selected map">
                 <button
                   onClick={() => {
@@ -786,10 +726,18 @@ export default function EnvironmentEditor() {
                       setSelectedMapForEdit(selectedMap);
                       setShowEditMapModal(true);
                     }}
-                    className="px-3 py-1.5 bg-deep border border-border rounded text-text-primary text-sm hover:bg-shadow transition-colors"
+                    className="w-8 h-8 p-0.5 bg-deep border border-border rounded hover:bg-shadow transition-colors overflow-hidden flex-shrink-0"
                     title="Edit Map"
                   >
-                    Edit Map
+                    {selectedMap.imagePath ? (
+                      <img
+                        src={selectedMap.imagePath}
+                        alt={selectedMap.name}
+                        className="w-full h-full object-cover rounded"
+                      />
+                    ) : (
+                      <Map className="w-full h-full text-text-muted p-1" />
+                    )}
                   </button>
                   <button
                     onClick={() => handleDeleteMap(selectedMap)}
@@ -865,210 +813,36 @@ export default function EnvironmentEditor() {
                 </button>
               </Tooltip>
 
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <Tooltip content="Zoom In - Increase zoom level (+ key)">
-                <button
-                  onClick={zoomIn}
-                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              
-              <Tooltip content="Zoom Out - Decrease zoom level (- key)">
-                <button
-                  onClick={zoomOut}
-                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              
-              <Tooltip content="Reset View - Reset zoom and pan to default (0 key)">
-                <button
-                  onClick={resetView}
-                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              
-              <Tooltip content="Fit to Viewport - Fit entire map to viewport (F key)">
-                <button
-                  onClick={fitToViewport}
-                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-              </Tooltip>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              {/* Display Visibility Dropdown */}
-              <div className="relative">
-                <Tooltip content="Toggle Info Displays - Show/hide information panels">
-                  <button
-                    className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all relative"
-                    onClick={() => setShowDisplayDropdown(!showDisplayDropdown)}
-                  >
-                    <Info className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-                {showDisplayDropdown && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-40" 
-                      onClick={() => setShowDisplayDropdown(false)}
-                    />
-                    <div className="absolute top-full right-0 mt-1 w-48 bg-shadow border border-border rounded-lg shadow-lg z-50 p-1">
-                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-deep rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={showCellSelectionDisplay}
-                          onChange={toggleCellSelectionDisplay}
-                          className="rounded border-border"
-                        />
-                        <span className="text-sm text-text-primary">Cell Selection</span>
-                      </label>
-                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-deep rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={showMapCompletionDisplay}
-                          onChange={toggleMapCompletionDisplay}
-                          className="rounded border-border"
-                        />
-                        <span className="text-sm text-text-primary">Map Completion</span>
-                      </label>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <Tooltip content="Copy Selected - Copy selected placements to clipboard (Ctrl+C)">
-                <button
-                  onClick={copySelected}
-                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              
-              <Tooltip content="Paste - Paste copied placements at cursor position (Ctrl+V)">
-                <button
-                  onClick={() => paste()}
-                  className="p-2 rounded text-text-muted hover:text-ember-glow hover:bg-deep transition-all"
-                >
-                  <ClipboardPaste className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              
-              <Tooltip content="Delete Selected - Delete selected placements (Delete key)">
-                <button
-                  onClick={deleteSelectedPlacements}
-                  className="p-2 rounded text-text-muted hover:text-red-400 hover:bg-deep transition-all"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </Tooltip>
             </div>
           </div>
 
-          {/* Map Canvas with Context Menu */}
+          {/* Map Canvas */}
           <div ref={containerRef} className="flex-1 relative overflow-hidden min-h-[400px]">
-        <ErrorBoundary
-          fallback={
-            <div className="flex items-center justify-center h-full bg-deep text-red-500">
-              <div className="text-center">
-                <p className="mb-2">Error loading map canvas</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-ember-glow text-black rounded"
-                >
-                  Reload
-                </button>
-              </div>
-            </div>
-          }
-        >
-          <ContextMenu.Root>
-            <ContextMenu.Trigger asChild>
-              <div className="w-full h-full">
-                {dimensions.width > 0 && dimensions.height > 0 ? (
-                  <MapCanvas width={dimensions.width} height={dimensions.height - 32} environments={environments} maps={maps} />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full bg-deep text-text-muted gap-2">
-                    <div className="w-8 h-8 border-4 border-ember border-t-transparent rounded-full animate-spin"></div>
-                    <p>Initializing canvas...</p>
-                    <p className="text-xs opacity-50">Container: {containerRef.current ? `${containerRef.current.clientWidth}×${containerRef.current.clientHeight}` : "not mounted"}</p>
+            <ErrorBoundary
+              fallback={
+                <div className="flex items-center justify-center h-full bg-deep text-red-500">
+                  <div className="text-center">
+                    <p className="mb-2">Error loading map canvas</p>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="px-4 py-2 bg-ember-glow text-black rounded"
+                    >
+                      Reload
+                    </button>
                   </div>
-                )}
-              </div>
-            </ContextMenu.Trigger>
-          
-          <ContextMenu.Portal>
-            <ContextMenu.Content
-              className="min-w-[200px] bg-shadow border border-border rounded-lg shadow-lg p-1 z-50"
+                </div>
+              }
             >
-              <ContextMenu.Item
-                className="px-3 py-2 text-sm text-text-primary rounded hover:bg-deep cursor-pointer flex items-center gap-2"
-                onSelect={() => paste()}
-              >
-                <ClipboardPaste className="w-4 h-4" />
-                Paste
-              </ContextMenu.Item>
-              
-              <ContextMenu.Separator className="h-px bg-border my-1" />
-              
-              <ContextMenu.Item
-                className="px-3 py-2 text-sm text-text-primary rounded hover:bg-deep cursor-pointer flex items-center gap-2"
-                onSelect={zoomIn}
-              >
-                <ZoomIn className="w-4 h-4" />
-                Zoom In
-              </ContextMenu.Item>
-              
-              <ContextMenu.Item
-                className="px-3 py-2 text-sm text-text-primary rounded hover:bg-deep cursor-pointer flex items-center gap-2"
-                onSelect={zoomOut}
-              >
-                <ZoomOut className="w-4 h-4" />
-                Zoom Out
-              </ContextMenu.Item>
-              
-              <ContextMenu.Item
-                className="px-3 py-2 text-sm text-text-primary rounded hover:bg-deep cursor-pointer flex items-center gap-2"
-                onSelect={resetView}
-              >
-                <RotateCcw className="w-4 h-4" />
-                Reset View
-              </ContextMenu.Item>
-              
-              <ContextMenu.Separator className="h-px bg-border my-1" />
-              
-              <ContextMenu.Item
-                className="px-3 py-2 text-sm text-text-primary rounded hover:bg-deep cursor-pointer flex items-center gap-2"
-                onSelect={toggleGrid}
-              >
-                <Grid className="w-4 h-4" />
-                {showGrid ? "Hide Grid" : "Show Grid"}
-              </ContextMenu.Item>
-              
-              {showGrid && (
-                <ContextMenu.Item
-                  className="px-3 py-2 text-sm text-text-primary rounded hover:bg-deep cursor-pointer flex items-center gap-2"
-                  onSelect={toggleSnap}
-                >
-                  <MousePointer className="w-4 h-4" />
-                  {snapToGrid ? "Disable Snap" : "Enable Snap"}
-                </ContextMenu.Item>
+              {dimensions.width > 0 && dimensions.height > 0 ? (
+                <MapCanvas width={dimensions.width} height={dimensions.height - 32} environments={environments} maps={maps} />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full bg-deep text-text-muted gap-2">
+                  <div className="w-8 h-8 border-4 border-ember border-t-transparent rounded-full animate-spin"></div>
+                  <p>Initializing canvas...</p>
+                  <p className="text-xs opacity-50">Container: {containerRef.current ? `${containerRef.current.clientWidth}×${containerRef.current.clientHeight}` : "not mounted"}</p>
+                </div>
               )}
-            </ContextMenu.Content>
-          </ContextMenu.Portal>
-        </ContextMenu.Root>
-        </ErrorBoundary>
+            </ErrorBoundary>
           </div>
         </div>
       )}

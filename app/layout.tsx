@@ -3,8 +3,33 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { ClientLayout } from "@/components/ClientLayout";
 
+// Helper to safely create URL from environment variable
+function getMetadataBase(): URL {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  
+  // Validate and use provided URL
+  if (siteUrl && siteUrl.trim() !== '') {
+    // Clean up the URL - remove any concatenated values after the URL
+    const cleanUrl = siteUrl.split(/[PAYLOAD_]/)[0].trim();
+    
+    // Remove quotes if present
+    const unquotedUrl = cleanUrl.replace(/^['"]|['"]$/g, '');
+    
+    if (unquotedUrl && unquotedUrl !== '') {
+      try {
+        return new URL(unquotedUrl);
+      } catch (e) {
+        console.warn(`Invalid NEXT_PUBLIC_SITE_URL: ${unquotedUrl}, using default`);
+      }
+    }
+  }
+  
+  // Default fallback
+  return new URL('https://magicborn.b2gdevs.com');
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://magicborn.b2gdevs.com'),
+  metadataBase: getMetadataBase(),
   title: "Magicborn: Mordred's Legacy - Spell Crafting Game",
   description: "A deterministic, progression-heavy spell crafting game. No character levels—all power comes from crafting spells from runes (A-Z), building elemental affinity, mastering rune familiarity, and evolving magic through Mordred's Legacy. Features deterministic combat, spell evolution, raids, and a shadowy, organic dark fantasy world.",
   keywords: [

@@ -15,11 +15,14 @@ export function findParentRegion(
 ): MapRegion | null {
   if (cells.length === 0) return null;
   
-  // Find if any region contains all selected cells
+  // Find if any region contains all selected cells (regions are squares)
   return regions.find(r => 
     r.mapId === mapId && 
     cells.every(sc => 
-      r.cells.some(rc => rc.cellX === sc.cellX && rc.cellY === sc.cellY)
+      sc.cellX >= r.minX && 
+      sc.cellX < r.minX + r.width &&
+      sc.cellY >= r.minY && 
+      sc.cellY < r.minY + r.height
     )
   ) || null;
 }
@@ -66,4 +69,5 @@ export function getEffectiveEnvironmentId(
     ? selectedEnvironmentId 
     : (inheritedEnvironment?.id || null);
 }
+
 

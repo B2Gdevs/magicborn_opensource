@@ -27,7 +27,7 @@ export default function SidebarNav() {
     { href: "/about", label: "About", icon: BookOpen },
     { href: "/stories", label: "Stories", icon: Book },
     { href: "/style-guide", label: "Style Guide", icon: Palette },
-    { href: "/development", label: "Development", icon: Settings },
+    { href: "/content-editor", label: "Content Editor", icon: Settings },
     { href: "/openwebui", label: "Magicborn Assistant", icon: MessageSquare },
   ];
 

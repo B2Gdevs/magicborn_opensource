@@ -4,6 +4,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import SidebarNav from "@components/SidebarNav";
 import TopNav from "@components/TopNav";
 import { TooltipProvider } from "@/components/ui/TooltipProvider";
@@ -14,6 +15,21 @@ interface ClientLayoutProps {
 }
 
 export function ClientLayout({ children }: ClientLayoutProps) {
+  const pathname = usePathname();
+  
+  // Content editor has its own layout - don't show main app nav
+  const isContentEditor = pathname?.startsWith("/content-editor");
+  
+  if (isContentEditor) {
+    return (
+      <TooltipProvider>
+        <GameProviders>
+          {children}
+        </GameProviders>
+      </TooltipProvider>
+    );
+  }
+  
   return (
     <TooltipProvider>
       <GameProviders>

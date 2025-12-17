@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import { Rect } from "react-konva";
 import { useMapEditorStore } from "@/lib/store/mapEditorStore";
 import { cellToPixel } from "@/lib/utils/coordinateSystem";
-import { isCellOnBoundary, hslToRgba } from "@/lib/data/mapRegions";
+import { isCellOnBoundary, hslToRgba, getRegionCells } from "@/lib/data/mapRegions";
 import type { CellCoordinates } from "@/lib/utils/coordinateSystem";
 import type { MapRegion } from "@/lib/data/mapRegions";
 
@@ -109,19 +109,33 @@ export function CellSelectionLayer({ zoom, actualImageWidth, actualImageHeight }
       .forEach((region) => {
         const isSelected = region.id === selectedRegionId;
         
-        region.cells.forEach((cell) => {
+        // Get all cells in the square region
+        const regionCells = (() => {
+          const cells: Array<{ cellX: number; cellY: number }> = [];
+          for (let y = region.minY; y < region.minY + region.height; y++) {
+            for (let x = region.minX; x < region.minX + region.width; x++) {
+              cells.push({ cellX: x, cellY: y });
+            }
+          }
+          return cells;
+        })();
+        
+        regionCells.forEach((cell) => {
           // Filter out cells that are beyond actual image bounds (if image is smaller than config)
           if (cell.cellX >= actualMaxCellsX || cell.cellY >= actualMaxCellsY) {
             return;
           }
           
           const pixel = cellToPixel(cell, config); // Cells are absolute, zoom doesn't affect position
-          // Create a full MapRegion object for boundary check (store region has optional metadata)
+          // Create a full MapRegion object for boundary check
           const fullRegion: MapRegion = {
             id: region.id,
             mapId: region.mapId,
             name: region.name,
-            cells: region.cells,
+            minX: region.minX,
+            minY: region.minY,
+            width: region.width,
+            height: region.height,
             color: region.color,
             metadata: region.metadata || {
               // Default empty metadata - will be populated when environment properties form is added
@@ -175,35 +189,48 @@ export function CellSelectionLayer({ zoom, actualImageWidth, actualImageHeight }
     const matchesRegion = regions
       .filter((r) => r.mapId === selectedMap.id)
       .some((region) => {
-        // Check if all selected cells are in this region
-        const regionCellSet = new Set(region.cells.map(c => `${c.cellX},${c.cellY}`));
-        return selectedCells.every(sc => regionCellSet.has(`${sc.cellX},${sc.cellY}`));
+        // Check if all selected cells are in this square region
+        return selectedCells.every(sc => 
+          sc.cellX >= region.minX && 
+          sc.cellX < region.minX + region.width &&
+          sc.cellY >= region.minY && 
+          sc.cellY < region.minY + region.height
+        );
       });
     
     if (matchesRegion) {
       return [];
     }
 
-    return selectedCells
-      .filter((cell) => {
-        // Filter out cells beyond actual image bounds (if image is smaller than config)
-        return cell.cellX < actualMaxCellsX && cell.cellY < actualMaxCellsY;
-      })
-      .map((cell) => {
-        const pixel = cellToPixel(cell, config); // Cells are absolute
-        // Don't scale manually - Konva Stage handles zoom transformation
-        return {
-          x: pixel.x, // Absolute position - Konva will scale
-          y: pixel.y, // Absolute position - Konva will scale
-          width: cellSize, // Absolute size - Konva will scale
-          height: cellSize, // Absolute size - Konva will scale
-          cellX: cell.cellX,
-          cellY: cell.cellY,
-        };
-      });
+    // For square regions, we can render as a single rectangle instead of individual cells
+    // But for now, render all cells for visual feedback
+    const filteredCells = selectedCells.filter((cell) => {
+      // Filter out cells beyond actual image bounds (if image is smaller than config)
+      return cell.cellX < actualMaxCellsX && cell.cellY < actualMaxCellsY;
+    });
+    
+    return filteredCells.map((cell) => {
+      const pixel = cellToPixel(cell, config); // Cells are absolute
+      // Konva Stage handles zoom transformation via scaleX/scaleY
+      return {
+        x: pixel.x, // Absolute position - Konva will scale
+        y: pixel.y, // Absolute position - Konva will scale
+        width: cellSize, // Absolute size - Konva will scale
+        height: cellSize, // Absolute size - Konva will scale
+        cellX: cell.cellX,
+        cellY: cell.cellY,
+      };
+    });
   }, [selectedCells, selectionMode, selectedRegionId, regions, selectedMap?.id, config, cellSize, actualMaxCellsX, actualMaxCellsY]);
   
-  console.log("[CellSelectionLayer] Rendering with", regionRects.length, "region rects and", tempSelectionRects.length, "temp selection rects");
+  console.log("[CellSelectionLayer] Rendering:", {
+    selectionMode,
+    selectedCellsCount: selectedCells.length,
+    tempSelectionRectsCount: tempSelectionRects.length,
+    regionRectsCount: regionRects.length,
+    hasSelectedMap: !!selectedMap,
+    selectedRegionId
+  });
 
   return (
     <>

@@ -51,6 +51,7 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
     updateCellSelection,
     endCellSelection,
     isSelectingCells,
+    selectCellSquare,
     regions,
     selectRegion,
     selectAllCells,
@@ -89,21 +90,11 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
     }
   }, [selectedMap?.id, width, height, setZoom, setPan, selectionMode]);
   
-  // When entering cell selection mode, center map at current zoom level
-  // Only run when selectionMode changes to "cell", not on every zoom change
+  // Track selection mode changes (no zoom snapping needed - canvas scales handle it)
   const prevSelectionMode = useRef(selectionMode);
   useEffect(() => {
-    // Only center when entering cell selection mode (not on every zoom change)
-    if (selectionMode === "cell" && prevSelectionMode.current !== "cell" && selectedMap && width > 0 && height > 0) {
-      // Center the map at current zoom level (use current zoom from store, not from dependency)
-      const config = selectedMap.coordinateConfig;
-      const currentZoom = useMapEditorStore.getState().zoom;
-      const centerX = (width - config.imageWidth * currentZoom) / 2;
-      const centerY = (height - config.imageHeight * currentZoom) / 2;
-      setPan(centerX, centerY);
-    }
     prevSelectionMode.current = selectionMode;
-  }, [selectionMode, selectedMap?.id, width, height, setPan]);
+  }, [selectionMode]);
 
   // Load map image
   const [mapImage, setMapImage] = useState<HTMLImageElement | null>(null);
@@ -394,7 +385,10 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
         const clickedRegion = regions
           .filter((r) => r.mapId === selectedMap.id)
           .find((region) =>
-            region.cells.some((c) => c.cellX === cell.cellX && c.cellY === cell.cellY)
+            cell.cellX >= region.minX && 
+            cell.cellX < region.minX + region.width &&
+            cell.cellY >= region.minY && 
+            cell.cellY < region.minY + region.height
           );
         
         if (clickedRegion) {
@@ -489,7 +483,13 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
       const clampedY = Math.max(0, Math.min(config.imageHeight, mapY));
 
       const cell = pixelToCell({ x: clampedX, y: clampedY }, config);
-      updateCellSelection(cell.cellX, cell.cellY);
+      // Always use square selection for regions when dragging
+      const { selectionStartCell } = useMapEditorStore.getState();
+      if (selectionStartCell) {
+        selectCellSquare(selectionStartCell, cell);
+      } else {
+        updateCellSelection(cell.cellX, cell.cellY);
+      }
     },
     [selectedMap, isSelectingCells, updateCellSelection]
   );
@@ -579,8 +579,8 @@ export function MapCanvas({ width, height, environments = [], maps = [] }: MapCa
         ref={stageRef}
         width={width}
         height={height}
-        scaleX={selectionMode === "cell" ? 1.0 : zoom}
-        scaleY={selectionMode === "cell" ? 1.0 : zoom}
+        scaleX={zoom}
+        scaleY={zoom}
         x={panX}
         y={panY}
         onWheel={handleWheel}

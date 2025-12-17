@@ -64,13 +64,57 @@ export async function getRegionsByNestedMapId(nestedMapId: string): Promise<MapR
 }
 
 function rowToRegion(row: typeof mapRegions.$inferSelect): MapRegion {
+  // Handle migration: if new columns exist, use them; otherwise convert from cells array
+  let minX: number, minY: number, width: number, height: number;
+  
+  if (row.minX && row.minY && row.width && row.height) {
+    // New format - use square format
+    minX = parseInt(row.minX);
+    minY = parseInt(row.minY);
+    width = parseInt(row.width);
+    height = parseInt(row.height);
+  } else {
+    // Old format - convert from cells array (migration path)
+    try {
+      const cells = JSON.parse((row as any).cells || '[]') as Array<{ cellX: number; cellY: number }>;
+      if (cells.length > 0) {
+        const xs = cells.map(c => c.cellX);
+        const ys = cells.map(c => c.cellY);
+        minX = Math.min(...xs);
+        minY = Math.min(...ys);
+        const maxX = Math.max(...xs);
+        const maxY = Math.max(...ys);
+        // Make it square
+        const w = maxX - minX + 1;
+        const h = maxY - minY + 1;
+        width = Math.max(w, h);
+        height = Math.max(w, h);
+      } else {
+        // Fallback
+        minX = 0;
+        minY = 0;
+        width = 1;
+        height = 1;
+      }
+    } catch (e) {
+      // Fallback if parsing fails
+      minX = 0;
+      minY = 0;
+      width = 1;
+      height = 1;
+    }
+  }
+  
   return {
     id: row.id,
     mapId: row.mapId,
     parentRegionId: row.parentRegionId || undefined,
     name: row.name,
     description: row.description || undefined,
-    cells: JSON.parse(row.cells),
+    minX,
+    minY,
+    width,
+    height,
     nestedMapId: row.nestedMapId || undefined,
     environmentId: row.environmentId || undefined,
     color: row.color,
@@ -85,7 +129,10 @@ function regionToRow(region: MapRegion): typeof mapRegions.$inferInsert {
     parentRegionId: region.parentRegionId || null,
     name: region.name,
     description: region.description || null,
-    cells: JSON.stringify(region.cells),
+    minX: region.minX.toString(),
+    minY: region.minY.toString(),
+    width: region.width.toString(),
+    height: region.height.toString(),
     nestedMapId: region.nestedMapId || null,
     environmentId: region.environmentId || null,
     color: region.color,

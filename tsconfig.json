@@ -23,7 +23,8 @@
         "@core/*": ["lib/core/*"],
         "@pkg/*": ["lib/packages/*"],
         "@data/*": ["data/*"],
-        "@store/*": ["lib/store/*"]
+        "@store/*": ["lib/store/*"],
+        "@payload-config": ["./payload.config"]
       },
     "incremental": true,
     "esModuleInterop": true,

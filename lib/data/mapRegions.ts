@@ -12,10 +12,13 @@ export interface MapRegion {
   mapId: string; // Parent map
   parentRegionId?: string; // Parent region (if nested within another region)
   
-  // Region definition
+  // Region definition - stored as a square (all regions are squares)
   name: string;
   description?: string;
-  cells: CellCoordinates[]; // Selected cells that define this region
+  minX: number; // Left edge of square (cell X coordinate)
+  minY: number; // Top edge of square (cell Y coordinate)
+  width: number; // Width of square in cells
+  height: number; // Height of square in cells
   
   // Associated nested map (if created)
   nestedMapId?: string; // Link to nested map created from this region
@@ -93,25 +96,33 @@ export function hslToRgba(hsl: string, alpha: number = 1): string {
 }
 
 /**
- * Get region bounds from cells
+ * Get region bounds from square definition
  */
-export function getRegionBounds(cells: CellCoordinates[]): {
+export function getRegionBounds(region: MapRegion): {
   minX: number;
   maxX: number;
   minY: number;
   maxY: number;
-} | null {
-  if (cells.length === 0) return null;
-  
-  const xs = cells.map((c) => c.cellX);
-  const ys = cells.map((c) => c.cellY);
-  
+} {
   return {
-    minX: Math.min(...xs),
-    maxX: Math.max(...xs),
-    minY: Math.min(...ys),
-    maxY: Math.max(...ys),
+    minX: region.minX,
+    maxX: region.minX + region.width - 1,
+    minY: region.minY,
+    maxY: region.minY + region.height - 1,
   };
+}
+
+/**
+ * Get all cells in a square region
+ */
+export function getRegionCells(region: MapRegion): CellCoordinates[] {
+  const cells: CellCoordinates[] = [];
+  for (let y = region.minY; y < region.minY + region.height; y++) {
+    for (let x = region.minX; x < region.minX + region.width; x++) {
+      cells.push({ cellX: x, cellY: y });
+    }
+  }
+  return cells;
 }
 
 /**
@@ -121,8 +132,12 @@ export function isCellInRegion(
   cell: CellCoordinates,
   region: MapRegion
 ): boolean {
-  return region.cells.some(
-    (c) => c.cellX === cell.cellX && c.cellY === cell.cellY
+  const bounds = getRegionBounds(region);
+  return (
+    cell.cellX >= bounds.minX &&
+    cell.cellX <= bounds.maxX &&
+    cell.cellY >= bounds.minY &&
+    cell.cellY <= bounds.maxY
   );
 }
 
@@ -133,9 +148,7 @@ export function isCellOnBoundary(
   cell: CellCoordinates,
   region: MapRegion
 ): boolean {
-  const bounds = getRegionBounds(region.cells);
-  if (!bounds) return false;
-  
+  const bounds = getRegionBounds(region);
   return (
     cell.cellX === bounds.minX ||
     cell.cellX === bounds.maxX ||

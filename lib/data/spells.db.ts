@@ -354,7 +354,10 @@ function initializeSchema() {
       parent_region_id TEXT,
       name TEXT NOT NULL,
       description TEXT,
-      cells TEXT NOT NULL,
+      min_x TEXT NOT NULL,
+      min_y TEXT NOT NULL,
+      width TEXT NOT NULL,
+      height TEXT NOT NULL,
       nested_map_id TEXT,
       environment_id TEXT,
       color TEXT NOT NULL,
@@ -384,6 +387,59 @@ function initializeSchema() {
       // Re-throw if it's a different error
       throw e;
     }
+  }
+  
+  // Migration: Migrate from cells array to square format (minX, minY, width, height)
+  // Check if old cells column exists and new columns don't
+  try {
+    const tableInfo = sqliteInstance.prepare(`PRAGMA table_info(map_regions)`).all() as Array<{ name: string }>;
+    const hasCells = tableInfo.some(col => col.name === 'cells');
+    const hasMinX = tableInfo.some(col => col.name === 'min_x');
+    
+    if (hasCells && !hasMinX) {
+      console.log('Migrating map_regions from cells array to square format...');
+      // Add new columns
+      sqliteInstance.exec(`
+        ALTER TABLE map_regions ADD COLUMN min_x TEXT;
+        ALTER TABLE map_regions ADD COLUMN min_y TEXT;
+        ALTER TABLE map_regions ADD COLUMN width TEXT;
+        ALTER TABLE map_regions ADD COLUMN height TEXT;
+      `);
+      
+      // Migrate data: convert cells array to square bounds
+      const regions = sqliteInstance.prepare(`SELECT id, cells FROM map_regions WHERE cells IS NOT NULL`).all() as Array<{ id: string; cells: string }>;
+      for (const region of regions) {
+        try {
+          const cells = JSON.parse(region.cells) as Array<{ cellX: number; cellY: number }>;
+          if (cells.length > 0) {
+            const xs = cells.map(c => c.cellX);
+            const ys = cells.map(c => c.cellY);
+            const minX = Math.min(...xs);
+            const minY = Math.min(...ys);
+            const maxX = Math.max(...xs);
+            const maxY = Math.max(...ys);
+            const width = maxX - minX + 1;
+            const height = maxY - minY + 1;
+            // Make it a square (use larger dimension)
+            const size = Math.max(width, height);
+            
+            sqliteInstance.prepare(`
+              UPDATE map_regions 
+              SET min_x = ?, min_y = ?, width = ?, height = ?
+              WHERE id = ?
+            `).run(minX.toString(), minY.toString(), size.toString(), size.toString(), region.id);
+          }
+        } catch (e) {
+          console.error(`Failed to migrate region ${region.id}:`, e);
+        }
+      }
+      
+      // Note: We don't drop the cells column to allow rollback if needed
+      console.log('Migration complete. Old cells column preserved for rollback.');
+    }
+  } catch (e: any) {
+    // Migration failed, but continue
+    console.error('Migration error (non-fatal):', e);
   }
   
   // Create index on parent_region_id after ensuring the column exists

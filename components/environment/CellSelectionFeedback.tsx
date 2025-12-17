@@ -18,6 +18,7 @@ import { AreaInfoDisplay } from "./AreaInfoDisplay";
 import { getCellCount } from "@/lib/utils/cellUtils";
 import { pixelToCell } from "@/lib/utils/coordinateSystem";
 import { findParentRegion, findBaseRegion, getInheritedEnvironment } from "@/lib/utils/regionInheritance";
+import { Globe } from "lucide-react";
 
 interface CellSelectionFeedbackProps {
   environments?: EnvironmentDefinition[];
@@ -67,17 +68,15 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
     return regions.find(r => r.id === selectedMap.baseRegionId) || null;
   }, [regions, selectedMap]);
 
-  // Get all regions on this map except the base region
-  // The base region is the one referenced by map.baseRegionId
+  // Get all regions on this map (including base region for display/editing)
   const visibleRegions = useMemo(() => {
     if (!selectedMap) return [];
-    // Show all regions where mapId matches selected map, except the base region
+    // Show all regions where mapId matches selected map (including base region)
     return regions.filter(r => {
       if (r.mapId !== selectedMap.id) return false;
-      if (baseRegion && r.id === baseRegion.id) return false; // Exclude base region
-      return true;
+      return true; // Include all regions, including base region
     });
-  }, [regions, selectedMap, baseRegion]);
+  }, [regions, selectedMap]);
   
   // Check if we're selecting within an existing region (for nested regions)
   const parentRegion = useMemo(() => {
@@ -99,9 +98,15 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
     if (baseRegion && selectedCells.length > 0) {
       // Check if selected cells match base region
       const selectedCellSet = new Set(selectedCells.map(c => `${c.cellX},${c.cellY}`));
-      const baseRegionCellSet = new Set(baseRegion.cells.map(c => `${c.cellX},${c.cellY}`));
-      const isSelectingBaseRegion = selectedCells.length === baseRegion.cells.length &&
-        selectedCells.every(c => baseRegionCellSet.has(`${c.cellX},${c.cellY}`));
+      // Check if selected cells match base region (square)
+      const baseRegionCellCount = baseRegion.width * baseRegion.height;
+      const isSelectingBaseRegion = selectedCells.length === baseRegionCellCount &&
+        selectedCells.every(c => 
+          c.cellX >= baseRegion.minX && 
+          c.cellX < baseRegion.minX + baseRegion.width &&
+          c.cellY >= baseRegion.minY && 
+          c.cellY < baseRegion.minY + baseRegion.height
+        );
       
       if (isSelectingBaseRegion) {
         return selectedMap.imagePath || null;
@@ -168,6 +173,15 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
             {visibleRegions.map((region) => {
               const isVisible = visibleRegionIds.has(region.id);
               
+              // Get environment for this region
+              const regionEnvironment = region.environmentId
+                ? environments.find(e => e.id === region.environmentId)
+                : getInheritedEnvironment(
+                    region.parentRegionId ? regions.find(r => r.id === region.parentRegionId) || null : null,
+                    baseRegion,
+                    environments
+                  );
+              
               return (
               <div
                 key={region.id}
@@ -206,9 +220,28 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
                   />
                   <span className="font-semibold text-text-primary">{region.name}</span>
                 </div>
-                <div className="text-xs text-text-muted">
-                  {region.cells.length} cells
+                <div className="text-xs text-text-muted mb-1">
+                  {region.width * region.height} cells ({region.width}×{region.height})
                 </div>
+                {/* Environment data */}
+                {regionEnvironment && (
+                  <div className="flex items-center gap-1.5 px-1.5 py-1 bg-deep/50 border border-border rounded text-xs mb-2">
+                    <Globe className="w-3 h-3 text-text-muted flex-shrink-0" />
+                    <span className="text-text-muted">{regionEnvironment.name}</span>
+                    {regionEnvironment.metadata.biome && (
+                      <>
+                        <span className="text-text-muted">•</span>
+                        <span className="text-text-muted">{regionEnvironment.metadata.biome}</span>
+                      </>
+                    )}
+                    {regionEnvironment.metadata.dangerLevel !== undefined && (
+                      <>
+                        <span className="text-text-muted">•</span>
+                        <span className="text-text-muted">Danger: {regionEnvironment.metadata.dangerLevel}</span>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={(e) => {
@@ -349,9 +382,15 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
               else if (baseRegion && selectedMap && selectedCells.length > 0) {
                 // Check if selected cells match base region
                 const selectedCellSet = new Set(selectedCells.map(c => `${c.cellX},${c.cellY}`));
-                const baseRegionCellSet = new Set(baseRegion.cells.map(c => `${c.cellX},${c.cellY}`));
-                const isSelectingBaseRegion = selectedCells.length === baseRegion.cells.length &&
-                  selectedCells.every(c => baseRegionCellSet.has(`${c.cellX},${c.cellY}`));
+                // Check if selected cells match base region (square)
+                const baseRegionCellCount = baseRegion.width * baseRegion.height;
+                const isSelectingBaseRegion = selectedCells.length === baseRegionCellCount &&
+                  selectedCells.every(c => 
+                    c.cellX >= baseRegion.minX && 
+                    c.cellX < baseRegion.minX + baseRegion.width &&
+                    c.cellY >= baseRegion.minY && 
+                    c.cellY < baseRegion.minY + baseRegion.height
+                  );
                 
                 if (isSelectingBaseRegion) {
                   await updateRegion({
@@ -412,7 +451,7 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
           </div>
           
           {/* Edit Selected Region - Buttons always at bottom */}
-          {selectedRegion && selectedMap && selectedRegion.name !== "Base Region" && (
+          {selectedRegion && selectedMap && (
             <div className="border-t border-border p-4 bg-deep/50">
               <div className="mb-3 p-2 bg-void rounded">
                 <div className="flex items-center gap-2 mb-2">
@@ -426,7 +465,7 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
                   <span className="font-semibold text-text-primary">{selectedRegion.name}</span>
                 </div>
                 <div className="text-xs text-text-muted space-y-1">
-                  <div>{selectedRegion.cells.length} cells selected</div>
+                  <div>{selectedRegion.width * selectedRegion.height} cells selected ({selectedRegion.width}×{selectedRegion.height})</div>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -481,11 +520,21 @@ export function CellSelectionFeedback({ environments = [], maps = [], refreshAll
                       onClick={async () => {
                         if (regionName.trim() && selectedMap) {
                           const regionId = `region-${Date.now()}`;
+                          // Convert selected cells to square format
+                          const bounds = selectedCellBounds!;
+                          const width = bounds.maxX - bounds.minX + 1;
+                          const height = bounds.maxY - bounds.minY + 1;
+                          // Make it a square by using the larger dimension
+                          const size = Math.max(width, height);
+                          
                           await addRegion({
                             id: regionId,
                             mapId: selectedMap.id, // Parent map
                             name: regionName.trim(),
-                            cells: selectedCells, // Selected cells define boundaries
+                            minX: bounds.minX,
+                            minY: bounds.minY,
+                            width: size,
+                            height: size,
                             color: generateRegionColor(regionId),
                             environmentId: effectiveEnvironmentId || undefined,
                             metadata: {

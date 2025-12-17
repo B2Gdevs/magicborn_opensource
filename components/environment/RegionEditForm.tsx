@@ -36,7 +36,12 @@ export function RegionEditForm({
 }: RegionEditFormProps) {
   const { placements } = useMapEditorStore();
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(region.environmentId || null);
-  const [regionCells, setRegionCells] = useState<Array<{ cellX: number; cellY: number }>>(region.cells);
+  const [regionSquare, setRegionSquare] = useState({
+    minX: region.minX,
+    minY: region.minY,
+    width: region.width,
+    height: region.height,
+  });
   const [nestedMapImagePath, setNestedMapImagePath] = useState<string | null>(null);
   
   // Get nested map if it exists
@@ -63,18 +68,35 @@ export function RegionEditForm({
     }
   }, [nestedMap]);
   
-  // Calculate validation for current cells
+  // Calculate validation for current square region
+  // Generate cells from square for validation
+  const regionCells = useMemo(() => {
+    const cells: Array<{ cellX: number; cellY: number }> = [];
+    for (let y = regionSquare.minY; y < regionSquare.minY + regionSquare.height; y++) {
+      for (let x = regionSquare.minX; x < regionSquare.minX + regionSquare.width; x++) {
+        cells.push({ cellX: x, cellY: y });
+      }
+    }
+    return cells;
+  }, [regionSquare]);
+  
   const validation = useMemo(() => {
     if (regionCells.length === 0) return null;
     return validateCellSelectionForNestedMap(regionCells, map.coordinateConfig, placements);
   }, [regionCells, map, placements]);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Ensure square (use larger dimension)
+    const size = Math.max(regionSquare.width, regionSquare.height);
+    
     const updatedRegion: MapRegion = {
       ...region,
-      cells: regionCells,
+      minX: regionSquare.minX,
+      minY: regionSquare.minY,
+      width: size,
+      height: size,
       environmentId: selectedEnvironmentId || undefined,
     };
     
@@ -111,7 +133,19 @@ export function RegionEditForm({
           }
         }}
         onCellsSnapped={(cells) => {
-          setRegionCells(cells);
+          // Convert cells to square bounds
+          if (cells.length > 0) {
+            const xs = cells.map(c => c.cellX);
+            const ys = cells.map(c => c.cellY);
+            const minX = Math.min(...xs);
+            const minY = Math.min(...ys);
+            const maxX = Math.max(...xs);
+            const maxY = Math.max(...ys);
+            const width = maxX - minX + 1;
+            const height = maxY - minY + 1;
+            const size = Math.max(width, height); // Make it square
+            setRegionSquare({ minX, minY, width: size, height: size });
+          }
         }}
       />
 

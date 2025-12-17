@@ -42,11 +42,14 @@ export function calculateMapCompletion(
   const totalCells = totalCellsX * totalCellsY;
   
   // Count cells that have content (regions or placements)
+  // Regions are squares, so calculate cells from minX, minY, width, height
   const cellsWithRegions = new Set<string>();
   regions.forEach((region) => {
-    region.cells.forEach((cell) => {
-      cellsWithRegions.add(`${cell.cellX},${cell.cellY}`);
-    });
+    for (let y = region.minY; y < region.minY + region.height; y++) {
+      for (let x = region.minX; x < region.minX + region.width; x++) {
+        cellsWithRegions.add(`${x},${y}`);
+      }
+    }
   });
   
   // Count cells with placements (approximate - placements might not cover full cells)

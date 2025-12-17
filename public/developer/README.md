@@ -35,10 +35,32 @@
 - **Magicborn Ingestion (RAG).md** - Quick start and RAG setup guide
 - **TOOLS_SETUP.md** - REST API tool server configuration
 
+### **Content Editor Migration** (`./`)
+**Migration plan for transforming Content Editor to NovelCrafter-style layout**
+
+- **CONTENT_EDITOR_MIGRATION_PLAN.md** - ⭐ **NEW** Complete migration plan for Content Editor redesign
+
+### **Content Editor v2** (`content-editor-v2/`)
+**Payload CMS integration and implementation tracking**
+
+- **README.md** - Overview and quick start guide
+- **SETUP_LOG.md** - Step-by-step setup process and current status
+- **ISSUES_AND_FIXES.md** - ⚠️ Tracked issues, errors, and their resolutions
+
 
 ---
 
 ## 🎯 Quick Navigation
+
+### **Content Editor Migration (NEW)**
+1. Read: **CONTENT_EDITOR_MIGRATION_PLAN.md** - Complete plan for NovelCrafter-style Content Editor
+2. Understand: Core vs Extensions architecture
+3. Review: Migration strategy for all existing editors
+
+### **Content Editor v2 (Payload CMS)**
+1. Read: **content-editor-v2/README.md** - Overview and architecture
+2. Check: **content-editor-v2/ISSUES_AND_FIXES.md** - Known issues and fixes
+3. Review: **content-editor-v2/SETUP_LOG.md** - Setup process and current status
 
 ### **New to the Environment Editor?**
 1. Start with: **environment-editor/user-guides/MAP_EDITOR_DATA_RELATIONSHIPS.md** (understand the model)

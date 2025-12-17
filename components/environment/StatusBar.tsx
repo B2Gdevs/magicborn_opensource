@@ -126,12 +126,6 @@ export function StatusBar({ mouseCoords = null }: StatusBarProps) {
           <span className={showGrid ? "text-moss-glow" : "text-text-muted"}>
             {showGrid ? "ON" : "OFF"}
           </span>
-          {showGrid && (
-            <>
-              <span className="text-text-muted">|</span>
-              <span className="text-text-muted">Size: {gridSize}px</span>
-            </>
-          )}
         </div>
         
         {/* Snap status */}

@@ -37,7 +37,12 @@ const nextConfig = {
             request?.includes("spells.db") ||
             request?.includes("spellsRepository") ||
             request?.includes("runesRepository") ||
-            request?.includes("drizzle-orm/better-sqlite3")
+            request?.includes("drizzle-orm/better-sqlite3") ||
+            request?.includes("@payloadcms/db-sqlite") ||
+            // Only externalize payload server-side modules, not client hooks
+            (request?.includes("payload") && 
+             !request?.includes("hooks") &&
+             !request?.includes("lib/payload/hooks"))
           ) {
             return callback(null, `commonjs ${request}`);
           }

@@ -14,10 +14,11 @@ All Environment Editor documentation is organized here for easy navigation.
 3. **[Quick Examples](user-guides/QUICK_EXAMPLES.md)** - Real-world examples
 
 ### **For Developers:**
-1. **[Component Breakdown](COMPONENT_BREAKDOWN.md)** - What each component does and how to extend it
-2. **[Architecture](ARCHITECTURE.md)** - Technical design and data structures
-3. **[Roadmap](ROADMAP.md)** - Development roadmap and next steps
-4. **[Coordinate System](../technical/coordinate-system-notes.md)** - Coordinate conversion details
+1. **[Data-Centric Map Plan](DATA_CENTRIC_MAP_PLAN.md)** - ⭐ **NEW** Implementation plan for data-centric approach
+2. **[Component Breakdown](COMPONENT_BREAKDOWN.md)** - What each component does and how to extend it
+3. **[Architecture](ARCHITECTURE.md)** - Technical design and data structures
+4. **[Roadmap](ROADMAP.md)** - Development roadmap and next steps
+5. **[Coordinate System](../technical/coordinate-system-notes.md)** - Coordinate conversion details
 
 ---
 
@@ -30,6 +31,7 @@ All Environment Editor documentation is organized here for easy navigation.
 - **QUICK_START_GUIDE.md** - 5-minute quick start
 
 ### **Component Documentation** (`./`)
+- **DATA_CENTRIC_MAP_PLAN.md** - ⭐ **NEW** Implementation plan for moving to data-centric approach
 - **COMPONENT_BREAKDOWN.md** - Detailed component breakdown and extension guide
 - **ARCHITECTURE.md** - Complete architecture plan
 - **ROADMAP.md** - Development roadmap and next steps
@@ -67,12 +69,21 @@ World Map (Foundation)
 
 ## 🔄 Workflow Pattern
 
-### **Repeatable Pattern:**
+### **Current Workflow (Visual Editor):**
 1. **Select Map** (World Map or Nested Map)
 2. **Select Cells** (use Cell Selection tool, drag to select)
 3. **Create Region** (set environment properties that override parent)
 4. **Create Nested Map** (optional - inherits from region)
 5. **Repeat** on nested map if needed
+
+### **Future Workflow (Data-Centric):**
+1. **Navigate Hierarchy** (select map/region from tree view)
+2. **Fill Forms** (enter coordinates, properties via forms)
+3. **Use Calculator** (calculate coordinates if needed)
+4. **Create Region/Map** (save via form submission)
+5. **View on Map** (read-only visualization with auto-placed landmarks)
+
+> **Note:** See **[DATA_CENTRIC_MAP_PLAN.md](DATA_CENTRIC_MAP_PLAN.md)** for the complete plan to transition to a data-centric approach.
 
 ---
 

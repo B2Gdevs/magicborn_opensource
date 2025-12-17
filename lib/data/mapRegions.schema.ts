@@ -9,10 +9,13 @@ export const mapRegions = sqliteTable("map_regions", {
   mapId: text("map_id").notNull(), // Parent map
   parentRegionId: text("parent_region_id"), // Parent region (if nested within another region)
   
-  // Region definition
+  // Region definition - stored as a square (all regions are squares)
   name: text("name").notNull(),
   description: text("description"),
-  cells: text("cells").notNull(), // JSON array of CellCoordinates
+  minX: text("min_x").notNull(), // Left edge of square (cell X coordinate)
+  minY: text("min_y").notNull(), // Top edge of square (cell Y coordinate)
+  width: text("width").notNull(), // Width of square in cells
+  height: text("height").notNull(), // Height of square in cells
   
   // Associated nested map/environment
   nestedMapId: text("nested_map_id"), // Link to nested map (if created)

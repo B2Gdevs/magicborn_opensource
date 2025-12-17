@@ -1,6 +1,14 @@
 # Magicborn Assistant - Tool Server Setup
 
-This guide explains how the Magicborn Assistant (powered by OpenWebUI) connects to your REST API as a tool server to access and manage your game database.
+⚠️ **STATUS: NOT WORKING** - See [TOOL_CALLING_FAILURES.md](./TOOL_CALLING_FAILURES.md) for details.
+
+We've pivoted to building a custom Node.js AI system. See [AI_SYSTEM.md](./AI_SYSTEM.md) for the new approach.
+
+---
+
+## Historical Documentation (For Reference Only)
+
+This guide explains how the Magicborn Assistant (powered by OpenWebUI) was *supposed* to connect to your REST API as a tool server to access and manage your game database.
 
 ## Quick Reference
 
