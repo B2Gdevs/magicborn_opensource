@@ -6,7 +6,11 @@ import { isSuperuser } from '../access/helpers'
 
 export const Media: CollectionConfig = {
   slug: 'media',
-  upload: true,
+  upload: {
+    staticDir: 'media',
+    staticURL: '/media',
+    mimeTypes: ['image/*', 'video/*'],
+  },
   access: {
     read: () => true, // Media is publicly readable
     create: ({ req }) => {

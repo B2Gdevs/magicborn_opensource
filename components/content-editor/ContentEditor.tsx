@@ -6,8 +6,8 @@
 
 import { useState } from "react";
 import { CodexSidebar } from "./CodexSidebar";
-import { ContentNavigation } from "./ContentNavigation";
-import { ContentGridView } from "./ContentGridView";
+import { ContentNavigation, SaveStatus } from "./ContentNavigation";
+import { StoryPlanView } from "./StoryPlanView";
 
 interface ContentEditorProps {
   projectId: string;
@@ -17,6 +17,8 @@ export function ContentEditor({ projectId }: ContentEditorProps) {
   const [activeView, setActiveView] = useState<"grid" | "matrix" | "outline">("grid");
   const [activeTab, setActiveTab] = useState<"plan" | "write" | "chat" | "review">("plan");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   return (
     <div className="flex h-full bg-void">
@@ -36,14 +38,17 @@ export function ContentEditor({ projectId }: ContentEditorProps) {
           activeView={activeView}
           onViewChange={setActiveView}
           projectId={projectId}
+          saveStatus={saveStatus}
+          lastSaved={lastSaved}
         />
 
-        {/* Main Content */}
+        {/* Main Content - Story Structure */}
         <div className="flex-1 overflow-auto bg-deep/30">
           {activeView === "grid" && (
-            <ContentGridView
+            <StoryPlanView
               projectId={projectId}
-              category={selectedCategory}
+              onSaveStatusChange={setSaveStatus}
+              onLastSavedChange={setLastSaved}
             />
           )}
           {activeView === "matrix" && (

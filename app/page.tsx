@@ -1,48 +1,25 @@
-"use client";
+import { getPayload } from 'payload'
+import config from '@payload-config'
+import { Globals } from '@/lib/payload/constants'
+import { HomepageContent } from '@/components/homepage/HomepageContent'
 
-import Image from "next/image";
-import HeroVideo from "@components/HeroVideo";
+export const dynamic = 'force-dynamic'
 
-export default function LandingPage() {
-  return (
-    <main className="min-h-screen bg-black text-white">
-      {/* Hero Section with Video Background - Full Screen Behind Nav */}
-      <div className="fixed inset-0 z-0">
-        <HeroVideo loopVideos={true}>
-          <div className="container mx-auto px-12 text-center">
-            <div className="max-w-4xl mx-auto">
-              {/* Logo */}
-              <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto mb-12 animate-fade-in">
-                <Image
-                  src="/design/logos/magicborn_logo.png"
-                  alt="Magicborn: Mordred's Legacy"
-                  fill
-                  className="object-contain drop-shadow-2xl"
-                  priority
-                  sizes="(max-width: 768px) 192px, 256px"
-                />
-              </div>
-              
-              {/* Book-like Text */}
-              <div className="max-w-2xl mx-auto space-y-6 animate-fade-in-delay-2">
-                <p className="text-lg md:text-xl text-text-secondary leading-relaxed font-serif italic">
-                  In the shadows where magic flows like blood, the <span className="text-ember-glow font-normal">Magicborn</span> serve. 
-                  Oppressed. Silenced. Forced into war.
-                </p>
-                
-                <p className="text-base md:text-lg text-text-secondary/90 leading-relaxed font-serif">
-                  You are one of them. A military slave, your power both gift and curse. 
-                  In this godforsaken land, survival comes not from strength, but from the spells you craft.
-                </p>
-                
-                <p className="text-sm md:text-base text-text-muted leading-relaxed font-serif italic">
-                  This is the story of the oppressed. Of what they must do to survive... <span className="text-ember-glow/80">their way.</span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </HeroVideo>
-      </div>
-    </main>
-  );
+async function getSiteConfig() {
+  try {
+    const payload = await getPayload({ config })
+    const siteConfig = await payload.findGlobal({
+      slug: Globals.SiteConfig,
+    })
+    return siteConfig
+  } catch (error) {
+    console.error('Failed to fetch site config:', error)
+    return null
+  }
+}
+
+export default async function LandingPage() {
+  const siteConfig = await getSiteConfig()
+
+  return <HomepageContent siteConfig={siteConfig} />
 }

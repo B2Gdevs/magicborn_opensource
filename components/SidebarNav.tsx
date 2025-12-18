@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Book, Palette, Settings, Github, MessageSquare } from "lucide-react";
+import { Home, BookOpen, Book, Palette, Settings, Github, Code, Scroll } from "lucide-react";
 
 // Discord icon component
 function DiscordIcon({ className }: { className?: string }) {
@@ -25,10 +25,10 @@ export default function SidebarNav() {
   const navItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/about", label: "About", icon: BookOpen },
-    { href: "/stories", label: "Stories", icon: Book },
+    { href: "/lore", label: "Lore", icon: Scroll },
     { href: "/style-guide", label: "Style Guide", icon: Palette },
     { href: "/content-editor", label: "Content Editor", icon: Settings },
-    { href: "/openwebui", label: "Magicborn Assistant", icon: MessageSquare },
+    { href: "/docs/developer", label: "Developer Docs", icon: Code },
   ];
 
   return (

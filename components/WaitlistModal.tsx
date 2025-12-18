@@ -9,11 +9,10 @@ interface WaitlistModalProps {
 
 export default function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      // Load ConvertKit script if not already loaded
+      // Load ConvertKit script
       if (!document.querySelector('script[src="https://f.convertkit.com/ckjs/ck.5.js"]')) {
         const script = document.createElement("script");
         script.src = "https://f.convertkit.com/ckjs/ck.5.js";
@@ -21,7 +20,6 @@ export default function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
         document.body.appendChild(script);
       }
 
-      // Prevent body scroll when modal is open
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -32,7 +30,6 @@ export default function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
     };
   }, [isOpen]);
 
-  // Close on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -43,7 +40,6 @@ export default function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  // Close on backdrop click
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
@@ -57,224 +53,154 @@ export default function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-void/80 backdrop-blur-sm" />
 
-      {/* Modal */}
       <div
         ref={modalRef}
-        className="relative z-10 w-full max-w-[420px] max-h-[90vh] overflow-y-auto bg-shadow border border-border rounded-lg shadow-2xl"
+        className="relative z-10 w-full max-w-[420px] max-h-[90vh] overflow-y-auto rounded-lg shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 text-text-secondary hover:text-ember-glow transition-colors"
+          className="absolute top-4 right-4 z-20 text-white/70 hover:text-white transition-colors"
           aria-label="Close"
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
-        {/* Form container */}
-        <div ref={formRef} className="p-0">
-          <form
-            action="https://app.kit.com/forms/8842918/subscriptions"
-            className="seva-form formkit-form"
-            method="post"
-            data-sv-form="8842918"
-            data-uid="b23a7ba91f"
-            data-format="modal"
-            data-version="5"
-            data-options='{"settings":{"after_subscribe":{"action":"message","success_message":"Success! Now check your email to confirm your subscription.","redirect_url":""},"analytics":{"google":null,"fathom":null,"facebook":null,"segment":null,"pinterest":null,"sparkloop":null,"googletagmanager":null},"modal":{"trigger":"timer","scroll_percentage":null,"timer":5,"devices":"all","show_once_every":15},"powered_by":{"show":true,"url":"https://kit.com/features/forms?utm_campaign=poweredby&utm_content=form&utm_medium=referral&utm_source=dynamic"},"recaptcha":{"enabled":false},"return_visitor":{"action":"show","custom_content":""},"slide_in":{"display_in":"bottom_right","trigger":"timer","scroll_percentage":null,"timer":5,"devices":"all","show_once_every":15},"sticky_bar":{"display_in":"top","trigger":"timer","scroll_percentage":null,"timer":5,"devices":"all","show_once_every":15}},"version":"5"}'
-            min-width="400 500 600 700 800"
-            style={{ borderRadius: "0px" }}
-          >
-            <div data-style="full" style={{ "--border-radius": "0px" } as React.CSSProperties}>
-              <div
-                className="formkit-background"
-                style={{
-                  backgroundImage:
-                    'url("https://embed.filekitcdn.com/e/ctvVfDAwdnQi8HBQsffXHB/mQmmmfk5ByF3LPNYcggv8f")',
-                }}
-              />
-              <div
-                className="formkit-container"
-                style={{
-                  "--bg-color": "#2E2E2E",
-                  "--bg-color-07": "#2E2E2E12",
-                  "--bg-color-83": "#2E2E2ED4",
-                } as React.CSSProperties}
-              >
-                <div
-                  className="formkit-header"
-                  data-element="header"
-                  style={{ color: "rgb(255, 255, 255)", fontWeight: 700 }}
-                >
-                  <h2>Magicborn</h2>
+        {/* ConvertKit Form - inline format to display properly */}
+        <form 
+          action="https://app.kit.com/forms/8842918/subscriptions" 
+          className="seva-form formkit-form" 
+          method="post" 
+          data-sv-form="8842918" 
+          data-uid="b23a7ba91f" 
+          data-format="inline" 
+          data-version="5"
+          style={{ borderRadius: '8px', maxWidth: '420px' }}
+        >
+          <div data-style="full" style={{ borderRadius: '8px' }}>
+            <div 
+              className="formkit-background" 
+              style={{ 
+                backgroundImage: 'url("https://embed.filekitcdn.com/e/ctvVfDAwdnQi8HBQsffXHB/mQmmmfk5ByF3LPNYcggv8f")',
+                backgroundPosition: 'center center',
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: 'cover',
+                height: '100%',
+                position: 'absolute',
+                width: '100%',
+                borderRadius: '8px',
+              }} 
+            />
+            <div 
+              className="formkit-container" 
+              style={{ 
+                background: 'linear-gradient(180deg, #2E2E2E12 0%, #2E2E2ED4 64.06%, #2E2E2E 88.54%)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+                padding: '25px',
+                position: 'relative',
+                width: '100%',
+                minHeight: '500px',
+                borderRadius: '8px',
+              }}
+            >
+              <div className="formkit-header" style={{ color: 'rgb(255, 255, 255)', fontWeight: 700, fontSize: '36px', marginBottom: '16px' }}>
+                <h2 style={{ margin: 0 }}>Magicborn</h2>
+              </div>
+              <div className="formkit-content" style={{ color: 'rgb(255, 255, 255)', fontSize: '18px', lineHeight: 1.5, marginBottom: '36px' }}>
+                <p style={{ margin: 0 }}>Join the waitlist for the most enduring spell crafting RPG</p>
+              </div>
+              <ul className="formkit-alert formkit-alert-error" data-element="errors" data-group="alert" style={{ listStyle: 'none', padding: 0, margin: 0 }} />
+              <div data-element="fields" className="seva-fields formkit-fields" style={{ color: 'rgb(255, 255, 255)' }}>
+                <div className="formkit-field" style={{ marginBottom: '10px' }}>
+                  <input 
+                    className="formkit-input" 
+                    name="email_address" 
+                    aria-label="Email Address" 
+                    placeholder="Email Address" 
+                    required 
+                    type="email" 
+                    style={{ 
+                      color: 'rgb(110, 110, 110)', 
+                      fontWeight: 400, 
+                      backgroundColor: 'rgb(27, 27, 27)', 
+                      borderRadius: '4px',
+                      border: 0,
+                      fontSize: '16px',
+                      padding: '14px 15px',
+                      width: '100%',
+                    }} 
+                  />
                 </div>
-                <div
-                  className="formkit-content"
-                  data-element="content"
-                  style={{ color: "rgb(255, 255, 255)" }}
-                >
-                  <p>Join the waitlist for the most enduring spell crafting RPG</p>
-                </div>
-                <ul
-                  className="formkit-alert formkit-alert-error"
-                  data-element="errors"
-                  data-group="alert"
-                />
-                <div
-                  data-element="fields"
-                  className="seva-fields formkit-fields"
-                  style={{ color: "rgb(255, 255, 255)" }}
-                >
-                  <div className="formkit-field">
-                    <input
-                      className="formkit-input"
-                      name="email_address"
-                      aria-label="Email Address"
-                      placeholder="Email Address"
-                      required
-                      type="email"
-                      style={{
-                        color: "rgb(110, 110, 110)",
-                        fontWeight: 400,
-                        backgroundColor: "rgb(27, 27, 27)",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </div>
-                  <div className="formkit-field">
-                    <div role="button" tabIndex={0}>
-                      <fieldset
-                        data-group="checkboxes"
-                        className="formkit-6797"
-                        data-group-type="field"
-                        data-type="Custom"
-                        data-order="1"
-                        data-save-as="Tag"
+                <div className="formkit-field">
+                  <fieldset data-group="checkboxes" style={{ border: 0, padding: 0, margin: 0 }}>
+                    {[
+                      { id: '13165068', label: 'Get world short stories as they are created in email' },
+                      { id: '13165070', label: 'Get development updates' },
+                      { id: '13165077', label: 'Get promotions' },
+                    ].map(({ id, label }) => (
+                      <div 
+                        key={id}
+                        className="formkit-checkboxes" 
+                        data-element="tags-checkboxes" 
+                        data-group="checkbox" 
+                        style={{ 
+                          color: 'rgb(200, 200, 200)', 
+                          fontWeight: 400, 
+                          backgroundColor: 'rgb(27, 27, 27)', 
+                          borderRadius: '4px',
+                          padding: '10px 12px',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          cursor: 'pointer',
+                        }}
                       >
-                        <div
-                          className="formkit-checkboxes"
-                          data-element="tags-checkboxes"
-                          data-group="checkbox"
-                          style={{
-                            color: "rgb(110, 110, 110)",
-                            fontWeight: 400,
-                            backgroundColor: "rgb(27, 27, 27)",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          <input
-                            className="formkit-checkbox"
-                            id="tag-6797-13165068"
-                            type="checkbox"
-                            name="tags[]"
-                            value="13165068"
-                          />
-                          <label htmlFor="tag-6797-13165068">
-                            Get world short stories as they are created in email
-                          </label>
-                        </div>
-                        <div
-                          className="formkit-checkboxes"
-                          data-element="tags-checkboxes"
-                          data-group="checkbox"
-                          style={{
-                            color: "rgb(110, 110, 110)",
-                            fontWeight: 400,
-                            backgroundColor: "rgb(27, 27, 27)",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          <input
-                            className="formkit-checkbox"
-                            id="tag-6797-13165070"
-                            type="checkbox"
-                            name="tags[]"
-                            value="13165070"
-                          />
-                          <label htmlFor="tag-6797-13165070">Get development updates</label>
-                        </div>
-                        <div
-                          className="formkit-checkboxes"
-                          data-element="tags-checkboxes"
-                          data-group="checkbox"
-                          style={{
-                            color: "rgb(110, 110, 110)",
-                            fontWeight: 400,
-                            backgroundColor: "rgb(27, 27, 27)",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          <input
-                            className="formkit-checkbox"
-                            id="tag-6797-13165077"
-                            type="checkbox"
-                            name="tags[]"
-                            value="13165077"
-                          />
-                          <label htmlFor="tag-6797-13165077">Get promotions</label>
-                        </div>
-                      </fieldset>
-                    </div>
-                  </div>
-                  <button
-                    data-element="submit"
-                    className="formkit-submit formkit-submit"
-                    style={{
-                      color: "rgb(255, 255, 255)",
-                      backgroundColor: "rgb(245, 113, 72)",
-                      borderRadius: "4px",
-                      fontWeight: 700,
-                    }}
-                  >
-                    <div className="formkit-spinner">
-                      <div />
-                      <div />
-                      <div />
-                    </div>
-                    <span className="">Download</span>
-                  </button>
+                        <input 
+                          className="formkit-checkbox" 
+                          id={`tag-${id}`} 
+                          type="checkbox" 
+                          name="tags[]" 
+                          value={id}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor={`tag-${id}`} style={{ cursor: 'pointer', fontSize: '14px' }}>{label}</label>
+                      </div>
+                    ))}
+                  </fieldset>
                 </div>
-                <div
-                  className="formkit-disclaimer"
-                  data-element="disclaimer"
-                  style={{ color: "rgb(203, 203, 203)" }}
+                <button 
+                  data-element="submit" 
+                  className="formkit-submit" 
+                  style={{ 
+                    color: 'rgb(255, 255, 255)', 
+                    backgroundColor: 'rgb(0, 0, 0)', 
+                    borderRadius: '4px', 
+                    fontWeight: 700,
+                    border: 0,
+                    padding: '12px 24px',
+                    width: '100%',
+                    fontSize: '15px',
+                    cursor: 'pointer',
+                    marginTop: '15px',
+                  }}
                 >
-                  We respect your privacy. Unsubscribe at any time.
-                </div>
-                <div className="formkit-powered-by-convertkit-container">
-                  <a
-                    href="https://kit.com/features/forms?utm_campaign=poweredby&utm_content=form&utm_medium=referral&utm_source=dynamic"
-                    data-element="powered-by"
-                    className="formkit-powered-by-convertkit"
-                    data-variant="light"
-                    target="_blank"
-                    rel="nofollow"
-                  >
-                    Built with Kit
-                  </a>
-                </div>
+                  <span>Subscribe</span>
+                </button>
+              </div>
+              <div className="formkit-disclaimer" style={{ color: 'rgb(203, 203, 203)', fontSize: '13px', marginTop: '10px' }}>
+                We respect your privacy. Unsubscribe at any time.
               </div>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
-

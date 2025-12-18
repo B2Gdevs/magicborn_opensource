@@ -9,15 +9,21 @@ interface HeroVideoProps {
   children: React.ReactNode;
   fallbackImage?: string;
   loopVideos?: boolean;
+  videoUrls?: string[]; // Override video sources from CMS
 }
 
-export default function HeroVideo({ video, children, fallbackImage, loopVideos = true }: HeroVideoProps) {
+export default function HeroVideo({ video, children, fallbackImage, loopVideos = true, videoUrls }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isReady, setIsReady] = useState(false);
-  const allVideos = getAllHeroVideos();
+  const defaultVideos = getAllHeroVideos();
+  
+  // Use CMS video URLs if provided, otherwise fall back to defaults
+  const allVideos: HeroVideoConfig[] = videoUrls?.length 
+    ? videoUrls.map(src => ({ src, thumbnail: '' }))
+    : defaultVideos;
   const currentVideo = video || allVideos[currentVideoIndex];
-  const imageFallback = fallbackImage || currentVideo.thumbnail || "/designimages/new_tarro.webp";
+  const imageFallback = fallbackImage || currentVideo.thumbnail || "/design/images/new_tarro.webp";
 
   // Handle video end - switch to next video in loop
   const handleEnded = () => {

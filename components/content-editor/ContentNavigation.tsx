@@ -3,7 +3,9 @@
 
 "use client";
 
+import { useState } from "react";
 import { ProjectSwitcher } from "./ProjectSwitcher";
+import { VersionHistoryModal } from "./VersionHistoryModal";
 import { 
   Download, 
   HelpCircle, 
@@ -14,8 +16,14 @@ import {
   FileEdit,
   MessageSquare,
   CheckSquare,
-  ClipboardList
+  ClipboardList,
+  Cloud,
+  CloudOff,
+  Loader2,
+  History,
 } from "lucide-react";
+
+export type SaveStatus = "saved" | "saving" | "unsaved" | "error";
 
 interface ContentNavigationProps {
   activeTab: "plan" | "write" | "chat" | "review";
@@ -23,6 +31,8 @@ interface ContentNavigationProps {
   activeView: "grid" | "matrix" | "outline";
   onViewChange: (view: "grid" | "matrix" | "outline") => void;
   projectId: string;
+  saveStatus?: SaveStatus;
+  lastSaved?: Date | null;
 }
 
 const tabIcons = {
@@ -44,14 +54,59 @@ export function ContentNavigation({
   activeView,
   onViewChange,
   projectId,
+  saveStatus = "saved",
+  lastSaved,
 }: ContentNavigationProps) {
+  const [showVersions, setShowVersions] = useState(false);
+
   return (
     <div className="border-b border-border bg-shadow px-6 py-4 flex-shrink-0">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           <ProjectSwitcher projectId={projectId} />
+          {/* Save Status */}
+          <div className="flex items-center gap-2 text-sm border-l border-border pl-4 ml-2">
+            {saveStatus === "saved" && (
+              <>
+                <Cloud className="w-4 h-4 text-green-500" />
+                <span className="text-text-muted">
+                  Saved
+                  {lastSaved && (
+                    <span className="ml-1 opacity-60">
+                      {lastSaved.toLocaleTimeString()}
+                    </span>
+                  )}
+                </span>
+              </>
+            )}
+            {saveStatus === "saving" && (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-ember-glow" />
+                <span className="text-text-muted">Saving...</span>
+              </>
+            )}
+            {saveStatus === "unsaved" && (
+              <>
+                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-text-muted">Unsaved</span>
+              </>
+            )}
+            {saveStatus === "error" && (
+              <>
+                <CloudOff className="w-4 h-4 text-red-500" />
+                <span className="text-red-400">Error</span>
+              </>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowVersions(true)}
+            className="px-3 py-1.5 text-sm bg-deep border border-border rounded hover:bg-deep/80 flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <History className="w-4 h-4" />
+            Versions
+          </button>
           <button className="px-3 py-1.5 text-sm bg-deep border border-border rounded hover:bg-deep/80 flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors">
             <Download className="w-4 h-4" />
             Export
@@ -118,6 +173,14 @@ export function ContentNavigation({
           </div>
         </div>
       </div>
+
+      {/* Version History Modal */}
+      {showVersions && (
+        <VersionHistoryModal
+          projectId={projectId}
+          onClose={() => setShowVersions(false)}
+        />
+      )}
     </div>
   );
 }

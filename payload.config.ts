@@ -4,12 +4,33 @@ import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-// Import collections
+// Collections - Core
 import { Users } from './lib/payload/collections/Users'
 import { Projects } from './lib/payload/collections/Projects'
 import { ProjectMembers } from './lib/payload/collections/ProjectMembers'
-import { Characters } from './lib/payload/collections/Characters'
 import { Media } from './lib/payload/collections/Media'
+
+// Collections - Story Structure
+import { Acts } from './lib/payload/collections/Acts'
+import { Chapters } from './lib/payload/collections/Chapters'
+import { Scenes } from './lib/payload/collections/Scenes'
+
+// Collections - Content
+import { Characters } from './lib/payload/collections/Characters'
+import { Lore } from './lib/payload/collections/Lore'
+import { Locations } from './lib/payload/collections/Locations'
+import { StyleGuideEntries } from './lib/payload/collections/StyleGuideEntries'
+
+// Collections - Game Data (Magicborn-specific)
+import { Effects } from './lib/payload/collections/Effects'
+import { Spells } from './lib/payload/collections/Spells'
+
+// Collections - System
+import { ProjectSnapshots } from './lib/payload/collections/ProjectSnapshots'
+import { AIGenerations } from './lib/payload/collections/AIGenerations'
+
+// Globals
+import { SiteConfig } from './lib/payload/globals/SiteConfig'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -17,18 +38,31 @@ const dirname = path.dirname(filename)
 export default buildConfig({
   admin: {
     user: 'users',
-    // Keep admin UI available at /admin for debugging
-    // We'll build custom UI at /content-editor
   },
   collections: [
+    // Core
     Users,
     Projects,
     ProjectMembers,
-    Characters,
     Media,
+    // Story Structure
+    Acts,
+    Chapters,
+    Scenes,
+    // Content
+    Characters,
+    Lore,
+    Locations,
+    StyleGuideEntries,
+    // Game Data
+    Effects,
+    Spells,
+    // System
+    ProjectSnapshots,
+    AIGenerations,
   ],
   globals: [
-    // Globals will be added later (e.g., siteConfig for Developer Tools)
+    SiteConfig,
   ],
   editor: lexicalEditor({}),
   secret: process.env.PAYLOAD_SECRET || 'your-secret-key-change-in-production',
@@ -40,11 +74,8 @@ export default buildConfig({
       url: `file:${path.resolve(dirname, 'data', 'payload.db')}`,
     },
   }),
-  // Custom server routes
   serverURL: process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000',
-  // Enable CORS for API access
   cors: [
     process.env.PAYLOAD_PUBLIC_SERVER_URL || 'http://localhost:3000',
   ],
 })
-

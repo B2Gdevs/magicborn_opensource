@@ -70,8 +70,18 @@ export interface Config {
     users: User;
     projects: Project;
     projectMembers: ProjectMember;
-    characters: Character;
     media: Media;
+    acts: Act;
+    chapters: Chapter;
+    scenes: Scene;
+    characters: Character;
+    lore: Lore;
+    locations: Location;
+    'style-guide-entries': StyleGuideEntry;
+    effects: Effect;
+    spells: Spell;
+    'project-snapshots': ProjectSnapshot;
+    'ai-generations': AiGeneration;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -82,8 +92,18 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     projects: ProjectsSelect<false> | ProjectsSelect<true>;
     projectMembers: ProjectMembersSelect<false> | ProjectMembersSelect<true>;
-    characters: CharactersSelect<false> | CharactersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    acts: ActsSelect<false> | ActsSelect<true>;
+    chapters: ChaptersSelect<false> | ChaptersSelect<true>;
+    scenes: ScenesSelect<false> | ScenesSelect<true>;
+    characters: CharactersSelect<false> | CharactersSelect<true>;
+    lore: LoreSelect<false> | LoreSelect<true>;
+    locations: LocationsSelect<false> | LocationsSelect<true>;
+    'style-guide-entries': StyleGuideEntriesSelect<false> | StyleGuideEntriesSelect<true>;
+    effects: EffectsSelect<false> | EffectsSelect<true>;
+    spells: SpellsSelect<false> | SpellsSelect<true>;
+    'project-snapshots': ProjectSnapshotsSelect<false> | ProjectSnapshotsSelect<true>;
+    'ai-generations': AiGenerationsSelect<false> | AiGenerationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -93,8 +113,12 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'site-config': SiteConfig;
+  };
+  globalsSelect: {
+    'site-config': SiteConfigSelect<false> | SiteConfigSelect<true>;
+  };
   locale: null;
   user: User & {
     collection: 'users';
@@ -129,6 +153,10 @@ export interface UserAuthOperations {
 export interface User {
   id: number;
   name?: string | null;
+  role: 'superuser' | 'editor' | 'contributor' | 'ai-agent' | 'viewer';
+  /**
+   * Deprecated - use role field instead
+   */
   isSuperuser?: boolean | null;
   updatedAt: string;
   createdAt: string;
@@ -180,6 +208,96 @@ export interface ProjectMember {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "acts".
+ */
+export interface Act {
+  id: number;
+  project: number | Project;
+  title: string;
+  order: number;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chapters".
+ */
+export interface Chapter {
+  id: number;
+  project: number | Project;
+  act: number | Act;
+  title: string;
+  order: number;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scenes".
+ */
+export interface Scene {
+  id: number;
+  project: number | Project;
+  chapter: number | Chapter;
+  title: string;
+  summary?: string | null;
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  order: number;
+  codexRefs?:
+    | {
+        type?: ('character' | 'location' | 'object' | 'lore') | null;
+        refId?: string | null;
+        label?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  labels?:
+    | {
+        label?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "characters".
  */
 export interface Character {
@@ -218,22 +336,359 @@ export interface Character {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
+ * via the `definition` "lore".
  */
-export interface Media {
+export interface Lore {
   id: number;
-  alt?: string | null;
+  project: number | Project;
+  title: string;
+  /**
+   * URL-friendly identifier for public pages
+   */
+  slug?: string | null;
+  category: 'history' | 'magic-system' | 'culture' | 'geography' | 'religion' | 'faction';
+  content?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Short summary for previews
+   */
+  excerpt?: string | null;
+  /**
+   * Show on public website when published
+   */
+  isPublic?: boolean | null;
+  featuredImage?: (number | null) | Media;
+  relatedCharacters?: (number | Character)[] | null;
+  relatedLocations?: (number | Location)[] | null;
+  /**
+   * Related lore entries
+   */
+  relatedLore?: (number | Lore)[] | null;
+  seo?: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "locations".
+ */
+export interface Location {
+  id: number;
+  project: number | Project;
+  name: string;
+  slug?: string | null;
+  locationType?: ('region' | 'city' | 'town' | 'village' | 'dungeon' | 'landmark' | 'building') | null;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  excerpt?: string | null;
+  isPublic?: boolean | null;
+  featuredImage?: (number | null) | Media;
+  /**
+   * Parent region/area this location belongs to
+   */
+  parentLocation?: (number | null) | Location;
+  relatedCharacters?: (number | Character)[] | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "style-guide-entries".
+ */
+export interface StyleGuideEntry {
+  id: number;
+  title: string;
+  category: 'character-concept' | 'environment' | 'ui-design' | 'color-palette' | 'typography' | 'vfx';
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  isPublic?: boolean | null;
+  images?:
+    | {
+        image: number | Media;
+        caption?: string | null;
+        altText?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * If this is a character concept
+   */
+  relatedCharacter?: (number | null) | Character;
+  /**
+   * If this is environment art
+   */
+  relatedLocation?: (number | null) | Location;
+  tags?:
+    | {
+        tag?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "effects".
+ */
+export interface Effect {
+  id: number;
+  /**
+   * Maps to EffectType enum in core/enums
+   */
+  effectType:
+    | 'burn'
+    | 'poison'
+    | 'bleed'
+    | 'shock'
+    | 'slow'
+    | 'stun'
+    | 'silence'
+    | 'shield'
+    | 'regen'
+    | 'vulnerable'
+    | 'fortified';
+  name: string;
+  description: string;
+  category: 'DamageOverTime' | 'CrowdControl' | 'Defensive' | 'OffensiveBuff' | 'Resource';
+  /**
+   * True if this is a beneficial effect
+   */
+  isBuff?: boolean | null;
+  /**
+   * Maximum stacks (leave empty for non-stacking)
+   */
+  maxStacks?: number | null;
+  /**
+   * Icon identifier for UI
+   */
+  iconKey?: string | null;
+  image?: (number | null) | Media;
+  blueprint: {
+    baseMagnitude: number;
+    baseDurationSec: number;
+    self?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "spells".
+ */
+export interface Spell {
+  id: number;
+  /**
+   * Unique identifier (e.g., ember_ray)
+   */
+  spellId: string;
+  name: string;
+  description: string;
+  /**
+   * Spell tags for filtering/categorization
+   */
+  tags?: ('Fire' | 'Ray' | 'Burn' | 'Mind' | 'Debuff' | 'Silence' | 'Water' | 'Shield' | 'Heal')[] | null;
+  image?: (number | null) | Media;
+  /**
+   * Array of RuneCode values required for this spell
+   */
+  requiredRunes:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Optional whitelist of additional runes
+   */
+  allowedExtraRunes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  minDamageFocus?: {
+    type?: ('physical' | 'fire' | 'ice' | 'water' | 'electric' | 'light' | 'void' | 'gravity' | 'mind' | 'heal') | null;
+    /**
+     * Minimum ratio (0-1) of this damage type
+     */
+    ratio?: number | null;
+  };
+  minTotalPower?: number | null;
+  /**
+   * If set, can only evolve from this named spell
+   */
+  requiresNamedSourceId?: string | null;
+  minTotalFamiliarityScore?: number | null;
+  /**
+   * Partial<Record<RuneCode, number>> for per-rune requirements
+   */
+  minRuneFamiliarity?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Achievement flags required to unlock
+   */
+  requiredFlags?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * EffectBlueprint[] - effects applied when cast
+   */
+  effects?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Hidden until discovered
+   */
+  hidden?: boolean | null;
+  /**
+   * Guidance shown in spellbook
+   */
+  hint?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "project-snapshots".
+ */
+export interface ProjectSnapshot {
+  id: number;
+  project: number | Project;
+  name: string;
+  description?: string | null;
+  type: 'draft' | 'published' | 'checkpoint';
+  /**
+   * JSON snapshot of all project content (acts, chapters, scenes, characters, etc.)
+   */
+  snapshot:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ai-generations".
+ */
+export interface AiGeneration {
+  id: number;
+  /**
+   * The prompt used to generate content
+   */
+  prompt: string;
+  /**
+   * AI model used (e.g., llama3, gpt-4)
+   */
+  model?: string | null;
+  /**
+   * Collection this generation targets
+   */
+  targetCollection?: ('scenes' | 'characters' | 'lore' | 'locations' | 'spells') | null;
+  /**
+   * ID of the document being edited (if editing existing)
+   */
+  targetDocId?: string | null;
+  /**
+   * The AI-generated content
+   */
+  generatedContent:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  status: 'pending' | 'accepted' | 'rejected' | 'merged';
+  reviewedBy?: (number | null) | User;
+  reviewNotes?: string | null;
+  /**
+   * ID of document created from this generation (if accepted)
+   */
+  createdDocId?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -272,12 +727,52 @@ export interface PayloadLockedDocument {
         value: number | ProjectMember;
       } | null)
     | ({
+        relationTo: 'media';
+        value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'acts';
+        value: number | Act;
+      } | null)
+    | ({
+        relationTo: 'chapters';
+        value: number | Chapter;
+      } | null)
+    | ({
+        relationTo: 'scenes';
+        value: number | Scene;
+      } | null)
+    | ({
         relationTo: 'characters';
         value: number | Character;
       } | null)
     | ({
-        relationTo: 'media';
-        value: number | Media;
+        relationTo: 'lore';
+        value: number | Lore;
+      } | null)
+    | ({
+        relationTo: 'locations';
+        value: number | Location;
+      } | null)
+    | ({
+        relationTo: 'style-guide-entries';
+        value: number | StyleGuideEntry;
+      } | null)
+    | ({
+        relationTo: 'effects';
+        value: number | Effect;
+      } | null)
+    | ({
+        relationTo: 'spells';
+        value: number | Spell;
+      } | null)
+    | ({
+        relationTo: 'project-snapshots';
+        value: number | ProjectSnapshot;
+      } | null)
+    | ({
+        relationTo: 'ai-generations';
+        value: number | AiGeneration;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -327,6 +822,7 @@ export interface PayloadMigration {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  role?: T;
   isSuperuser?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -372,21 +868,6 @@ export interface ProjectMembersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "characters_select".
- */
-export interface CharactersSelect<T extends boolean = true> {
-  project?: T;
-  name?: T;
-  description?: T;
-  image?: T;
-  combatStats?: T;
-  runeFamiliarity?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  _status?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
@@ -402,6 +883,234 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "acts_select".
+ */
+export interface ActsSelect<T extends boolean = true> {
+  project?: T;
+  title?: T;
+  order?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chapters_select".
+ */
+export interface ChaptersSelect<T extends boolean = true> {
+  project?: T;
+  act?: T;
+  title?: T;
+  order?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "scenes_select".
+ */
+export interface ScenesSelect<T extends boolean = true> {
+  project?: T;
+  chapter?: T;
+  title?: T;
+  summary?: T;
+  content?: T;
+  order?: T;
+  codexRefs?:
+    | T
+    | {
+        type?: T;
+        refId?: T;
+        label?: T;
+        id?: T;
+      };
+  labels?:
+    | T
+    | {
+        label?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "characters_select".
+ */
+export interface CharactersSelect<T extends boolean = true> {
+  project?: T;
+  name?: T;
+  description?: T;
+  image?: T;
+  combatStats?: T;
+  runeFamiliarity?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "lore_select".
+ */
+export interface LoreSelect<T extends boolean = true> {
+  project?: T;
+  title?: T;
+  slug?: T;
+  category?: T;
+  content?: T;
+  excerpt?: T;
+  isPublic?: T;
+  featuredImage?: T;
+  relatedCharacters?: T;
+  relatedLocations?: T;
+  relatedLore?: T;
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "locations_select".
+ */
+export interface LocationsSelect<T extends boolean = true> {
+  project?: T;
+  name?: T;
+  slug?: T;
+  locationType?: T;
+  description?: T;
+  excerpt?: T;
+  isPublic?: T;
+  featuredImage?: T;
+  parentLocation?: T;
+  relatedCharacters?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "style-guide-entries_select".
+ */
+export interface StyleGuideEntriesSelect<T extends boolean = true> {
+  title?: T;
+  category?: T;
+  description?: T;
+  isPublic?: T;
+  images?:
+    | T
+    | {
+        image?: T;
+        caption?: T;
+        altText?: T;
+        id?: T;
+      };
+  relatedCharacter?: T;
+  relatedLocation?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "effects_select".
+ */
+export interface EffectsSelect<T extends boolean = true> {
+  effectType?: T;
+  name?: T;
+  description?: T;
+  category?: T;
+  isBuff?: T;
+  maxStacks?: T;
+  iconKey?: T;
+  image?: T;
+  blueprint?:
+    | T
+    | {
+        baseMagnitude?: T;
+        baseDurationSec?: T;
+        self?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "spells_select".
+ */
+export interface SpellsSelect<T extends boolean = true> {
+  spellId?: T;
+  name?: T;
+  description?: T;
+  tags?: T;
+  image?: T;
+  requiredRunes?: T;
+  allowedExtraRunes?: T;
+  minDamageFocus?:
+    | T
+    | {
+        type?: T;
+        ratio?: T;
+      };
+  minTotalPower?: T;
+  requiresNamedSourceId?: T;
+  minTotalFamiliarityScore?: T;
+  minRuneFamiliarity?: T;
+  requiredFlags?: T;
+  effects?: T;
+  hidden?: T;
+  hint?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "project-snapshots_select".
+ */
+export interface ProjectSnapshotsSelect<T extends boolean = true> {
+  project?: T;
+  name?: T;
+  description?: T;
+  type?: T;
+  snapshot?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ai-generations_select".
+ */
+export interface AiGenerationsSelect<T extends boolean = true> {
+  prompt?: T;
+  model?: T;
+  targetCollection?: T;
+  targetDocId?: T;
+  generatedContent?: T;
+  status?: T;
+  reviewedBy?: T;
+  reviewNotes?: T;
+  createdDocId?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -442,6 +1151,145 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-config".
+ */
+export interface SiteConfig {
+  id: number;
+  siteName: string;
+  tagline?: string | null;
+  hero?: {
+    title?: string | null;
+    subtitle?: string | null;
+    /**
+     * Hero background videos (plays in sequence)
+     */
+    videos?:
+      | {
+          video?: (number | null) | Media;
+          /**
+           * Or enter video URL directly
+           */
+          url?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Fallback background image
+     */
+    backgroundImage?: (number | null) | Media;
+  };
+  /**
+   * Hero text paragraphs displayed on homepage
+   */
+  heroContent?:
+    | {
+        text: string;
+        style?: ('normal' | 'italic' | 'bold') | null;
+        /**
+         * Comma-separated words to highlight in ember color
+         */
+        highlightWords?: string | null;
+        color?: ('' | 'ember-glow' | 'amber-400' | 'red-500' | 'cyan-400' | 'purple-400') | null;
+        id?: string | null;
+      }[]
+    | null;
+  features?: {
+    showWaitlistButton?: boolean | null;
+    waitlistUrl?: string | null;
+    /**
+     * Paste your ConvertKit/Mailchimp/etc embed code here (HTML)
+     */
+    waitlistEmbedCode?: string | null;
+    /**
+     * Show public lore section on homepage
+     */
+    showPublicLore?: boolean | null;
+    showStyleGuide?: boolean | null;
+  };
+  /**
+   * Lore entries to feature on homepage
+   */
+  featuredLore?: (number | Lore)[] | null;
+  /**
+   * Characters to feature on homepage
+   */
+  featuredCharacters?: (number | Character)[] | null;
+  socialLinks?:
+    | {
+        platform: 'discord' | 'twitter' | 'github' | 'youtube' | 'twitch';
+        url: string;
+        id?: string | null;
+      }[]
+    | null;
+  seo?: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    ogImage?: (number | null) | Media;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-config_select".
+ */
+export interface SiteConfigSelect<T extends boolean = true> {
+  siteName?: T;
+  tagline?: T;
+  hero?:
+    | T
+    | {
+        title?: T;
+        subtitle?: T;
+        videos?:
+          | T
+          | {
+              video?: T;
+              url?: T;
+              id?: T;
+            };
+        backgroundImage?: T;
+      };
+  heroContent?:
+    | T
+    | {
+        text?: T;
+        style?: T;
+        highlightWords?: T;
+        color?: T;
+        id?: T;
+      };
+  features?:
+    | T
+    | {
+        showWaitlistButton?: T;
+        waitlistUrl?: T;
+        waitlistEmbedCode?: T;
+        showPublicLore?: T;
+        showStyleGuide?: T;
+      };
+  featuredLore?: T;
+  featuredCharacters?: T;
+  socialLinks?:
+    | T
+    | {
+        platform?: T;
+        url?: T;
+        id?: T;
+      };
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+        ogImage?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
