@@ -17,10 +17,12 @@ interface ClientLayoutProps {
 export function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   
-  // Content editor has its own layout - don't show main app nav
-  const isContentEditor = pathname?.startsWith("/content-editor");
+  // These routes have their own layout - don't show main app nav
+  const isFullscreenRoute = 
+    pathname?.startsWith("/content-editor") ||
+    pathname?.startsWith("/docs/swagger");
   
-  if (isContentEditor) {
+  if (isFullscreenRoute) {
     return (
       <TooltipProvider>
         <GameProviders>

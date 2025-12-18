@@ -132,5 +132,6 @@ export const Collections = {
 // ============================================
 export const Globals = {
   SiteConfig: 'site-config',
+  SidebarConfig: 'sidebar-config',
 } as const
 

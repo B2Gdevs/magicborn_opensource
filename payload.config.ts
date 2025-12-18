@@ -31,6 +31,7 @@ import { AIGenerations } from './lib/payload/collections/AIGenerations'
 
 // Globals
 import { SiteConfig } from './lib/payload/globals/SiteConfig'
+import { SidebarConfig } from './lib/payload/globals/SidebarConfig'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -63,6 +64,7 @@ export default buildConfig({
   ],
   globals: [
     SiteConfig,
+    SidebarConfig,
   ],
   editor: lexicalEditor({}),
   secret: process.env.PAYLOAD_SECRET || 'your-secret-key-change-in-production',

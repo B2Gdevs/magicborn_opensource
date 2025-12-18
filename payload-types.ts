@@ -115,9 +115,11 @@ export interface Config {
   fallbackLocale: null;
   globals: {
     'site-config': SiteConfig;
+    'sidebar-config': SidebarConfig;
   };
   globalsSelect: {
     'site-config': SiteConfigSelect<false> | SiteConfigSelect<true>;
+    'sidebar-config': SidebarConfigSelect<false> | SidebarConfigSelect<true>;
   };
   locale: null;
   user: User & {
@@ -1234,6 +1236,127 @@ export interface SiteConfig {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sidebar-config".
+ */
+export interface SidebarConfig {
+  id: number;
+  logo?: {
+    /**
+     * Path to logo image
+     */
+    image?: string | null;
+    text?: string | null;
+    /**
+     * Display the logo image
+     */
+    showImage?: boolean | null;
+    /**
+     * Display the logo text
+     */
+    showText?: boolean | null;
+  };
+  /**
+   * Path to favicon
+   */
+  favicon?: string | null;
+  /**
+   * Main navigation links
+   */
+  navItems?:
+    | {
+        label: string;
+        href: string;
+        icon:
+          | 'Home'
+          | 'BookOpen'
+          | 'Scroll'
+          | 'Palette'
+          | 'Settings'
+          | 'Code'
+          | 'Users'
+          | 'Map'
+          | 'Swords'
+          | 'Wand2'
+          | 'Shield'
+          | 'Crown'
+          | 'Flame'
+          | 'Sparkles'
+          | 'Star'
+          | 'Heart'
+          | 'Folder'
+          | 'FileText'
+          | 'Image'
+          | 'Video'
+          | 'Music'
+          | 'Globe'
+          | 'Compass'
+          | 'Layers'
+          | 'LayoutGrid'
+          | 'List'
+          | 'Search'
+          | 'Info'
+          | 'HelpCircle'
+          | 'Bell'
+          | 'Mail'
+          | 'MessageSquare'
+          | 'Terminal'
+          | 'Database'
+          | 'Server'
+          | 'Cloud'
+          | 'Download'
+          | 'Upload'
+          | 'Link'
+          | 'ExternalLink';
+        enabled?: boolean | null;
+        /**
+         * Only show to logged-in users
+         */
+        requiresAuth?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Social media links shown at bottom of sidebar
+   */
+  socialLinks?:
+    | {
+        platform:
+          | 'discord'
+          | 'github'
+          | 'twitter'
+          | 'youtube'
+          | 'twitch'
+          | 'instagram'
+          | 'tiktok'
+          | 'linkedin'
+          | 'reddit'
+          | 'patreon'
+          | 'kofi';
+        url: string;
+        enabled?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  seo?: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    keywords?: string | null;
+    /**
+     * Open Graph image (1200x630 recommended)
+     */
+    ogImage?: string | null;
+    ogType?: ('website' | 'article' | 'game' | 'product') | null;
+    twitterCard?: ('summary' | 'summary_large_image' | 'player') | null;
+    /**
+     * Twitter @handle
+     */
+    twitterSite?: string | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-config_select".
  */
 export interface SiteConfigSelect<T extends boolean = true> {
@@ -1286,6 +1409,53 @@ export interface SiteConfigSelect<T extends boolean = true> {
         metaTitle?: T;
         metaDescription?: T;
         ogImage?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sidebar-config_select".
+ */
+export interface SidebarConfigSelect<T extends boolean = true> {
+  logo?:
+    | T
+    | {
+        image?: T;
+        text?: T;
+        showImage?: T;
+        showText?: T;
+      };
+  favicon?: T;
+  navItems?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        icon?: T;
+        enabled?: T;
+        requiresAuth?: T;
+        id?: T;
+      };
+  socialLinks?:
+    | T
+    | {
+        platform?: T;
+        url?: T;
+        enabled?: T;
+        id?: T;
+      };
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+        keywords?: T;
+        ogImage?: T;
+        ogType?: T;
+        twitterCard?: T;
+        twitterSite?: T;
       };
   updatedAt?: T;
   createdAt?: T;
