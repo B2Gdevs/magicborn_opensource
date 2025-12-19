@@ -12,8 +12,8 @@ import { RuneForm } from "@/components/rune/RuneForm";
 import { RegionForm, RegionFormFooter, type RegionFormData } from "@/components/region/RegionForm";
 import { ObjectForm, ObjectFormFooter, type ObjectFormData } from "@/components/object/ObjectForm";
 import { LoreForm, LoreFormFooter, type LoreFormData } from "@/components/lore/LoreForm";
-import { EffectForm } from "@/components/effect/EffectForm";
-import { SpellForm } from "@/components/spell/SpellForm";
+import { EffectForm, EffectFormFooter } from "@/components/effect/EffectForm";
+import { SpellForm, SpellFormFooter } from "@/components/spell/SpellForm";
 import type { CharacterDefinition } from "@/lib/data/characters";
 import type { CreatureDefinition } from "@/lib/data/creatures";
 import type { RuneDef } from "@/lib/packages/runes";
@@ -667,9 +667,26 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       <Modal
         isOpen={activeModal === "spell"}
         onClose={closeModal}
-        title="Create New Spell"
+        title={editData ? `Edit ${editData.name || "Spell"}` : "Create New Spell"}
+        footer={
+          <SpellFormFooter
+            isEdit={!!editData}
+            saving={saving}
+            onCancel={closeModal}
+            onSubmit={() => {
+              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
+              if (form?.validateAndSubmit) {
+                form.validateAndSubmit();
+              } else {
+                form?.requestSubmit();
+              }
+            }}
+          />
+        }
       >
         <SpellForm
+          initialValues={editData || undefined}
+          isEdit={!!editData}
           onSubmit={handleCreateSpell}
           onCancel={closeModal}
           saving={saving}
@@ -680,9 +697,26 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       <Modal
         isOpen={activeModal === "effect"}
         onClose={closeModal}
-        title="Create New Effect"
+        title={editData ? `Edit ${editData.name || "Effect"}` : "Create New Effect"}
+        footer={
+          <EffectFormFooter
+            isEdit={!!editData}
+            saving={saving}
+            onCancel={closeModal}
+            onSubmit={() => {
+              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
+              if (form?.validateAndSubmit) {
+                form.validateAndSubmit();
+              } else {
+                form?.requestSubmit();
+              }
+            }}
+          />
+        }
       >
         <EffectForm
+          initialValues={editData || undefined}
+          isEdit={!!editData}
           onSubmit={handleCreateEffect}
           onCancel={closeModal}
           saving={saving}

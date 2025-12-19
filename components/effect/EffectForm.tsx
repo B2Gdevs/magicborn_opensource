@@ -84,29 +84,30 @@ export function EffectForm({
     }
   }, [imageMediaId, isEdit]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Validate and prepare effect data
+  const prepareEffect = async (): Promise<(EffectDefinition & { image?: number }) | null> => {
     if (!id.trim()) {
       alert("ID (Effect Type) is required");
-      return;
+      return null;
     }
     
     if (!name.trim()) {
       alert("Name is required");
-      return;
+      return null;
     }
     
     // ID validation is handled by IdInput component
     
     if (baseMagnitude <= 0) {
       alert("Base magnitude must be greater than 0");
-      return;
+      return null;
     }
     
     if (baseDurationSec <= 0) {
       alert("Base duration must be greater than 0");
-      return;
+      return null;
     }
 
     // Upload pending image before submitting
@@ -120,7 +121,7 @@ export function EffectForm({
       }
     } catch (error) {
       alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
-      return;
+      return null;
     }
 
     const blueprint: EffectBlueprint = {
@@ -130,7 +131,7 @@ export function EffectForm({
       self: self || undefined,
     };
 
-    const effect: EffectDefinition & { image?: number } = {
+    return {
       ...(initialValues as EffectDefinition),
       id: id as EffectType,
       name: name.trim(),
@@ -143,8 +144,26 @@ export function EffectForm({
       imagePath: imageUrl || undefined, // Keep for backward compatibility
       image: finalImageMediaId, // Payload Media ID
     };
-    
-    onSubmit(effect);
+  };
+
+  // Expose validation function for external submission (used by footer)
+  useEffect(() => {
+    if (formRef.current) {
+      (formRef.current as any).validateAndSubmit = async () => {
+        const effect = await prepareEffect();
+        if (effect) {
+          onSubmit(effect);
+        }
+      };
+    }
+  }, [id, name, description, category, isBuff, iconKey, maxStacks, baseMagnitude, baseDurationSec, self, imageMediaId, onSubmit]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const effect = await prepareEffect();
+    if (effect) {
+      onSubmit(effect);
+    }
   };
 
   // Helper to convert name to ID (e.g., "Ember Ray" -> "ember_ray")
@@ -156,7 +175,7 @@ export function EffectForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
       <MediaUpload
         ref={imageUploadRef}
         currentMediaId={imageMediaId}
@@ -363,27 +382,54 @@ export function EffectForm({
           </label>
         </div>
       </div>
-
-      <div className="flex gap-2 pt-4">
-        <button
-          type="submit"
-          disabled={saving}
-          className="btn flex-1"
-        >
-          {saving ? (isEdit ? "Saving..." : "Creating...") : (submitLabel || (isEdit ? "Save Changes" : "Create Effect"))}
-        </button>
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="btn-secondary flex-1"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
     </form>
+  );
+}
+
+export function EffectFormFooter({
+  isEdit,
+  saving,
+  submitLabel,
+  onCancel,
+  onSubmit,
+}: {
+  isEdit: boolean;
+  saving: boolean;
+  submitLabel?: string;
+  onCancel?: () => void;
+  onSubmit: () => void;
+}) {
+  const handleSubmit = async () => {
+    // Find the form and call its validateAndSubmit method
+    const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
+    if (form?.validateAndSubmit) {
+      await form.validateAndSubmit();
+    } else {
+      onSubmit();
+    }
+  };
+
+  return (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={saving}
+        className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
+      >
+        {saving ? "Saving..." : submitLabel || (isEdit ? "Update Effect" : "Create Effect")}
+      </button>
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      )}
+    </div>
   );
 }
 

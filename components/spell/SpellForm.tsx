@@ -98,29 +98,30 @@ export function SpellForm({
   const allEffectTypes = Object.values(EffectType);
 
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Validate and prepare spell data
+  const prepareSpell = async (): Promise<(NamedSpellBlueprint & { image?: number }) | null> => {
     if (!name.trim()) {
       alert("Name is required");
-      return;
+      return null;
     }
     
     // ID validation is handled by IdInput component
     
     if (requiredRunes.length === 0) {
       alert("At least one required rune is needed");
-      return;
+      return null;
     }
     
     if (tags.length === 0) {
       alert("At least one tag is required");
-      return;
+      return null;
     }
     
     if (!hint.trim()) {
       alert("Hint is required");
-      return;
+      return null;
     }
 
     // Upload pending image before submitting
@@ -134,10 +135,10 @@ export function SpellForm({
       }
     } catch (error) {
       alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
-      return;
+      return null;
     }
 
-    const spell: NamedSpellBlueprint & { image?: number } = {
+    return {
       ...(initialValues as NamedSpellBlueprint),
       id: isEdit ? (initialValues as NamedSpellBlueprint).id : (nameToId(name) as any),
       name: name.trim(),
@@ -160,8 +161,26 @@ export function SpellForm({
       hidden,
       hint: hint.trim() || "Try experimenting with different rune combinations.",
     };
-    
-    onSubmit(spell);
+  };
+
+  // Expose validation function for external submission (used by footer)
+  useEffect(() => {
+    if (formRef.current) {
+      (formRef.current as any).validateAndSubmit = async () => {
+        const spell = await prepareSpell();
+        if (spell) {
+          onSubmit(spell);
+        }
+      };
+    }
+  }, [name, description, tags, requiredRunes, allowedExtraRunes, minDamageFocusType, minDamageFocusRatio, minTotalPower, requiresNamedSourceId, minRuneFamiliarity, minTotalFamiliarityScore, requiredFlags, effects, imageMediaId, hidden, hint, onSubmit]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const spell = await prepareSpell();
+    if (spell) {
+      onSubmit(spell);
+    }
   };
 
   const addEffect = (effectType: EffectType) => {
@@ -191,7 +210,7 @@ export function SpellForm({
     : existingSpells;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
       <MediaUpload
         ref={imageUploadRef}
         currentMediaId={imageMediaId}
@@ -499,27 +518,54 @@ export function SpellForm({
           Hidden (not shown until discovered)
         </label>
       </div>
-
-      <div className="flex gap-2 pt-4">
-        <button
-          type="submit"
-          disabled={saving}
-          className="btn flex-1"
-        >
-          {saving ? (isEdit ? "Saving..." : "Creating...") : (submitLabel || (isEdit ? "Save Changes" : "Create Spell"))}
-        </button>
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="btn-secondary flex-1"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
     </form>
+  );
+}
+
+export function SpellFormFooter({
+  isEdit,
+  saving,
+  submitLabel,
+  onCancel,
+  onSubmit,
+}: {
+  isEdit: boolean;
+  saving: boolean;
+  submitLabel?: string;
+  onCancel?: () => void;
+  onSubmit: () => void;
+}) {
+  const handleSubmit = async () => {
+    // Find the form and call its validateAndSubmit method
+    const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
+    if (form?.validateAndSubmit) {
+      await form.validateAndSubmit();
+    } else {
+      onSubmit();
+    }
+  };
+
+  return (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={saving}
+        className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
+      >
+        {saving ? "Saving..." : submitLabel || (isEdit ? "Update Spell" : "Create Spell")}
+      </button>
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      )}
+    </div>
   );
 }
 
