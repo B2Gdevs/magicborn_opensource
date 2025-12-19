@@ -145,6 +145,7 @@ export async function GET(
         if (mediaDoc.filename && !normalizedUrl.includes('/media/')) {
           normalizedUrl = `/media/${mediaDoc.filename}`
         }
+        console.log('normalizedUrl', normalizedUrl)
         return NextResponse.json({ ...mediaDoc, url: normalizedUrl })
       }
       
