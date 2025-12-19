@@ -4,7 +4,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ImageUpload } from "@components/ui/ImageUpload";
+import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 
 export interface LoreFormData {
   id?: string;
@@ -14,6 +14,7 @@ export interface LoreFormData {
   author?: string;
   era?: string;
   imagePath?: string;
+  featuredImage?: number; // Payload Media ID
 }
 
 interface LoreFormProps {
@@ -48,38 +49,119 @@ export function LoreForm({
   const [type, setType] = useState<LoreFormData["type"]>(initialValues.type || "book");
   const [author, setAuthor] = useState(initialValues.author || "");
   const [era, setEra] = useState(initialValues.era || "");
-  const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
+  const [featuredImageId, setFeaturedImageId] = useState<number | undefined>(
+    typeof initialValues.featuredImage === 'number' 
+      ? initialValues.featuredImage 
+      : typeof (initialValues as any).featuredImage === 'object' && (initialValues as any).featuredImage?.id
+        ? (initialValues as any).featuredImage.id
+        : undefined
+  );
+  const [featuredImageUrl, setFeaturedImageUrl] = useState<string | undefined>(initialValues.imagePath);
   const formRef = useRef<HTMLFormElement>(null);
+  const imageUploadRef = useRef<MediaUploadRef>(null);
 
   useEffect(() => {
     if (formRef.current) {
-      (formRef.current as any).submitForm = () => formRef.current?.requestSubmit();
+      (formRef.current as any).submitForm = async () => {
+        const form = formRef.current as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
+        if (form?.validateAndSubmit) {
+          await form.validateAndSubmit();
+        } else {
+          formRef.current?.requestSubmit();
+        }
+      };
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Fetch image URL when editing (only on mount, not after uploads)
+  useEffect(() => {
+    if (featuredImageId && isEdit) {
+      fetch(`/api/payload/media/${featuredImageId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            const url = data.url;
+            if (url.startsWith('http://localhost') || url.startsWith('https://')) {
+              try {
+                const urlObj = new URL(url);
+                setFeaturedImageUrl(urlObj.pathname);
+              } catch {
+                setFeaturedImageUrl(url);
+              }
+            } else {
+              setFeaturedImageUrl(url.startsWith('/') ? url : `/${url}`);
+            }
+          }
+        })
+        .catch(err => console.error("Failed to fetch image:", err));
+    } else if (!featuredImageId) {
+      setFeaturedImageUrl(undefined);
+    }
+  }, [featuredImageId, isEdit]);
+
+  // Expose validation function for external submission (used by footer)
+  useEffect(() => {
+    if (formRef.current) {
+      (formRef.current as any).validateAndSubmit = async () => {
+        const data = await prepareLore();
+        if (data) {
+          onSubmit(data);
+        }
+      };
+    }
+  }, [title, content, type, author, era, featuredImageId, onSubmit]);
+
+  const prepareLore = async (): Promise<LoreFormData | null> => {
     if (!title.trim()) {
       alert("Title is required");
-      return;
+      return null;
     }
 
-    onSubmit({
+    // Upload pending image before submitting
+    let finalFeaturedImageId = featuredImageId;
+    try {
+      if (imageUploadRef.current) {
+        const uploadedId = await imageUploadRef.current.uploadFile();
+        if (uploadedId) {
+          finalFeaturedImageId = uploadedId;
+        }
+      }
+    } catch (error) {
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      return null;
+    }
+
+    return {
       title: title.trim(),
       content: content.trim() || undefined,
       type,
       author: author.trim() || undefined,
       era: era.trim() || undefined,
-      imagePath,
-    });
+      imagePath: featuredImageUrl || undefined, // Keep for backward compatibility
+      featuredImage: finalFeaturedImageId, // Payload Media ID
+    };
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const data = await prepareLore();
+    if (data) {
+      onSubmit(data);
+    }
   };
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-      <ImageUpload
-        currentImagePath={imagePath}
-        contentType="lore"
-        onImageUploaded={setImagePath}
+      <MediaUpload
+        ref={imageUploadRef}
+        currentMediaId={featuredImageId}
+        currentMediaUrl={featuredImageUrl}
+        onMediaUploaded={(mediaId) => {
+          setFeaturedImageId(mediaId);
+          if (!mediaId) {
+            setFeaturedImageUrl(undefined);
+          }
+        }}
         label="Cover Image"
         disabled={saving}
         compact
@@ -189,11 +271,21 @@ export function LoreFormFooter({
   onCancel?: () => void;
   onSubmit: () => void;
 }) {
+  const handleSubmit = async () => {
+    // Find the form and call its validateAndSubmit method
+    const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
+    if (form?.validateAndSubmit) {
+      await form.validateAndSubmit();
+    } else {
+      onSubmit();
+    }
+  };
+
   return (
     <div className="flex gap-3">
       <button
         type="button"
-        onClick={onSubmit}
+        onClick={handleSubmit}
         disabled={saving}
         className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
       >

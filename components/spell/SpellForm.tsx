@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { NamedSpellBlueprint } from "@/lib/data/namedSpells";
 import { SpellTag, DamageType, EffectType } from "@core/enums";
 import type { RuneCode } from "@core/types";
@@ -14,7 +14,7 @@ import { RuneSelector } from "@components/ui/RuneSelector";
 import { TagSelector } from "@components/ui/TagSelector";
 import { MultiSelectDropdown } from "@components/ui/MultiSelectDropdown";
 import { RuneFamiliarityEditor } from "@components/ui/RuneFamiliarityEditor";
-import { ImageUpload } from "@components/ui/ImageUpload";
+import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { IdInput } from "@components/ui/IdInput";
 
 interface SpellFormProps {
@@ -53,10 +53,44 @@ export function SpellForm({
   const [minRuneFamiliarity, setMinRuneFamiliarity] = useState<Partial<Record<RuneCode, number>>>(initialValues.minRuneFamiliarity || {});
   const [requiredFlags, setRequiredFlags] = useState<AchievementFlag[]>(initialValues.requiredFlags || []);
   const [effects, setEffects] = useState<EffectBlueprint[]>(initialValues.effects || []);
-  const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
+  const [imageMediaId, setImageMediaId] = useState<number | undefined>(
+    typeof (initialValues as any).image === 'number' 
+      ? (initialValues as any).image 
+      : typeof (initialValues as any).image === 'object' && (initialValues as any).image?.id
+        ? (initialValues as any).image.id
+        : undefined
+  );
+  const [imageUrl, setImageUrl] = useState<string | undefined>(initialValues.imagePath);
+  const imageUploadRef = useRef<MediaUploadRef>(null);
   
   // Generate ID from name
   const generatedId = name.trim() ? nameToId(name) : "";
+
+  // Fetch image URL when editing (only on mount, not after uploads)
+  useEffect(() => {
+    if (imageMediaId && isEdit) {
+      fetch(`/api/payload/media/${imageMediaId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            const url = data.url;
+            if (url.startsWith('http://localhost') || url.startsWith('https://')) {
+              try {
+                const urlObj = new URL(url);
+                setImageUrl(urlObj.pathname);
+              } catch {
+                setImageUrl(url);
+              }
+            } else {
+              setImageUrl(url.startsWith('/') ? url : `/${url}`);
+            }
+          }
+        })
+        .catch(err => console.error("Failed to fetch image:", err));
+    } else if (!imageMediaId) {
+      setImageUrl(undefined);
+    }
+  }, [imageMediaId, isEdit]);
 
   const allTags = Object.values(SpellTag);
   const allDamageTypes = Object.values(DamageType);
@@ -89,7 +123,21 @@ export function SpellForm({
       return;
     }
 
-    const spell: NamedSpellBlueprint = {
+    // Upload pending image before submitting
+    let finalImageMediaId = imageMediaId;
+    try {
+      if (imageUploadRef.current) {
+        const uploadedId = await imageUploadRef.current.uploadFile();
+        if (uploadedId) {
+          finalImageMediaId = uploadedId;
+        }
+      }
+    } catch (error) {
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      return;
+    }
+
+    const spell: NamedSpellBlueprint & { image?: number } = {
       ...(initialValues as NamedSpellBlueprint),
       id: isEdit ? (initialValues as NamedSpellBlueprint).id : (nameToId(name) as any),
       name: name.trim(),
@@ -107,7 +155,8 @@ export function SpellForm({
       minTotalFamiliarityScore,
       requiredFlags: requiredFlags.length > 0 ? requiredFlags : undefined,
       effects: effects.length > 0 ? effects : undefined,
-      imagePath: imagePath || undefined,
+      imagePath: imageUrl || undefined, // Keep for backward compatibility
+      image: finalImageMediaId, // Payload Media ID
       hidden,
       hint: hint.trim() || "Try experimenting with different rune combinations.",
     };
@@ -143,11 +192,16 @@ export function SpellForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <ImageUpload
-        currentImagePath={imagePath}
-        contentType="spells"
-        entityId={isEdit ? (initialValues as NamedSpellBlueprint).id : nameToId(name)}
-        onImageUploaded={setImagePath}
+      <MediaUpload
+        ref={imageUploadRef}
+        currentMediaId={imageMediaId}
+        currentMediaUrl={imageUrl}
+        onMediaUploaded={(mediaId) => {
+          setImageMediaId(mediaId);
+          if (!mediaId) {
+            setImageUrl(undefined);
+          }
+        }}
         label="Spell Image"
         disabled={saving}
         compact

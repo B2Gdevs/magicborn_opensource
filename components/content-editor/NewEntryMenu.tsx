@@ -339,10 +339,24 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         ? `/api/payload/lore/${editData.id}`
         : "/api/payload/lore";
       
+      // Transform lore data for Payload (include featuredImage media ID)
+      const payloadData: any = {
+        title: data.title,
+        content: data.content,
+        category: data.type || "book", // Map type to category if needed
+        excerpt: data.content?.substring(0, 200), // Auto-generate excerpt
+        project: parseInt(projectId),
+      };
+      
+      // Include featuredImage if provided
+      if (data.featuredImage) {
+        payloadData.featuredImage = data.featuredImage;
+      }
+      
       const res = await fetch(url, {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, project: parseInt(projectId) }),
+        body: JSON.stringify(payloadData),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -359,46 +373,101 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
   };
 
   // Spell handlers
-  const handleCreateSpell = async (spell: NamedSpellBlueprint) => {
+  const handleCreateSpell = async (spell: NamedSpellBlueprint & { image?: number }) => {
+    if (saving) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/payload/spells", {
-        method: "POST",
+      const isEdit = !!editData && !!editEntry;
+      const url = isEdit 
+        ? `/api/payload/spells/${editData.id}`
+        : "/api/payload/spells";
+      
+      // Transform spell data for Payload (include image media ID)
+      const payloadData: any = {
+        spellId: spell.id,
+        name: spell.name,
+        description: spell.description,
+        tags: spell.tags,
+        requiredRunes: spell.requiredRunes,
+        allowedExtraRunes: spell.allowedExtraRunes,
+        minDamageFocus: spell.minDamageFocus,
+        minTotalPower: spell.minTotalPower,
+        requiresNamedSourceId: spell.requiresNamedSourceId,
+        minRuneFamiliarity: spell.minRuneFamiliarity,
+        minTotalFamiliarityScore: spell.minTotalFamiliarityScore,
+        requiredFlags: spell.requiredFlags,
+        effects: spell.effects,
+        hidden: spell.hidden,
+        hint: spell.hint,
+        project: parseInt(projectId),
+      };
+      
+      // Include image if provided
+      if (spell.image) {
+        payloadData.image = spell.image;
+      }
+      
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...spell, project: parseInt(projectId) }),
+        body: JSON.stringify(payloadData),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || "Failed to create spell");
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} spell`);
       }
       onEntryCreated?.("spells");
       closeModal();
     } catch (error) {
-      console.error("Failed to create spell:", error);
-      alert(`Failed to create spell: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Failed to save spell:", error);
+      alert(`Failed to save spell: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }
   };
 
   // Effect handlers
-  const handleCreateEffect = async (effect: EffectDefinition) => {
+  const handleCreateEffect = async (effect: EffectDefinition & { image?: number }) => {
+    if (saving) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/payload/effects", {
-        method: "POST",
+      const isEdit = !!editData && !!editEntry;
+      const url = isEdit 
+        ? `/api/payload/effects/${editData.id}`
+        : "/api/payload/effects";
+      
+      // Transform effect data for Payload (include image media ID)
+      const payloadData: any = {
+        effectType: effect.id,
+        name: effect.name,
+        description: effect.description,
+        category: effect.category,
+        isBuff: effect.isBuff,
+        iconKey: effect.iconKey,
+        maxStacks: effect.maxStacks,
+        blueprint: effect.blueprint,
+        project: parseInt(projectId),
+      };
+      
+      // Include image if provided
+      if (effect.image) {
+        payloadData.image = effect.image;
+      }
+      
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...effect, project: parseInt(projectId) }),
+        body: JSON.stringify(payloadData),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || "Failed to create effect");
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} effect`);
       }
       onEntryCreated?.("effects");
       closeModal();
     } catch (error) {
-      console.error("Failed to create effect:", error);
-      alert(`Failed to create effect: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Failed to save effect:", error);
+      alert(`Failed to save effect: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }

@@ -3,12 +3,12 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { EffectDefinition } from "@/lib/data/effects";
 import { EffectCategory } from "@/lib/data/effects";
 import { EffectType } from "@core/enums";
 import type { EffectBlueprint } from "@core/effects";
-import { ImageUpload } from "@components/ui/ImageUpload";
+import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { IdInput } from "@components/ui/IdInput";
 
 interface EffectFormProps {
@@ -44,11 +44,45 @@ export function EffectForm({
   const [baseMagnitude, setBaseMagnitude] = useState(initialValues.blueprint?.baseMagnitude || 0);
   const [baseDurationSec, setBaseDurationSec] = useState(initialValues.blueprint?.baseDurationSec || 0);
   const [self, setSelf] = useState(initialValues.blueprint?.self || false);
-  const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
+  const [imageMediaId, setImageMediaId] = useState<number | undefined>(
+    typeof (initialValues as any).image === 'number' 
+      ? (initialValues as any).image 
+      : typeof (initialValues as any).image === 'object' && (initialValues as any).image?.id
+        ? (initialValues as any).image.id
+        : undefined
+  );
+  const [imageUrl, setImageUrl] = useState<string | undefined>(initialValues.imagePath);
+  const imageUploadRef = useRef<MediaUploadRef>(null);
 
   const allCategories = Object.values(EffectCategory);
   const allEffectTypes = Object.values(EffectType);
   const availableEffectTypes = allEffectTypes.filter(type => !existingIds.includes(type));
+
+  // Fetch image URL when editing (only on mount, not after uploads)
+  useEffect(() => {
+    if (imageMediaId && isEdit) {
+      fetch(`/api/payload/media/${imageMediaId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            const url = data.url;
+            if (url.startsWith('http://localhost') || url.startsWith('https://')) {
+              try {
+                const urlObj = new URL(url);
+                setImageUrl(urlObj.pathname);
+              } catch {
+                setImageUrl(url);
+              }
+            } else {
+              setImageUrl(url.startsWith('/') ? url : `/${url}`);
+            }
+          }
+        })
+        .catch(err => console.error("Failed to fetch image:", err));
+    } else if (!imageMediaId) {
+      setImageUrl(undefined);
+    }
+  }, [imageMediaId, isEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +109,20 @@ export function EffectForm({
       return;
     }
 
+    // Upload pending image before submitting
+    let finalImageMediaId = imageMediaId;
+    try {
+      if (imageUploadRef.current) {
+        const uploadedId = await imageUploadRef.current.uploadFile();
+        if (uploadedId) {
+          finalImageMediaId = uploadedId;
+        }
+      }
+    } catch (error) {
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      return;
+    }
+
     const blueprint: EffectBlueprint = {
       type: id as EffectType,
       baseMagnitude,
@@ -82,7 +130,7 @@ export function EffectForm({
       self: self || undefined,
     };
 
-    const effect: EffectDefinition = {
+    const effect: EffectDefinition & { image?: number } = {
       ...(initialValues as EffectDefinition),
       id: id as EffectType,
       name: name.trim(),
@@ -92,7 +140,8 @@ export function EffectForm({
       blueprint,
       iconKey: iconKey.trim() || undefined,
       maxStacks: maxStacks && maxStacks > 0 ? maxStacks : undefined,
-      imagePath: imagePath || undefined,
+      imagePath: imageUrl || undefined, // Keep for backward compatibility
+      image: finalImageMediaId, // Payload Media ID
     };
     
     onSubmit(effect);
@@ -108,11 +157,16 @@ export function EffectForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <ImageUpload
-        currentImagePath={imagePath}
-        contentType="effects"
-        entityId={id || undefined}
-        onImageUploaded={setImagePath}
+      <MediaUpload
+        ref={imageUploadRef}
+        currentMediaId={imageMediaId}
+        currentMediaUrl={imageUrl}
+        onMediaUploaded={(mediaId) => {
+          setImageMediaId(mediaId);
+          if (!mediaId) {
+            setImageUrl(undefined);
+          }
+        }}
         label="Effect Image"
         disabled={saving}
         compact
