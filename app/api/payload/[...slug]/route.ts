@@ -9,6 +9,73 @@ async function getPayloadClient() {
   return await getPayload({ config })
 }
 
+// Helper function to normalize media URLs in documents and relationships
+function normalizeMediaUrlsInDoc(doc: any): any {
+  if (!doc || typeof doc !== 'object') return doc
+  
+  const normalized = { ...doc }
+  
+  // Normalize direct media document URLs
+  if (normalized.url && typeof normalized.url === 'string') {
+    normalized.url = normalizeMediaUrl(normalized.url, normalized.filename)
+  }
+  
+  // Normalize image relationship URLs (common field name)
+  if (normalized.image) {
+    if (typeof normalized.image === 'object' && normalized.image.url) {
+      normalized.image = {
+        ...normalized.image,
+        url: normalizeMediaUrl(normalized.image.url, normalized.image.filename),
+      }
+    }
+  }
+  
+  // Normalize featuredImage relationship URLs
+  if (normalized.featuredImage) {
+    if (typeof normalized.featuredImage === 'object' && normalized.featuredImage.url) {
+      normalized.featuredImage = {
+        ...normalized.featuredImage,
+        url: normalizeMediaUrl(normalized.featuredImage.url, normalized.featuredImage.filename),
+      }
+    }
+  }
+  
+  // Normalize landmarkIcon relationship URLs
+  if (normalized.landmarkIcon) {
+    if (typeof normalized.landmarkIcon === 'object' && normalized.landmarkIcon.url) {
+      normalized.landmarkIcon = {
+        ...normalized.landmarkIcon,
+        url: normalizeMediaUrl(normalized.landmarkIcon.url, normalized.landmarkIcon.filename),
+      }
+    }
+  }
+  
+  return normalized
+}
+
+// Helper function to normalize a single media URL
+function normalizeMediaUrl(url: string, filename?: string): string {
+  if (!url) return url
+  
+  // Convert absolute URLs to relative paths
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    try {
+      const urlObj = new URL(url)
+      url = urlObj.pathname
+    } catch {
+      // If URL parsing fails, construct from filename
+      url = filename ? `/api/media/file/${filename}` : ''
+    }
+  }
+  
+  // Ensure it uses /api/media/file/ format if we have a filename
+  if (filename && !url.includes('/api/media/file/')) {
+    url = `/api/media/file/${filename}`
+  }
+  
+  return url
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string[] }> }
@@ -77,7 +144,9 @@ export async function GET(
         return NextResponse.json({ ...mediaDoc, url: normalizedUrl })
       }
       
-      return NextResponse.json(doc)
+      // Normalize media URLs in relationships (e.g., image fields)
+      const normalizedDoc = normalizeMediaUrlsInDoc(doc as any)
+      return NextResponse.json(normalizedDoc)
     } else if (collection) {
       // Get collection
       const searchParams = request.nextUrl.searchParams
@@ -89,7 +158,10 @@ export async function GET(
         limit,
         page,
       })
-      return NextResponse.json(result)
+      
+      // Normalize media URLs in all documents
+      const normalizedDocs = result.docs.map((doc: any) => normalizeMediaUrlsInDoc(doc))
+      return NextResponse.json({ ...result, docs: normalizedDocs })
     }
   } catch (error: any) {
     console.error(`Payload GET error:`, error)
@@ -216,7 +288,9 @@ export async function POST(
       data: body,
     })
     
-    return NextResponse.json(doc, { status: 201 })
+    // Normalize media URLs in relationships
+    const normalizedDoc = normalizeMediaUrlsInDoc(doc as any)
+    return NextResponse.json(normalizedDoc, { status: 201 })
   } catch (error: any) {
     console.error(`Payload POST error:`, error)
     return NextResponse.json(
@@ -247,7 +321,9 @@ export async function PUT(
       data: body,
     })
     
-    return NextResponse.json(doc)
+    // Normalize media URLs in relationships
+    const normalizedDoc = normalizeMediaUrlsInDoc(doc as any)
+    return NextResponse.json(normalizedDoc)
   } catch (error: any) {
     console.error(`Payload PUT error:`, error)
     return NextResponse.json(
