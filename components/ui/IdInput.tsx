@@ -35,12 +35,21 @@ async function checkPayloadIdUniqueness(
   }
 
   try {
-    // Characters use 'slug' field, runes use 'code' field, others use 'name' field
-    const fieldName = contentType === 'characters' 
-      ? 'slug' 
-      : contentType === 'runes' 
-        ? 'code' 
-        : 'name';
+    // Map content types to their unique identifier fields in Payload
+    const fieldNameMap: Record<ContentType, string> = {
+      characters: 'slug',
+      runes: 'code',
+      objects: 'slug',
+      spells: 'spellId',
+      effects: 'effectType',
+      lore: 'slug',
+      regions: 'slug', // locations collection uses 'slug'
+      creatures: 'slug', // assuming creatures use slug
+      environments: 'slug', // assuming environments use slug
+      maps: 'slug', // assuming maps use slug
+    };
+    
+    const fieldName = fieldNameMap[contentType] || 'name';
     
     // Build query
     let query = `where[${fieldName}][equals]=${encodeURIComponent(id)}`;
