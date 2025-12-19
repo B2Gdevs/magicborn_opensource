@@ -241,17 +241,26 @@ export function RuneForm({
         .then(res => res.json())
         .then(data => {
           if (data.url) {
-            const url = data.url;
+            let url = data.url;
+            // Normalize URL: convert absolute URLs to relative, and ensure /media/ format
             if (url.startsWith('http://localhost') || url.startsWith('https://')) {
               try {
                 const urlObj = new URL(url);
-                setImageUrl(urlObj.pathname);
+                url = urlObj.pathname;
               } catch {
-                setImageUrl(url);
+                // If URL parsing fails, construct from filename
+                url = data.filename ? `/media/${data.filename}` : url;
               }
-            } else {
-              setImageUrl(url.startsWith('/') ? url : `/${url}`);
             }
+            // Convert /api/media/file/ to /media/
+            if (url.includes('/api/media/file/')) {
+              url = url.replace('/api/media/file/', '/media/');
+            }
+            // Ensure it uses /media/ format if we have a filename
+            if (data.filename && !url.includes('/media/')) {
+              url = `/media/${data.filename}`;
+            }
+            setImageUrl(url);
           }
         })
         .catch(err => console.error("Failed to fetch image:", err));
