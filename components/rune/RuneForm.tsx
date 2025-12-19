@@ -47,23 +47,8 @@ export function RuneForm({
   const [tags, setTags] = useState<RuneTag[]>(initialValues.tags || []);
   const [manaCost, setManaCost] = useState(initialValues.manaCost || 0);
   const [dotAffinity, setDotAffinity] = useState<number | undefined>(initialValues.dotAffinity);
-  const [imageMediaId, setImageMediaId] = useState<number | undefined>(() => {
-    const mediaId = typeof (initialValues as any).image === 'number' 
-      ? (initialValues as any).image 
-      : typeof (initialValues as any).image === 'object' && (initialValues as any).image?.id
-        ? (initialValues as any).image.id
-        : undefined;
-    console.log("[RuneForm] Initial imageMediaId from initialValues:", mediaId, "initialValues.image:", (initialValues as any).image);
-    return mediaId;
-  });
-  const [imageUrl, setImageUrl] = useState<string | undefined>(() => {
-    const url = initialValues.imagePath || 
-      (typeof (initialValues as any).image === 'object' && (initialValues as any).image?.url
-        ? (initialValues as any).image.url
-        : undefined);
-    console.log("[RuneForm] Initial imageUrl from initialValues:", url, "initialValues.imagePath:", initialValues.imagePath, "initialValues.image:", (initialValues as any).image);
-    return url;
-  });
+  const [imageMediaId, setImageMediaId] = useState<number | undefined>(initialValues.imageId);
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const imageUploadRef = useRef<MediaUploadRef>(null);
   console.log("initialValues", initialValues);
 
@@ -212,11 +197,13 @@ export function RuneForm({
       ...(effects.length > 0 ? { effects } : {}),
       ...(overchargeEffects.length > 0 ? { overchargeEffects } : {}),
       ...(dotAffinity !== undefined ? { dotAffinity } : {}),
-      ...(finalImageMediaId ? { imageMediaId: finalImageMediaId } : {}),
+      ...(finalImageMediaId ? { imageId: finalImageMediaId } : {}),
     };
+    console.log("rune", rune);
 
     return rune;
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,7 +228,7 @@ export function RuneForm({
 
   // Fetch image URL when editing (only on mount, not after uploads)
   useEffect(() => {
-    console.log("[RuneForm] Image URL effect triggered", { imageMediaId, isEdit, currentImageUrl: imageUrl });
+    console.log("[RuneForm] Image URL effect triggered", { imageMediaId, isEdit });
     
     if (imageMediaId && isEdit) {
       console.log("[RuneForm] Fetching media from API:", `/api/payload/media/${imageMediaId}`);
@@ -253,49 +240,22 @@ export function RuneForm({
         .then(data => {
           console.log("[RuneForm] Media fetch response data:", data);
           if (data.url) {
-            let url = data.url;
-            console.log("[RuneForm] Initial URL from API:", url);
-            
-            // Normalize URL: convert absolute URLs to relative, and ensure /media/ format
-            if (url.startsWith('http://localhost') || url.startsWith('https://')) {
-              console.log("[RuneForm] URL is absolute, converting to relative");
-              try {
-                const urlObj = new URL(url);
-                url = urlObj.pathname;
-                console.log("[RuneForm] Converted absolute URL to pathname:", url);
-              } catch {
-                // If URL parsing fails, construct from filename
-                url = data.filename ? `/media/${data.filename}` : url;
-                console.log("[RuneForm] URL parsing failed, using filename fallback:", url);
-              }
-            }
-            // Convert /api/media/file/ to /media/
-            if (url.includes('/api/media/file/')) {
-              console.log("[RuneForm] Converting /api/media/file/ to /media/");
-              url = url.replace('/api/media/file/', '/media/');
-              console.log("[RuneForm] After conversion:", url);
-            }
-            // Ensure it uses /media/ format if we have a filename
-            if (data.filename && !url.includes('/media/')) {
-              console.log("[RuneForm] URL doesn't include /media/, constructing from filename:", data.filename);
-              url = `/media/${data.filename}`;
-            }
-            console.log("[RuneForm] Final normalized URL:", url);
-            console.log("[RuneForm] Setting imageUrl state to:", url);
+            console.log("[RuneForm] Setting imageUrl to:", data.url);
+            setImageUrl(data.url);
+          } else if (data.filename) {
+            // Fallback: construct from filename
+            const url = `/media/${data.filename}`;
+            console.log("[RuneForm] No URL in response, constructing from filename:", url);
             setImageUrl(url);
           } else {
-            console.warn("[RuneForm] No URL in media response data:", data);
+            console.warn("[RuneForm] No URL or filename in media response data:", data);
           }
         })
         .catch(err => {
           console.error("[RuneForm] Failed to fetch image:", err);
         });
-    } else if (!imageMediaId) {
-      console.log("[RuneForm] No imageMediaId, clearing imageUrl");
-      setImageUrl(undefined);
-    } else {
-      console.log("[RuneForm] Not fetching - conditions not met:", { imageMediaId, isEdit });
     }
+    // Don't clear imageUrl when imageMediaId is undefined - let MediaUpload handle it
   }, [imageMediaId, isEdit]);
 
   return (

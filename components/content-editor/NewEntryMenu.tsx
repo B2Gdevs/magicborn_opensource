@@ -312,8 +312,8 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       };
       
       // Include image if provided
-      if ((rune as any).imageMediaId) {
-        payloadData.image = (rune as any).imageMediaId;
+      if (rune.imageId) {
+        payloadData.image = rune.imageId;
       }
       
       const res = await fetch(url, {

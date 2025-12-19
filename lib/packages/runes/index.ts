@@ -23,7 +23,7 @@ export interface RuneDef {
   effects?: EffectBlueprint[];
   overchargeEffects?: OverchargeEffect[];
   dotAffinity?: number;
-  imagePath?: string; // Path to image in public/game-content/runes/
+  imageId?: number; // Payload Media ID
 }
 
 /**
