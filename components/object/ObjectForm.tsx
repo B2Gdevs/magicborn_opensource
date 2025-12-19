@@ -198,60 +198,64 @@ export function ObjectForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-      <MediaUpload
-        ref={imageUploadRef}
-        currentMediaId={imageMediaId}
-        currentMediaUrl={imageUrl}
-        onMediaUploaded={(mediaId) => {
-          setImageMediaId(mediaId);
-          if (!mediaId) {
-            setImageUrl(undefined);
-          }
-        }}
-        label="Item Image"
-        disabled={saving}
-        compact
-      />
-
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          Name <span className="text-ember">*</span>
-        </label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-          placeholder="e.g., Ember Crystal"
-          required
+      {/* Image upload inline with Name */}
+      <div className="flex gap-4 items-start">
+        <MediaUpload
+          ref={imageUploadRef}
+          currentMediaId={imageMediaId}
+          currentMediaUrl={imageUrl}
+          onMediaUploaded={(mediaId) => {
+            setImageMediaId(mediaId);
+            if (!mediaId) {
+              setImageUrl(undefined);
+            }
+          }}
+          label=""
+          disabled={saving}
+          inline
         />
-      </div>
+        <div className="flex-1 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-1">
+              Name <span className="text-ember">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+              placeholder="e.g., Ember Crystal"
+              required
+            />
+          </div>
 
-      {!isEdit && (
-        <IdInput
-          value={slug}
-          onChange={setSlug}
-          contentType="objects"
-          isEdit={false}
-          placeholder="Auto-generated from name"
-          label="Slug (auto-generated from name)"
-          projectId={projectId}
-          disabled={false}
-        />
-      )}
-      {isEdit && (
-        <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-1">
-            Slug
-          </label>
-          <input
-            type="text"
-            value={slug}
-            disabled
-            className="w-full px-3 py-2 bg-deep/50 border border-border rounded text-text-muted cursor-not-allowed"
-          />
+          {!isEdit && (
+            <IdInput
+              value={slug}
+              onChange={setSlug}
+              contentType="objects"
+              isEdit={false}
+              placeholder="Auto-generated from name"
+              label="Slug (auto-generated from name)"
+              projectId={projectId}
+              disabled={false}
+            />
+          )}
+          {isEdit && (
+            <div>
+              <label className="block text-sm font-semibold text-text-secondary mb-1">
+                Slug
+              </label>
+              <input
+                type="text"
+                value={slug}
+                disabled
+                className="w-full px-3 py-2 bg-deep/50 border border-border rounded text-text-muted cursor-not-allowed"
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>

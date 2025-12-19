@@ -164,21 +164,23 @@ export function LoreForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-      <MediaUpload
-        ref={imageUploadRef}
-        currentMediaId={featuredImageId}
-        currentMediaUrl={featuredImageUrl}
-        onMediaUploaded={(mediaId) => {
-          setFeaturedImageId(mediaId);
-          if (!mediaId) {
-            setFeaturedImageUrl(undefined);
-          }
-        }}
-        label="Cover Image"
-        disabled={saving}
-        compact
-      />
-
+      {/* Image upload inline with Title */}
+      <div className="flex gap-4 items-start">
+        <MediaUpload
+          ref={imageUploadRef}
+          currentMediaId={featuredImageId}
+          currentMediaUrl={featuredImageUrl}
+          onMediaUploaded={(mediaId) => {
+            setFeaturedImageId(mediaId);
+            if (!mediaId) {
+              setFeaturedImageUrl(undefined);
+            }
+          }}
+          label=""
+          disabled={saving}
+          inline
+        />
+        <div className="flex-1 space-y-4">
       <div>
         <label className="block text-sm font-semibold text-text-secondary mb-1">
           Title <span className="text-ember">*</span>
@@ -246,6 +248,8 @@ export function LoreForm({
           className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary min-h-[120px]"
           placeholder="The ancient texts speak of a time when..."
         />
+      </div>
+        </div>
       </div>
     </form>
   );

@@ -211,60 +211,64 @@ export function SpellForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-      <MediaUpload
-        ref={imageUploadRef}
-        currentMediaId={imageMediaId}
-        currentMediaUrl={imageUrl}
-        onMediaUploaded={(mediaId) => {
-          setImageMediaId(mediaId);
-          if (!mediaId) {
-            setImageUrl(undefined);
-          }
-        }}
-        label="Spell Image"
-        disabled={saving}
-        compact
-      />
-
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          Name *
-        </label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-          placeholder="e.g., Ember Ray"
-          required
+      {/* Image upload inline with Name */}
+      <div className="flex gap-4 items-start">
+        <MediaUpload
+          ref={imageUploadRef}
+          currentMediaId={imageMediaId}
+          currentMediaUrl={imageUrl}
+          onMediaUploaded={(mediaId) => {
+            setImageMediaId(mediaId);
+            if (!mediaId) {
+              setImageUrl(undefined);
+            }
+          }}
+          label=""
+          disabled={saving}
+          inline
         />
-      </div>
+        <div className="flex-1 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-1">
+              Name *
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+              placeholder="e.g., Ember Ray"
+              required
+            />
+          </div>
 
-      {/* Show generated ID with validation */}
-      {!isEdit && (
-        <IdInput
-          value={generatedId}
-          onChange={() => {}} // Read-only, generated from name
-          contentType="spells"
-          isEdit={false}
-          placeholder="Auto-generated from name"
-          label="ID (auto-generated from name)"
-          disabled={true}
-        />
-      )}
-      {isEdit && (
-        <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-1">
-            ID
-          </label>
-          <input
-            type="text"
-            value={(initialValues as NamedSpellBlueprint).id}
-            disabled
-            className="w-full px-3 py-2 bg-deep/50 border border-border rounded text-text-muted cursor-not-allowed"
-          />
+          {/* Show generated ID with validation */}
+          {!isEdit && (
+            <IdInput
+              value={generatedId}
+              onChange={() => {}} // Read-only, generated from name
+              contentType="spells"
+              isEdit={false}
+              placeholder="Auto-generated from name"
+              label="ID (auto-generated from name)"
+              disabled={true}
+            />
+          )}
+          {isEdit && (
+            <div>
+              <label className="block text-sm font-semibold text-text-secondary mb-1">
+                ID
+              </label>
+              <input
+                type="text"
+                value={(initialValues as NamedSpellBlueprint).id}
+                disabled
+                className="w-full px-3 py-2 bg-deep/50 border border-border rounded text-text-muted cursor-not-allowed"
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <div>
         <label className="block text-sm font-semibold text-text-secondary mb-1">

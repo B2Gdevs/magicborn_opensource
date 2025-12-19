@@ -262,81 +262,85 @@ export function RuneForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto">
-      <MediaUpload
-        ref={imageUploadRef}
-        currentMediaId={imageMediaId}
-        currentMediaUrl={imageUrl}
-        onMediaUploaded={(mediaId) => {
-          setImageMediaId(mediaId);
-          if (!mediaId) {
-            setImageUrl(undefined);
-          }
-        }}
-        label="Rune Image"
-        disabled={saving}
-        compact
-      />
-
-      {isEdit ? (
-        <IdInput
-          value={code}
-          onChange={() => {}} // Read-only in edit mode
-          contentType="runes"
-          isEdit={true}
-          placeholder="Rune Code"
-          label="Code (Rune Letter)"
-          disabled={true}
-          projectId={projectId}
-          excludeId={editEntryId}
+      {/* Image upload inline with Code and Concept */}
+      <div className="flex gap-4 items-start">
+        <MediaUpload
+          ref={imageUploadRef}
+          currentMediaId={imageMediaId}
+          currentMediaUrl={imageUrl}
+          onMediaUploaded={(mediaId) => {
+            setImageMediaId(mediaId);
+            if (!mediaId) {
+              setImageUrl(undefined);
+            }
+          }}
+          label=""
+          disabled={saving}
+          inline
         />
-      ) : (
-        <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-1">
-            Code (Rune Letter) *
-          </label>
-          <select
-            value={code}
-            onChange={(e) => setCode(e.target.value as RuneCode)}
-            className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            required
-          >
-            <option value="">Select a rune code</option>
-            {availableCodes.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          {/* Use IdInput for validation feedback - hidden input, visible validation */}
-          {code && (
+        <div className="flex-1 space-y-4">
+          {isEdit ? (
             <IdInput
               value={code}
-              onChange={(id) => setCode(id as RuneCode)}
+              onChange={() => {}} // Read-only in edit mode
               contentType="runes"
-              isEdit={false}
-              placeholder=""
-              label=""
-              disabled={false}
-              className="hidden"
+              isEdit={true}
+              placeholder="Rune Code"
+              label="Code (Rune Letter)"
+              disabled={true}
               projectId={projectId}
-              excludeId={isEdit ? editEntryId : undefined}
+              excludeId={editEntryId}
             />
+          ) : (
+            <div>
+              <label className="block text-sm font-semibold text-text-secondary mb-1">
+                Code (Rune Letter) *
+              </label>
+              <select
+                value={code}
+                onChange={(e) => setCode(e.target.value as RuneCode)}
+                className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+                required
+              >
+                <option value="">Select a rune code</option>
+                {availableCodes.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              {/* Use IdInput for validation feedback - hidden input, visible validation */}
+              {code && (
+                <IdInput
+                  value={code}
+                  onChange={(id) => setCode(id as RuneCode)}
+                  contentType="runes"
+                  isEdit={false}
+                  placeholder=""
+                  label=""
+                  disabled={false}
+                  className="hidden"
+                  projectId={projectId}
+                  excludeId={isEdit ? editEntryId : undefined}
+                />
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          Concept (Name) *
-        </label>
-        <input
-          type="text"
-          value={concept}
-          onChange={(e) => setConcept(e.target.value)}
-          className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-          placeholder="e.g., Fire, Air, Burst"
-          required
-        />
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-1">
+              Concept (Name) *
+            </label>
+            <input
+              type="text"
+              value={concept}
+              onChange={(e) => setConcept(e.target.value)}
+              className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+              placeholder="e.g., Fire, Air, Burst"
+              required
+            />
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

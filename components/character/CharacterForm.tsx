@@ -141,45 +141,49 @@ export function CharacterForm({
 
   return (
     <form ref={formRef} className="space-y-4">
-      <MediaUpload
-        ref={imageUploadRef}
-        currentMediaId={imageMediaId}
-        currentMediaUrl={imageUrl}
-        onMediaUploaded={(mediaId) => {
-          setImageMediaId(mediaId);
-          if (!mediaId) {
-            setImageUrl(undefined);
-          }
-        }}
-        label="Character Image"
-        disabled={saving}
-        compact
-      />
-
-      <IdInput
-        value={id}
-        onChange={setId}
-        contentType="characters"
-        isEdit={isEdit}
-        placeholder="e.g., kael"
-        autoGenerateFrom={name}
-        disabled={saving}
-        projectId={projectId}
-        excludeId={isEdit ? editEntryId : undefined}
-      />
-
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          Name *
-        </label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-          placeholder="e.g., Kael"
-          required
+      {/* Image upload inline with ID and Name */}
+      <div className="flex gap-4 items-start">
+        <MediaUpload
+          ref={imageUploadRef}
+          currentMediaId={imageMediaId}
+          currentMediaUrl={imageUrl}
+          onMediaUploaded={(mediaId) => {
+            setImageMediaId(mediaId);
+            if (!mediaId) {
+              setImageUrl(undefined);
+            }
+          }}
+          label=""
+          disabled={saving}
+          inline
         />
+        <div className="flex-1 space-y-4">
+          <IdInput
+            value={id}
+            onChange={setId}
+            contentType="characters"
+            isEdit={isEdit}
+            placeholder="e.g., kael"
+            autoGenerateFrom={name}
+            disabled={saving}
+            projectId={projectId}
+            excludeId={isEdit ? editEntryId : undefined}
+          />
+
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-1">
+              Name *
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+              placeholder="e.g., Kael"
+              required
+            />
+          </div>
+        </div>
       </div>
 
       <div>

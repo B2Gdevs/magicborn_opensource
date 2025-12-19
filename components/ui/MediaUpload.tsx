@@ -11,6 +11,7 @@ interface MediaUploadProps {
   label?: string;
   disabled?: boolean;
   compact?: boolean;
+  inline?: boolean; // Inline mode: small thumbnail next to other fields
 }
 
 export interface MediaUploadRef {
@@ -26,6 +27,7 @@ export const MediaUpload = forwardRef<MediaUploadRef, MediaUploadProps>(({
   label = "Media",
   disabled = false,
   compact = false,
+  inline = false,
 }, ref) => {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -171,6 +173,79 @@ export const MediaUpload = forwardRef<MediaUploadRef, MediaUploadProps>(({
 
   const imageUrl = preview || currentMediaUrl;
   const hasImage = !!imageUrl || !!pendingFile;
+
+  // Inline mode: small thumbnail
+  if (inline) {
+    return (
+      <div className="flex items-center gap-3">
+        <div
+          ref={dropZoneRef}
+          onClick={handleClick}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`
+            relative w-20 h-20 border-2 border-dashed rounded-lg overflow-hidden
+            transition-all cursor-pointer flex-shrink-0
+            ${isDragging 
+              ? "border-ember-glow bg-ember/10 scale-[1.02]" 
+              : hasImage 
+                ? "border-border bg-deep" 
+                : "border-border/50 bg-deep/30 hover:border-ember/50 hover:bg-deep/50"
+            }
+            ${disabled ? "cursor-not-allowed opacity-50" : ""}
+            ${uploading ? "cursor-wait" : ""}
+          `}
+        >
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt="Preview"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Upload className="w-6 h-6 text-text-muted" />
+            </div>
+          )}
+          {imageUrl && !disabled && (
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="absolute top-1 right-1 w-5 h-5 bg-ember/90 hover:bg-ember rounded-full flex items-center justify-center text-white text-xs"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          {uploading && (
+            <div className="absolute inset-0 bg-deep/80 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-ember border-t-transparent" />
+            </div>
+          )}
+        </div>
+        <div className="flex-1">
+          {label && (
+            <label className="block text-sm font-semibold text-text-secondary mb-1">
+              {label}
+            </label>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInputChange}
+            className="hidden"
+            disabled={disabled || uploading}
+          />
+          {pendingFile && !uploading && (
+            <p className="text-xs text-text-secondary mt-1">
+              Ready to upload on save
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
