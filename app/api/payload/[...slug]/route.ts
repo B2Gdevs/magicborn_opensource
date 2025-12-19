@@ -55,6 +55,28 @@ export async function GET(
         collection,
         id,
       })
+      
+      // Normalize media URLs if this is a media document
+      if (collection === 'media' && (doc as any).url) {
+        const mediaDoc = doc as any
+        let normalizedUrl = mediaDoc.url
+        // Convert absolute URLs to relative paths
+        if (normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
+          try {
+            const urlObj = new URL(normalizedUrl)
+            normalizedUrl = urlObj.pathname
+          } catch {
+            // If URL parsing fails, construct from filename
+            normalizedUrl = mediaDoc.filename ? `/api/media/file/${mediaDoc.filename}` : ''
+          }
+        }
+        // Ensure it uses /api/media/file/ format
+        if (mediaDoc.filename && !normalizedUrl.includes('/api/media/file/')) {
+          normalizedUrl = `/api/media/file/${mediaDoc.filename}`
+        }
+        return NextResponse.json({ ...mediaDoc, url: normalizedUrl })
+      }
+      
       return NextResponse.json(doc)
     } else if (collection) {
       // Get collection
@@ -117,9 +139,25 @@ export async function POST(
         } as any)
         
         const mediaData = media as any
-        // Payload returns URLs in format like /api/media/file/filename.png
-        // Use the actual URL from Payload, or construct it if not available
-        const mediaUrl = mediaData.url || (mediaData.filename ? `/api/media/file/${mediaData.filename}` : '')
+        // Payload returns URLs - normalize to relative path
+        // Payload might return absolute URLs with wrong port, so normalize to relative
+        let mediaUrl = mediaData.url || (mediaData.filename ? `/api/media/file/${mediaData.filename}` : '')
+        
+        // Normalize absolute URLs to relative paths
+        if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+          try {
+            const urlObj = new URL(mediaUrl)
+            mediaUrl = urlObj.pathname
+          } catch {
+            // If URL parsing fails, construct from filename
+            mediaUrl = mediaData.filename ? `/api/media/file/${mediaData.filename}` : ''
+          }
+        }
+        
+        // Ensure it starts with /api/media/file/ if we have a filename
+        if (!mediaUrl && mediaData.filename) {
+          mediaUrl = `/api/media/file/${mediaData.filename}`
+        }
         
         return NextResponse.json({ 
           id: mediaData.id,
