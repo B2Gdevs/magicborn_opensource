@@ -360,7 +360,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       const payloadData: any = {
         title: data.title,
         content: data.content,
-        category: data.type || "book", // Map type to category if needed
+        category: data.category || 'history', // Use category from form
         excerpt: data.content?.substring(0, 200), // Auto-generate excerpt
         project: parseInt(projectId),
       };

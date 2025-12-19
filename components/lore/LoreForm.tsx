@@ -6,11 +6,30 @@
 import { useState, useRef, useEffect } from "react";
 import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 
+// Client-safe enums (inline to avoid webpack require issues)
+enum LoreCategory {
+  History = 'history',
+  MagicSystem = 'magic-system',
+  Culture = 'culture',
+  Geography = 'geography',
+  Religion = 'religion',
+  Faction = 'faction',
+}
+
+const LORE_CATEGORY_OPTIONS = [
+  { label: 'History', value: LoreCategory.History },
+  { label: 'Magic System', value: LoreCategory.MagicSystem },
+  { label: 'Culture', value: LoreCategory.Culture },
+  { label: 'Geography', value: LoreCategory.Geography },
+  { label: 'Religion', value: LoreCategory.Religion },
+  { label: 'Faction', value: LoreCategory.Faction },
+] as const;
+
 export interface LoreFormData {
   id?: string;
   title: string;
   content?: string;
-  type?: "book" | "scroll" | "journal" | "letter" | "inscription" | "legend" | "history";
+  category?: LoreCategory;
   author?: string;
   era?: string;
   imagePath?: string;
@@ -26,16 +45,6 @@ interface LoreFormProps {
   submitLabel?: string;
 }
 
-const LORE_TYPES = [
-  { value: "book", label: "Book" },
-  { value: "scroll", label: "Scroll" },
-  { value: "journal", label: "Journal" },
-  { value: "letter", label: "Letter" },
-  { value: "inscription", label: "Inscription" },
-  { value: "legend", label: "Legend" },
-  { value: "history", label: "Historical Record" },
-] as const;
-
 export function LoreForm({
   initialValues = {},
   isEdit = false,
@@ -46,7 +55,10 @@ export function LoreForm({
 }: LoreFormProps) {
   const [title, setTitle] = useState(initialValues.title || "");
   const [content, setContent] = useState(initialValues.content || "");
-  const [type, setType] = useState<LoreFormData["type"]>(initialValues.type || "book");
+  const [category, setCategory] = useState<LoreCategory>(
+    initialValues.category || 
+    (typeof (initialValues as any).category === 'string' ? (initialValues as any).category as LoreCategory : LoreCategory.History)
+  );
   const [author, setAuthor] = useState(initialValues.author || "");
   const [era, setEra] = useState(initialValues.era || "");
   const [featuredImageId, setFeaturedImageId] = useState<number | undefined>(
@@ -109,7 +121,7 @@ export function LoreForm({
         }
       };
     }
-  }, [title, content, type, author, era, featuredImageId, onSubmit]);
+  }, [title, content, category, author, era, featuredImageId, onSubmit]);
 
   const prepareLore = async (): Promise<LoreFormData | null> => {
     if (!title.trim()) {
@@ -134,7 +146,7 @@ export function LoreForm({
     return {
       title: title.trim(),
       content: content.trim() || undefined,
-      type,
+      category,
       author: author.trim() || undefined,
       era: era.trim() || undefined,
       imagePath: featuredImageUrl || undefined, // Keep for backward compatibility
@@ -184,15 +196,16 @@ export function LoreForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-1">
-            Type
+            Category <span className="text-ember">*</span>
           </label>
           <select
-            value={type}
-            onChange={(e) => setType(e.target.value as LoreFormData["type"])}
+            value={category}
+            onChange={(e) => setCategory(e.target.value as LoreCategory)}
             className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+            required
           >
-            {LORE_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+            {LORE_CATEGORY_OPTIONS.map((cat) => (
+              <option key={cat.value} value={cat.value}>{cat.label}</option>
             ))}
           </select>
         </div>
