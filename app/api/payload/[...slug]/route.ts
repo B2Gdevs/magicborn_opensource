@@ -87,7 +87,7 @@ export async function POST(
   const [first, second] = slug
   
   try {
-    // Handle media uploads (FormData) - save to public/design/videos
+    // Handle media uploads (FormData) - create Payload Media document
     if (first === 'media') {
       const formData = await request.formData()
       const file = formData.get('file') as File
@@ -96,23 +96,35 @@ export async function POST(
         return NextResponse.json({ error: 'No file provided' }, { status: 400 })
       }
 
+      // Convert File to Buffer for Payload Local API
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
+
+      // Create Media document in Payload
+      // Payload 3.x Local API expects file object with data, mimetype, name, size
+      const media = await payload.create({
+        collection: 'media',
+        data: {
+          alt: file.name,
+        },
+        file: {
+          data: buffer,
+          mimetype: file.type,
+          name: file.name,
+          size: file.size,
+        },
+      } as any)
       
-      // Sanitize filename
-      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      const isVideo = file.type.startsWith('video/')
-      const folder = isVideo ? 'videos' : 'images'
-      const filePath = `public/design/${folder}/${sanitizedName}`
+      const mediaData = media as any
+      // Payload returns URLs in format like /api/media/file/filename.png
+      // Use the actual URL from Payload, or construct it if not available
+      const mediaUrl = mediaData.url || (mediaData.filename ? `/api/media/file/${mediaData.filename}` : '')
       
-      // Write file to public folder
-      const fs = await import('fs/promises')
-      const path = await import('path')
-      const fullPath = path.join(process.cwd(), filePath)
-      await fs.writeFile(fullPath, buffer)
-      
-      const url = `/design/${folder}/${sanitizedName}`
-      return NextResponse.json({ url, filename: sanitizedName }, { status: 201 })
+      return NextResponse.json({ 
+        id: mediaData.id,
+        url: mediaUrl,
+        filename: mediaData.filename,
+      }, { status: 201 })
     }
 
     const body = await request.json()

@@ -305,6 +305,10 @@ export interface Scene {
 export interface Character {
   id: number;
   project: number | Project;
+  /**
+   * Unique identifier for this character (e.g., "kael", "morgana")
+   */
+  slug: string;
   name: string;
   description?: string | null;
   image?: (number | null) | Media;
@@ -416,9 +420,38 @@ export interface Location {
   isPublic?: boolean | null;
   featuredImage?: (number | null) | Media;
   /**
-   * Parent region/area this location belongs to
+   * Parent region/area this location belongs to (for hierarchical nesting)
    */
   parentLocation?: (number | null) | Location;
+  /**
+   * Hierarchy level (0 = world, 1 = continent, 2 = region, etc.)
+   */
+  level?: number | null;
+  /**
+   * Grid cell coordinates for this region on the map (8x8 grid system)
+   */
+  gridCells?: {
+    /**
+     * Left edge cell coordinate (0-7 for 8x8 grid)
+     */
+    minX?: number | null;
+    /**
+     * Top edge cell coordinate (0-7 for 8x8 grid)
+     */
+    minY?: number | null;
+    /**
+     * Width in cells (1-8)
+     */
+    width?: number | null;
+    /**
+     * Height in cells (1-8)
+     */
+    height?: number | null;
+  };
+  /**
+   * Icon/image to display on the map for this region
+   */
+  landmarkIcon?: (number | null) | Media;
   relatedCharacters?: (number | Character)[] | null;
   updatedAt: string;
   createdAt: string;
@@ -946,6 +979,7 @@ export interface ScenesSelect<T extends boolean = true> {
  */
 export interface CharactersSelect<T extends boolean = true> {
   project?: T;
+  slug?: T;
   name?: T;
   description?: T;
   image?: T;
@@ -995,6 +1029,16 @@ export interface LocationsSelect<T extends boolean = true> {
   isPublic?: T;
   featuredImage?: T;
   parentLocation?: T;
+  level?: T;
+  gridCells?:
+    | T
+    | {
+        minX?: T;
+        minY?: T;
+        width?: T;
+        height?: T;
+      };
+  landmarkIcon?: T;
   relatedCharacters?: T;
   updatedAt?: T;
   createdAt?: T;

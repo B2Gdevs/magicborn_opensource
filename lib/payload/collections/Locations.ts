@@ -74,7 +74,85 @@ export const Locations: CollectionConfig = {
       type: 'relationship',
       relationTo: Collections.Locations,
       admin: {
-        description: 'Parent region/area this location belongs to',
+        description: 'Parent region/area this location belongs to (for hierarchical nesting)',
+      },
+    },
+    {
+      name: 'level',
+      type: 'number',
+      admin: {
+        description: 'Hierarchy level (0 = world, 1 = continent, 2 = region, etc.)',
+      },
+      defaultValue: 0,
+    },
+    // Grid cell coordinates for map placement
+    {
+      name: 'gridCells',
+      type: 'group',
+      fields: [
+        {
+          name: 'minX',
+          type: 'number',
+          admin: {
+            description: 'Left edge cell coordinate (0-7 for 8x8 grid)',
+          },
+          validate: (value: number) => {
+            if (value !== undefined && (value < 0 || value > 7)) {
+              return 'Cell X must be between 0 and 7';
+            }
+            return true;
+          },
+        },
+        {
+          name: 'minY',
+          type: 'number',
+          admin: {
+            description: 'Top edge cell coordinate (0-7 for 8x8 grid)',
+          },
+          validate: (value: number) => {
+            if (value !== undefined && (value < 0 || value > 7)) {
+              return 'Cell Y must be between 0 and 7';
+            }
+            return true;
+          },
+        },
+        {
+          name: 'width',
+          type: 'number',
+          admin: {
+            description: 'Width in cells (1-8)',
+          },
+          validate: (value: number) => {
+            if (value !== undefined && (value < 1 || value > 8)) {
+              return 'Width must be between 1 and 8';
+            }
+            return true;
+          },
+        },
+        {
+          name: 'height',
+          type: 'number',
+          admin: {
+            description: 'Height in cells (1-8)',
+          },
+          validate: (value: number) => {
+            if (value !== undefined && (value < 1 || value > 8)) {
+              return 'Height must be between 1 and 8';
+            }
+            return true;
+          },
+        },
+      ],
+      admin: {
+        description: 'Grid cell coordinates for this region on the map (8x8 grid system)',
+      },
+    },
+    {
+      name: 'landmarkIcon',
+      type: 'upload',
+      relationTo: Collections.Media,
+      admin: {
+        description: 'Icon/image to display on the map for this region',
       },
     },
     {

@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import type { CharacterDefinition } from "@/lib/data/characters";
 import type { AlphabetVector } from "@core/types";
 import type { ElementXpMap, ElementAffinityMap } from "@/lib/packages/player/AffinityService";
-import { ImageUpload } from "@components/ui/ImageUpload";
+import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { CombatStatsEditor } from "@components/ui/CombatStatsEditor";
 import { IdInput } from "@components/ui/IdInput";
 
@@ -46,17 +46,66 @@ export function CharacterForm({
   const [elementAffinity, setElementAffinity] = useState<ElementAffinityMap>(initialValues.elementAffinity || {});
   const [controlBonus, setControlBonus] = useState<number | undefined>(initialValues.controlBonus);
   const [costEfficiency, setCostEfficiency] = useState<number | undefined>(initialValues.costEfficiency);
-  const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
+  const [imageMediaId, setImageMediaId] = useState<number | undefined>(
+    typeof (initialValues as any).image === 'number' 
+      ? (initialValues as any).image 
+      : typeof (initialValues as any).image === 'object' && (initialValues as any).image?.id
+        ? (initialValues as any).image.id
+        : undefined
+  );
+  const [imageUrl, setImageUrl] = useState<string | undefined>(initialValues.imagePath);
   const formRef = useRef<HTMLFormElement>(null);
+  const imageUploadRef = useRef<MediaUploadRef>(null);
+
+  // Fetch image URL when editing (only on mount, not after uploads)
+  useEffect(() => {
+    if (imageMediaId && isEdit) {
+      fetch(`/api/payload/media/${imageMediaId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            // Normalize URL (convert absolute to relative if needed)
+            const url = data.url;
+            if (url.startsWith('http://localhost') || url.startsWith('https://')) {
+              try {
+                const urlObj = new URL(url);
+                setImageUrl(urlObj.pathname);
+              } catch {
+                setImageUrl(url);
+              }
+            } else {
+              setImageUrl(url.startsWith('/') ? url : `/${url}`);
+            }
+          }
+        })
+        .catch(err => console.error("Failed to fetch image:", err));
+    } else if (!imageMediaId) {
+      setImageUrl(undefined);
+    }
+  }, [imageMediaId, isEdit]);
 
   // Validate and prepare character data
-  const prepareCharacter = (): CharacterDefinition | null => {
+  const prepareCharacter = async (): Promise<CharacterDefinition | null> => {
     if (!id.trim() || !name.trim() || !description.trim()) {
       alert("ID, name, and description are required");
       return null;
     }
 
     // ID validation is handled by IdInput component
+
+    // Upload pending image before submitting
+    let finalImageMediaId = imageMediaId;
+    try {
+      if (imageUploadRef.current) {
+        const uploadedId = await imageUploadRef.current.uploadFile();
+        if (uploadedId) {
+          finalImageMediaId = uploadedId;
+        }
+      }
+    } catch (error) {
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      return null;
+    }
 
     return {
       id: id.trim().toLowerCase(), // Normalize to lowercase for slug
@@ -73,29 +122,35 @@ export function CharacterForm({
       ...(Object.keys(elementAffinity).length > 0 ? { elementAffinity } : {}),
       ...(controlBonus !== undefined ? { controlBonus } : {}),
       ...(costEfficiency !== undefined ? { costEfficiency } : {}),
-      ...(imagePath ? { imagePath } : {}),
+      // Include image media ID for Payload (imagePath is kept for backward compatibility)
+      ...(finalImageMediaId ? { image: finalImageMediaId, imagePath: imageUrl } : {}),
     };
   };
 
   // Expose validation function for external submission
   useEffect(() => {
     if (formRef.current) {
-      (formRef.current as any).validateAndSubmit = () => {
-        const character = prepareCharacter();
+      (formRef.current as any).validateAndSubmit = async () => {
+        const character = await prepareCharacter();
         if (character) {
           onSubmit(character);
         }
       };
     }
-  }, [id, name, description, mana, maxMana, hp, maxHp, affinity, elementXp, elementAffinity, controlBonus, costEfficiency, imagePath, onSubmit]);
+  }, [id, name, description, mana, maxMana, hp, maxHp, affinity, elementXp, elementAffinity, controlBonus, costEfficiency, imageMediaId, imageUrl, onSubmit]);
 
   return (
     <form ref={formRef} className="space-y-4">
-      <ImageUpload
-        currentImagePath={imagePath}
-        contentType="characters"
-        entityId={id || undefined}
-        onImageUploaded={setImagePath}
+      <MediaUpload
+        ref={imageUploadRef}
+        currentMediaId={imageMediaId}
+        currentMediaUrl={imageUrl}
+        onMediaUploaded={(mediaId) => {
+          setImageMediaId(mediaId);
+          if (!mediaId) {
+            setImageUrl(undefined);
+          }
+        }}
         label="Character Image"
         disabled={saving}
         compact
@@ -179,11 +234,11 @@ export function CharacterFormFooter({
   onCancel?: () => void;
   onSubmit: () => void;
 }) {
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Find the form and call its validateAndSubmit method
-    const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => void };
+    const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
     if (form?.validateAndSubmit) {
-      form.validateAndSubmit();
+      await form.validateAndSubmit();
     } else {
       // Fallback to direct call if method not available
       onSubmit();

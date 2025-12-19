@@ -152,7 +152,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
   };
 
   // Helper to transform Payload character to CharacterDefinition
-  const payloadToCharacter = (payload: any): Partial<CharacterDefinition> => {
+  const payloadToCharacter = (payload: any): Partial<CharacterDefinition> & { image?: number } => {
     const combatStats = payload.combatStats || {};
     return {
       id: payload.slug || payload.id?.toString() || "", // Use slug as ID
@@ -168,6 +168,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       controlBonus: combatStats.controlBonus,
       costEfficiency: combatStats.costEfficiency,
       imagePath: payload.image?.url || payload.imagePath,
+      image: payload.image?.id || payload.image, // Include media ID for form
     };
   };
 
@@ -195,6 +196,8 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
           ...(character.controlBonus !== undefined && { controlBonus: character.controlBonus }),
           ...(character.costEfficiency !== undefined && { costEfficiency: character.costEfficiency }),
         },
+        // Include image media ID if provided (from MediaUpload)
+        ...((character as any).image ? { [CHARACTER_FIELDS.Image]: (character as any).image } : {}),
       };
 
       const url = isEdit 
