@@ -153,21 +153,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
   };
 
   // Helper to transform Payload character to CharacterDefinition
-  const payloadToRune = (payload: any): Partial<RuneDef> & { imageMediaId?: number } => {
-    // Normalize image URL if present
-    let imageUrl = payload.image?.url || payload.imagePath
-    if (imageUrl && (imageUrl.startsWith('http://localhost') || imageUrl.startsWith('https://'))) {
-      try {
-        const urlObj = new URL(imageUrl)
-        imageUrl = urlObj.pathname
-      } catch {
-        // If URL parsing fails, construct from filename
-        imageUrl = payload.image?.filename ? `/media/${payload.image.filename}` : payload.imagePath
-      }
-    } else if (payload.image?.filename && !imageUrl?.includes('/media/')) {
-      imageUrl = `/media/${payload.image.filename}`
-    }
-    
+  const payloadToRune = (payload: any): Partial<RuneDef> => {
     return {
       code: payload.code,
       concept: payload.concept,
@@ -182,8 +168,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       effects: payload.effects,
       overchargeEffects: payload.overchargeEffects,
       dotAffinity: payload.dotAffinity,
-      imagePath: imageUrl,
-      imageMediaId: payload.image?.id || payload.image, // Include media ID for form
+      imageId: payload.image?.id || (typeof payload.image === 'number' ? payload.image : undefined),
     };
   };
 
