@@ -35,8 +35,12 @@ async function checkPayloadIdUniqueness(
   }
 
   try {
-    // Characters use 'slug' field, others use 'name' field
-    const fieldName = contentType === 'characters' ? 'slug' : 'name';
+    // Characters use 'slug' field, runes use 'code' field, others use 'name' field
+    const fieldName = contentType === 'characters' 
+      ? 'slug' 
+      : contentType === 'runes' 
+        ? 'code' 
+        : 'name';
     
     // Build query
     let query = `where[${fieldName}][equals]=${encodeURIComponent(id)}`;

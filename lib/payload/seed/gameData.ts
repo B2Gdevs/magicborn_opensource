@@ -3,6 +3,9 @@
 // This ensures every Magicborn project starts with core game data
 
 import type { Payload } from 'payload'
+import { readFile, stat } from 'fs/promises'
+import path from 'path'
+import { existsSync } from 'fs'
 import { EFFECT_DEFS } from '@/lib/data/effects'
 import { NAMED_SPELL_BLUEPRINTS } from '@/lib/data/namedSpells'
 import { getRUNES } from '@/lib/packages/runes'
@@ -123,8 +126,104 @@ export async function seedRunes(payload: Payload, projectId: number): Promise<vo
     })
 
     if (existing.docs.length > 0) {
-      console.log(`  Rune ${rune.code} (${rune.concept}) already exists for project ${projectId}, skipping`)
+      const existingRune = existing.docs[0]
+      // If rune exists but doesn't have an image, try to migrate the image
+      if (!existingRune.image && rune.imagePath) {
+        try {
+          const imagePath = path.join(process.cwd(), 'public', 'game-content', 'runes', path.basename(rune.imagePath))
+          
+          if (existsSync(imagePath)) {
+            const fileBuffer = await readFile(imagePath)
+            const fileStats = await stat(imagePath)
+            const ext = path.extname(imagePath).toLowerCase()
+            
+            const mimeTypes: Record<string, string> = {
+              '.png': 'image/png',
+              '.jpg': 'image/jpeg',
+              '.jpeg': 'image/jpeg',
+              '.webp': 'image/webp',
+              '.gif': 'image/gif',
+              '.svg': 'image/svg+xml',
+            }
+            const mimetype = mimeTypes[ext] || 'image/png'
+            
+            const media = await payload.create({
+              collection: Collections.Media,
+              data: {
+                alt: `${rune.concept} rune icon`,
+              },
+              file: {
+                data: fileBuffer,
+                mimetype,
+                name: path.basename(imagePath),
+                size: fileStats.size,
+              },
+            } as any)
+            
+            await payload.update({
+              collection: Collections.Runes,
+              id: existingRune.id,
+              data: {
+                image: (media as any).id,
+              },
+            })
+            console.log(`  Updated rune ${rune.code} with image: ${path.basename(imagePath)}`)
+          }
+        } catch (error) {
+          console.error(`  Error updating image for ${rune.code}:`, error)
+        }
+      } else {
+        console.log(`  Rune ${rune.code} (${rune.concept}) already exists for project ${projectId}, skipping`)
+      }
       continue
+    }
+
+    // Handle image migration if imagePath exists
+    let imageMediaId: number | undefined = undefined
+    if (rune.imagePath) {
+      try {
+        // Try to find image in public/game-content/runes/
+        const imagePath = path.join(process.cwd(), 'public', 'game-content', 'runes', path.basename(rune.imagePath))
+        
+        if (existsSync(imagePath)) {
+          const fileBuffer = await readFile(imagePath)
+          const fileStats = await stat(imagePath)
+          const ext = path.extname(imagePath).toLowerCase()
+          
+          // Determine MIME type
+          const mimeTypes: Record<string, string> = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.webp': 'image/webp',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml',
+          }
+          const mimetype = mimeTypes[ext] || 'image/png'
+          
+          // Upload to Payload Media
+          const media = await payload.create({
+            collection: Collections.Media,
+            data: {
+              alt: `${rune.concept} rune icon`,
+            },
+            file: {
+              data: fileBuffer,
+              mimetype,
+              name: path.basename(imagePath),
+              size: fileStats.size,
+            },
+          } as any)
+          
+          imageMediaId = (media as any).id
+          console.log(`    Migrated image for ${rune.code}: ${path.basename(imagePath)}`)
+        } else {
+          console.log(`    Warning: Image not found for ${rune.code}: ${imagePath}`)
+        }
+      } catch (error) {
+        console.error(`    Error migrating image for ${rune.code}:`, error)
+        // Continue without image
+      }
     }
 
     await payload.create({
@@ -144,10 +243,11 @@ export async function seedRunes(payload: Payload, projectId: number): Promise<vo
         effects: rune.effects || null,
         overchargeEffects: rune.overchargeEffects || null,
         dotAffinity: rune.dotAffinity || null,
+        ...(imageMediaId ? { image: imageMediaId } : {}),
         _status: 'published',
       },
     })
-    console.log(`  Created rune: ${rune.code} (${rune.concept})`)
+    console.log(`  Created rune: ${rune.code} (${rune.concept})${imageMediaId ? ' with image' : ''}`)
   }
 }
 
