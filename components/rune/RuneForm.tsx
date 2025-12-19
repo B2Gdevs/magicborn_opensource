@@ -50,7 +50,6 @@ export function RuneForm({
   const [imageMediaId, setImageMediaId] = useState<number | undefined>(initialValues.imageId);
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const imageUploadRef = useRef<MediaUploadRef>(null);
-  console.log("initialValues", initialValues);
 
   // Damage vector state
   const [damage, setDamage] = useState<DamageVector>(initialValues.damage || {});
@@ -199,7 +198,6 @@ export function RuneForm({
       ...(dotAffinity !== undefined ? { dotAffinity } : {}),
       ...(finalImageMediaId ? { imageId: finalImageMediaId } : {}),
     };
-    console.log("rune", rune);
 
     return rune;
   };
@@ -228,31 +226,19 @@ export function RuneForm({
 
   // Fetch image URL when editing (only on mount, not after uploads)
   useEffect(() => {
-    console.log("[RuneForm] Image URL effect triggered", { imageMediaId, isEdit });
-    
     if (imageMediaId && isEdit) {
-      console.log("[RuneForm] Fetching media from API:", `/api/payload/media/${imageMediaId}`);
       fetch(`/api/payload/media/${imageMediaId}`)
-        .then(res => {
-          console.log("[RuneForm] Media fetch response status:", res.status, res.ok);
-          return res.json();
-        })
+        .then(res => res.json())
         .then(data => {
-          console.log("[RuneForm] Media fetch response data:", data);
           if (data.url) {
-            console.log("[RuneForm] Setting imageUrl to:", data.url);
             setImageUrl(data.url);
           } else if (data.filename) {
             // Fallback: construct from filename
-            const url = `/media/${data.filename}`;
-            console.log("[RuneForm] No URL in response, constructing from filename:", url);
-            setImageUrl(url);
-          } else {
-            console.warn("[RuneForm] No URL or filename in media response data:", data);
+            setImageUrl(`/media/${data.filename}`);
           }
         })
         .catch(err => {
-          console.error("[RuneForm] Failed to fetch image:", err);
+          console.error("Failed to fetch image:", err);
         });
     }
     // Don't clear imageUrl when imageMediaId is undefined - let MediaUpload handle it
