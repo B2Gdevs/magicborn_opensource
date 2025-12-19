@@ -9,71 +9,55 @@ async function getPayloadClient() {
   return await getPayload({ config })
 }
 
+// Helper function to construct media URL from filename
+// Payload stores just the filename, we construct the URL from staticURL + filename
+function getMediaUrl(filename: string | null | undefined): string | undefined {
+  if (!filename) return undefined
+  return `/media/${filename}`
+}
+
 // Helper function to normalize media URLs in documents and relationships
 function normalizeMediaUrlsInDoc(doc: any): any {
   if (!doc || typeof doc !== 'object') return doc
   
   const normalized = { ...doc }
   
-  // Normalize direct media document URLs
-  if (normalized.url && typeof normalized.url === 'string') {
-    normalized.url = normalizeMediaUrl(normalized.url, normalized.filename)
+  // Normalize direct media document URLs - just use filename
+  if (normalized.filename) {
+    normalized.url = getMediaUrl(normalized.filename)
   }
   
   // Normalize image relationship URLs (common field name)
   if (normalized.image) {
-    if (typeof normalized.image === 'object' && normalized.image.url) {
+    if (typeof normalized.image === 'object' && normalized.image.filename) {
       normalized.image = {
         ...normalized.image,
-        url: normalizeMediaUrl(normalized.image.url, normalized.image.filename),
+        url: getMediaUrl(normalized.image.filename),
       }
     }
   }
   
   // Normalize featuredImage relationship URLs
   if (normalized.featuredImage) {
-    if (typeof normalized.featuredImage === 'object' && normalized.featuredImage.url) {
+    if (typeof normalized.featuredImage === 'object' && normalized.featuredImage.filename) {
       normalized.featuredImage = {
         ...normalized.featuredImage,
-        url: normalizeMediaUrl(normalized.featuredImage.url, normalized.featuredImage.filename),
+        url: getMediaUrl(normalized.featuredImage.filename),
       }
     }
   }
   
   // Normalize landmarkIcon relationship URLs
   if (normalized.landmarkIcon) {
-    if (typeof normalized.landmarkIcon === 'object' && normalized.landmarkIcon.url) {
+    if (typeof normalized.landmarkIcon === 'object' && normalized.landmarkIcon.filename) {
       normalized.landmarkIcon = {
         ...normalized.landmarkIcon,
-        url: normalizeMediaUrl(normalized.landmarkIcon.url, normalized.landmarkIcon.filename),
+        url: getMediaUrl(normalized.landmarkIcon.filename),
       }
     }
   }
   
   return normalized
-}
-
-// Helper function to normalize a single media URL
-function normalizeMediaUrl(url: string, filename?: string): string {
-  if (!url) return url
-  
-  // Convert absolute URLs to relative paths
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    try {
-      const urlObj = new URL(url)
-      url = urlObj.pathname
-    } catch {
-      // If URL parsing fails, construct from filename
-      url = filename ? `/media/${filename}` : ''
-    }
-  }
-  
-  // Ensure it uses /media/ format if we have a filename (Payload's staticURL)
-  if (filename && !url.includes('/media/')) {
-    url = `/media/${filename}`
-  }
-  
-  return url
 }
 
 export async function GET(
@@ -123,30 +107,13 @@ export async function GET(
         id,
       })
       
-      // Normalize media URLs if this is a media document
-      if (collection === 'media' && (doc as any).url) {
+      // Normalize media URLs if this is a media document - just use filename
+      if (collection === 'media') {
         const mediaDoc = doc as any
-        let normalizedUrl = mediaDoc.url
-        // Convert absolute URLs to relative paths
-        if (normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
-          try {
-            const urlObj = new URL(normalizedUrl)
-            normalizedUrl = urlObj.pathname
-          } catch {
-            // If URL parsing fails, construct from filename
-            normalizedUrl = mediaDoc.filename ? `/media/${mediaDoc.filename}` : ''
-          }
-        }
-        // Convert /api/media/file/ to /media/ format
-        if (normalizedUrl.includes('/api/media/file/')) {
-          normalizedUrl = normalizedUrl.replace('/api/media/file/', '/media/')
-        }
-        // Ensure it uses /media/ format (Payload's staticURL)
-        if (mediaDoc.filename && !normalizedUrl.includes('/media/')) {
-          normalizedUrl = `/media/${mediaDoc.filename}`
-        }
-        console.log('normalizedUrl', normalizedUrl)
-        return NextResponse.json({ ...mediaDoc, url: normalizedUrl })
+        return NextResponse.json({ 
+          ...mediaDoc, 
+          url: getMediaUrl(mediaDoc.filename) 
+        })
       }
       
       // Normalize media URLs in relationships (e.g., image fields)
@@ -216,33 +183,10 @@ export async function POST(
         } as any)
         
         const mediaData = media as any
-        // Payload returns URLs - normalize to relative path
-        // Payload might return absolute URLs with wrong port, so normalize to relative
-        // Use /media/ format (Payload's staticURL configuration)
-        let mediaUrl = mediaData.url || (mediaData.filename ? `/media/${mediaData.filename}` : '')
-        
-        // Normalize absolute URLs to relative paths
-        if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
-          try {
-            const urlObj = new URL(mediaUrl)
-            mediaUrl = urlObj.pathname
-          } catch {
-            // If URL parsing fails, construct from filename
-            mediaUrl = mediaData.filename ? `/media/${mediaData.filename}` : ''
-          }
-        }
-        
-        // Ensure it uses /media/ format (Payload's staticURL)
-        if (!mediaUrl && mediaData.filename) {
-          mediaUrl = `/media/${mediaData.filename}`
-        } else if (mediaData.filename && !mediaUrl.includes('/media/')) {
-          // If URL doesn't match expected format, reconstruct it
-          mediaUrl = `/media/${mediaData.filename}`
-        }
-        
+        // Just construct URL from filename - ignore Payload's generated URL
         return NextResponse.json({ 
           id: mediaData.id,
-          url: mediaUrl,
+          url: getMediaUrl(mediaData.filename),
           filename: mediaData.filename,
         }, { status: 201 })
       } catch (mediaError: any) {

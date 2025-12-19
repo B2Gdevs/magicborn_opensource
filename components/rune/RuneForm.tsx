@@ -65,6 +65,7 @@ export function RuneForm({
     return url;
   });
   const imageUploadRef = useRef<MediaUploadRef>(null);
+  console.log("initialValues", initialValues);
 
   // Damage vector state
   const [damage, setDamage] = useState<DamageVector>(initialValues.damage || {});
