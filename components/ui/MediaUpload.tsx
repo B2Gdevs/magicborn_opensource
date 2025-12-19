@@ -174,6 +174,11 @@ export const MediaUpload = forwardRef<MediaUploadRef, MediaUploadProps>(({
   const imageUrl = preview || currentMediaUrl;
   const hasImage = !!imageUrl || !!pendingFile;
 
+  // Debug logging for inline mode
+  if (inline) {
+    console.log("[MediaUpload] Inline mode - imageUrl:", imageUrl, "preview:", preview, "currentMediaUrl:", currentMediaUrl, "hasImage:", hasImage, "currentMediaId:", currentMediaId);
+  }
+
   // Inline mode: small thumbnail
   if (inline) {
     return (

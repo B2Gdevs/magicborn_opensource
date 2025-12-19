@@ -47,19 +47,23 @@ export function RuneForm({
   const [tags, setTags] = useState<RuneTag[]>(initialValues.tags || []);
   const [manaCost, setManaCost] = useState(initialValues.manaCost || 0);
   const [dotAffinity, setDotAffinity] = useState<number | undefined>(initialValues.dotAffinity);
-  const [imageMediaId, setImageMediaId] = useState<number | undefined>(
-    typeof (initialValues as any).image === 'number' 
+  const [imageMediaId, setImageMediaId] = useState<number | undefined>(() => {
+    const mediaId = typeof (initialValues as any).image === 'number' 
       ? (initialValues as any).image 
       : typeof (initialValues as any).image === 'object' && (initialValues as any).image?.id
         ? (initialValues as any).image.id
-        : undefined
-  );
-  const [imageUrl, setImageUrl] = useState<string | undefined>(
-    initialValues.imagePath || 
-    (typeof (initialValues as any).image === 'object' && (initialValues as any).image?.url
-      ? (initialValues as any).image.url
-      : undefined)
-  );
+        : undefined;
+    console.log("[RuneForm] Initial imageMediaId from initialValues:", mediaId, "initialValues.image:", (initialValues as any).image);
+    return mediaId;
+  });
+  const [imageUrl, setImageUrl] = useState<string | undefined>(() => {
+    const url = initialValues.imagePath || 
+      (typeof (initialValues as any).image === 'object' && (initialValues as any).image?.url
+        ? (initialValues as any).image.url
+        : undefined);
+    console.log("[RuneForm] Initial imageUrl from initialValues:", url, "initialValues.imagePath:", initialValues.imagePath, "initialValues.image:", (initialValues as any).image);
+    return url;
+  });
   const imageUploadRef = useRef<MediaUploadRef>(null);
 
   // Damage vector state
