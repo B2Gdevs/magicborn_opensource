@@ -134,8 +134,12 @@ export async function GET(
             normalizedUrl = urlObj.pathname
           } catch {
             // If URL parsing fails, construct from filename
-            normalizedUrl = mediaDoc.filename ? `/api/media/file/${mediaDoc.filename}` : ''
+            normalizedUrl = mediaDoc.filename ? `/media/${mediaDoc.filename}` : ''
           }
+        }
+        // Convert /api/media/file/ to /media/ format
+        if (normalizedUrl.includes('/api/media/file/')) {
+          normalizedUrl = normalizedUrl.replace('/api/media/file/', '/media/')
         }
         // Ensure it uses /media/ format (Payload's staticURL)
         if (mediaDoc.filename && !normalizedUrl.includes('/media/')) {
