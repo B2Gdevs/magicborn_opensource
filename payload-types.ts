@@ -80,6 +80,7 @@ export interface Config {
     'style-guide-entries': StyleGuideEntry;
     effects: Effect;
     spells: Spell;
+    runes: Rune;
     objects: Object;
     'project-snapshots': ProjectSnapshot;
     'ai-generations': AiGeneration;
@@ -103,6 +104,7 @@ export interface Config {
     'style-guide-entries': StyleGuideEntriesSelect<false> | StyleGuideEntriesSelect<true>;
     effects: EffectsSelect<false> | EffectsSelect<true>;
     spells: SpellsSelect<false> | SpellsSelect<true>;
+    runes: RunesSelect<false> | RunesSelect<true>;
     objects: ObjectsSelect<false> | ObjectsSelect<true>;
     'project-snapshots': ProjectSnapshotsSelect<false> | ProjectSnapshotsSelect<true>;
     'ai-generations': AiGenerationsSelect<false> | AiGenerationsSelect<true>;
@@ -659,6 +661,105 @@ export interface Spell {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "runes".
+ */
+export interface Rune {
+  id: number;
+  project: number | Project;
+  /**
+   * Single letter code (A-Z) for the rune
+   */
+  code: string;
+  /**
+   * Conceptual name (e.g., "Fire", "Air")
+   */
+  concept: string;
+  /**
+   * Power multiplier (typically 0.5-1.5)
+   */
+  powerFactor: number;
+  /**
+   * Control multiplier (typically 0.5-1.5)
+   */
+  controlFactor: number;
+  /**
+   * Base instability value (0-1)
+   */
+  instabilityBase: number;
+  /**
+   * Rune tags for categorization
+   */
+  tags: ('Damage' | 'Heal' | 'Buff' | 'Debuff' | 'Utility' | 'AOE' | 'CC' | 'DOT' | 'Silence')[];
+  /**
+   * Base mana cost
+   */
+  manaCost: number;
+  /**
+   * DamageVector: Record<DamageType, number>
+   */
+  damage?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Instant crowd control effects
+   */
+  ccInstant?: ('push' | 'slow' | 'stun' | 'knockdown' | 'silence')[] | null;
+  /**
+   * Penetration values: Partial<Record<DamageType, number>>
+   */
+  pen?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Array of EffectBlueprint
+   */
+  effects?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Array of OverchargeEffect (minExtraMana + EffectBlueprint)
+   */
+  overchargeEffects?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Damage over time affinity (0-1)
+   */
+  dotAffinity?: number | null;
+  /**
+   * Rune icon/image
+   */
+  image?: (number | null) | Media;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "objects".
  */
 export interface Object {
@@ -830,6 +931,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'spells';
         value: number | Spell;
+      } | null)
+    | ({
+        relationTo: 'runes';
+        value: number | Rune;
       } | null)
     | ({
         relationTo: 'objects';
@@ -1157,6 +1262,30 @@ export interface SpellsSelect<T extends boolean = true> {
   effects?: T;
   hidden?: T;
   hint?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "runes_select".
+ */
+export interface RunesSelect<T extends boolean = true> {
+  project?: T;
+  code?: T;
+  concept?: T;
+  powerFactor?: T;
+  controlFactor?: T;
+  instabilityBase?: T;
+  tags?: T;
+  manaCost?: T;
+  damage?: T;
+  ccInstant?: T;
+  pen?: T;
+  effects?: T;
+  overchargeEffects?: T;
+  dotAffinity?: T;
+  image?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;

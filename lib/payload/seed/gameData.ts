@@ -1,10 +1,11 @@
 // lib/payload/seed/gameData.ts
-// Seed game data (effects, spells) from existing TypeScript definitions
+// Seed game data (effects, spells, runes) from existing TypeScript definitions
 // This ensures every Magicborn project starts with core game data
 
 import type { Payload } from 'payload'
 import { EFFECT_DEFS } from '@/lib/data/effects'
 import { NAMED_SPELL_BLUEPRINTS } from '@/lib/data/namedSpells'
+import { getRUNES } from '@/lib/packages/runes'
 import { Collections } from '../constants'
 
 /**
@@ -94,6 +95,59 @@ export async function seedSpells(payload: Payload): Promise<void> {
       },
     })
     console.log(`  Created spell: ${spell.name}`)
+  }
+}
+
+/**
+ * Seeds the Runes collection from hardcoded runes data
+ * @param payload Payload instance
+ * @param projectId Project ID to associate runes with
+ */
+export async function seedRunes(payload: Payload, projectId: number): Promise<void> {
+  console.log(`Seeding runes for project ${projectId}...`)
+  
+  const hardcodedRunes = getRUNES()
+  const runeList = Object.values(hardcodedRunes)
+  
+  for (const rune of runeList) {
+    // Check if already exists for this project
+    const existing = await payload.find({
+      collection: Collections.Runes,
+      where: {
+        and: [
+          { code: { equals: rune.code } },
+          { project: { equals: projectId } },
+        ],
+      },
+      limit: 1,
+    })
+
+    if (existing.docs.length > 0) {
+      console.log(`  Rune ${rune.code} (${rune.concept}) already exists for project ${projectId}, skipping`)
+      continue
+    }
+
+    await payload.create({
+      collection: Collections.Runes,
+      data: {
+        project: projectId,
+        code: rune.code,
+        concept: rune.concept,
+        powerFactor: rune.powerFactor,
+        controlFactor: rune.controlFactor,
+        instabilityBase: rune.instabilityBase,
+        tags: rune.tags,
+        manaCost: rune.manaCost,
+        damage: rune.damage || null,
+        ccInstant: rune.ccInstant || null,
+        pen: rune.pen || null,
+        effects: rune.effects || null,
+        overchargeEffects: rune.overchargeEffects || null,
+        dotAffinity: rune.dotAffinity || null,
+        _status: 'published',
+      },
+    })
+    console.log(`  Created rune: ${rune.code} (${rune.concept})`)
   }
 }
 
