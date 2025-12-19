@@ -2,7 +2,7 @@
 // Objects/Items collection - game items like weapons, armor, consumables, etc.
 
 import type { CollectionConfig } from 'payload'
-import { Collections } from '../constants'
+import { Collections, ObjectType, OBJECT_TYPE_OPTIONS, ItemRarity, ITEM_RARITY_OPTIONS } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadAccess } from '../access/roles'
 
 export const Objects: CollectionConfig = {
@@ -49,28 +49,14 @@ export const Objects: CollectionConfig = {
     {
       name: 'type',
       type: 'select',
-      options: [
-        { label: 'Weapon', value: 'weapon' },
-        { label: 'Armor', value: 'armor' },
-        { label: 'Consumable', value: 'consumable' },
-        { label: 'Material', value: 'material' },
-        { label: 'Key Item', value: 'key' },
-        { label: 'Artifact', value: 'artifact' },
-        { label: 'Miscellaneous', value: 'misc' },
-      ],
-      defaultValue: 'misc',
+      options: OBJECT_TYPE_OPTIONS as any,
+      defaultValue: ObjectType.Misc,
     },
     {
       name: 'rarity',
       type: 'select',
-      options: [
-        { label: 'Common', value: 'common' },
-        { label: 'Uncommon', value: 'uncommon' },
-        { label: 'Rare', value: 'rare' },
-        { label: 'Epic', value: 'epic' },
-        { label: 'Legendary', value: 'legendary' },
-      ],
-      defaultValue: 'common',
+      options: ITEM_RARITY_OPTIONS as any,
+      defaultValue: ItemRarity.Common,
     },
     {
       name: 'image',

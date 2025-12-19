@@ -139,6 +139,48 @@ export const Globals = {
 } as const
 
 // ============================================
+// OBJECT TYPES
+// ============================================
+export enum ObjectType {
+  Weapon = 'weapon',
+  Armor = 'armor',
+  Consumable = 'consumable',
+  Material = 'material',
+  Key = 'key',
+  Artifact = 'artifact',
+  Misc = 'misc',
+}
+
+export const OBJECT_TYPE_OPTIONS = [
+  { label: 'Weapon', value: ObjectType.Weapon },
+  { label: 'Armor', value: ObjectType.Armor },
+  { label: 'Consumable', value: ObjectType.Consumable },
+  { label: 'Material', value: ObjectType.Material },
+  { label: 'Key Item', value: ObjectType.Key },
+  { label: 'Artifact', value: ObjectType.Artifact },
+  { label: 'Miscellaneous', value: ObjectType.Misc },
+] as const
+
+// ============================================
+// ITEM RARITY
+// ============================================
+export enum ItemRarity {
+  Common = 'common',
+  Uncommon = 'uncommon',
+  Rare = 'rare',
+  Epic = 'epic',
+  Legendary = 'legendary',
+}
+
+export const ITEM_RARITY_OPTIONS = [
+  { label: 'Common', value: ItemRarity.Common },
+  { label: 'Uncommon', value: ItemRarity.Uncommon },
+  { label: 'Rare', value: ItemRarity.Rare },
+  { label: 'Epic', value: ItemRarity.Epic },
+  { label: 'Legendary', value: ItemRarity.Legendary },
+] as const
+
+// ============================================
 // CHARACTER FIELD NAMES
 // ============================================
 export const CharacterFields = {

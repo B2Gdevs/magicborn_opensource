@@ -6,14 +6,15 @@
 import { useState, useRef, useEffect } from "react";
 import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { IdInput } from "@components/ui/IdInput";
+import { ObjectType, OBJECT_TYPE_OPTIONS, ItemRarity, ITEM_RARITY_OPTIONS } from "@/lib/payload/constants";
 
 export interface ObjectFormData {
   id?: string;
   slug?: string;
   name: string;
   description?: string;
-  type?: "weapon" | "armor" | "consumable" | "material" | "key" | "artifact" | "misc";
-  rarity?: "common" | "uncommon" | "rare" | "epic" | "legendary";
+  type?: ObjectType;
+  rarity?: ItemRarity;
   imagePath?: string;
   image?: number; // Payload Media ID
   weight?: number;
@@ -30,24 +31,6 @@ interface ObjectFormProps {
   projectId?: string;
   editEntryId?: number;
 }
-
-const OBJECT_TYPES = [
-  { value: "weapon", label: "Weapon" },
-  { value: "armor", label: "Armor" },
-  { value: "consumable", label: "Consumable" },
-  { value: "material", label: "Material" },
-  { value: "key", label: "Key Item" },
-  { value: "artifact", label: "Artifact" },
-  { value: "misc", label: "Miscellaneous" },
-] as const;
-
-const RARITIES = [
-  { value: "common", label: "Common", color: "text-gray-400" },
-  { value: "uncommon", label: "Uncommon", color: "text-green-400" },
-  { value: "rare", label: "Rare", color: "text-blue-400" },
-  { value: "epic", label: "Epic", color: "text-purple-400" },
-  { value: "legendary", label: "Legendary", color: "text-amber-400" },
-] as const;
 
 // Helper to convert name to slug (e.g., "Ember Crystal" -> "ember-crystal")
 function nameToSlug(name: string): string {
@@ -70,8 +53,8 @@ export function ObjectForm({
   const [name, setName] = useState(initialValues.name || "");
   const [slug, setSlug] = useState(initialValues.slug || (initialValues.name ? nameToSlug(initialValues.name) : ""));
   const [description, setDescription] = useState(initialValues.description || "");
-  const [type, setType] = useState<ObjectFormData["type"]>(initialValues.type || "misc");
-  const [rarity, setRarity] = useState<ObjectFormData["rarity"]>(initialValues.rarity || "common");
+  const [type, setType] = useState<ObjectType>(initialValues.type || ObjectType.Misc);
+  const [rarity, setRarity] = useState<ItemRarity>(initialValues.rarity || ItemRarity.Common);
   const [weight, setWeight] = useState<number | undefined>(initialValues.weight);
   const [value, setValue] = useState<number | undefined>(initialValues.value);
   const [imageMediaId, setImageMediaId] = useState<number | undefined>(
@@ -241,10 +224,10 @@ export function ObjectForm({
           </label>
           <select
             value={type}
-            onChange={(e) => setType(e.target.value as ObjectFormData["type"])}
+            onChange={(e) => setType(e.target.value as ObjectType)}
             className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
           >
-            {OBJECT_TYPES.map((t) => (
+            {OBJECT_TYPE_OPTIONS.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
@@ -255,10 +238,10 @@ export function ObjectForm({
           </label>
           <select
             value={rarity}
-            onChange={(e) => setRarity(e.target.value as ObjectFormData["rarity"])}
+            onChange={(e) => setRarity(e.target.value as ItemRarity)}
             className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
           >
-            {RARITIES.map((r) => (
+            {ITEM_RARITY_OPTIONS.map((r) => (
               <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
