@@ -102,29 +102,37 @@ export async function POST(
 
       // Create Media document in Payload
       // Payload 3.x Local API expects file object with data, mimetype, name, size
-      const media = await payload.create({
-        collection: 'media',
-        data: {
-          alt: file.name,
-        },
-        file: {
-          data: buffer,
-          mimetype: file.type,
-          name: file.name,
-          size: file.size,
-        },
-      } as any)
-      
-      const mediaData = media as any
-      // Payload returns URLs in format like /api/media/file/filename.png
-      // Use the actual URL from Payload, or construct it if not available
-      const mediaUrl = mediaData.url || (mediaData.filename ? `/api/media/file/${mediaData.filename}` : '')
-      
-      return NextResponse.json({ 
-        id: mediaData.id,
-        url: mediaUrl,
-        filename: mediaData.filename,
-      }, { status: 201 })
+      try {
+        const media = await payload.create({
+          collection: 'media',
+          data: {
+            alt: file.name,
+          },
+          file: {
+            data: buffer,
+            mimetype: file.type,
+            name: file.name,
+            size: file.size,
+          },
+        } as any)
+        
+        const mediaData = media as any
+        // Payload returns URLs in format like /api/media/file/filename.png
+        // Use the actual URL from Payload, or construct it if not available
+        const mediaUrl = mediaData.url || (mediaData.filename ? `/api/media/file/${mediaData.filename}` : '')
+        
+        return NextResponse.json({ 
+          id: mediaData.id,
+          url: mediaUrl,
+          filename: mediaData.filename,
+        }, { status: 201 })
+      } catch (mediaError: any) {
+        console.error('Media upload error:', mediaError)
+        return NextResponse.json(
+          { error: mediaError.message || 'Failed to upload media' },
+          { status: mediaError.status || 500 }
+        )
+      }
     }
 
     const body = await request.json()

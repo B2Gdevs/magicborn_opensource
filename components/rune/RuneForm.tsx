@@ -9,11 +9,12 @@ import type { RuneCode } from "@core/types";
 import { RuneTag, CrowdControlTag, DamageType, EffectType } from "@core/enums";
 import type { DamageVector } from "@core/combat";
 import type { EffectBlueprint } from "@core/effects";
-import { ImageUpload } from "@components/ui/ImageUpload";
+import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { TagSelector } from "@components/ui/TagSelector";
 import { MultiSelectDropdown } from "@components/ui/MultiSelectDropdown";
 import { IdInput } from "@components/ui/IdInput";
 import { EFFECT_DEFS } from "@/lib/data/effects";
+import { useRef } from "react";
 
 interface RuneFormProps {
   initialValues?: Partial<RuneDef>;
@@ -23,6 +24,8 @@ interface RuneFormProps {
   onCancel?: () => void;
   saving?: boolean;
   submitLabel?: string;
+  projectId?: string;
+  editEntryId?: number;
 }
 
 export function RuneForm({
@@ -33,6 +36,8 @@ export function RuneForm({
   onCancel,
   saving = false,
   submitLabel,
+  projectId,
+  editEntryId,
 }: RuneFormProps) {
   const [code, setCode] = useState<RuneCode>(initialValues.code || ("A" as RuneCode));
   const [concept, setConcept] = useState(initialValues.concept || "");
@@ -42,7 +47,20 @@ export function RuneForm({
   const [tags, setTags] = useState<RuneTag[]>(initialValues.tags || []);
   const [manaCost, setManaCost] = useState(initialValues.manaCost || 0);
   const [dotAffinity, setDotAffinity] = useState<number | undefined>(initialValues.dotAffinity);
-  const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
+  const [imageMediaId, setImageMediaId] = useState<number | undefined>(
+    typeof (initialValues as any).image === 'number' 
+      ? (initialValues as any).image 
+      : typeof (initialValues as any).image === 'object' && (initialValues as any).image?.id
+        ? (initialValues as any).image.id
+        : undefined
+  );
+  const [imageUrl, setImageUrl] = useState<string | undefined>(
+    initialValues.imagePath || 
+    (typeof (initialValues as any).image === 'object' && (initialValues as any).image?.url
+      ? (initialValues as any).image.url
+      : undefined)
+  );
+  const imageUploadRef = useRef<MediaUploadRef>(null);
 
   // Damage vector state
   const [damage, setDamage] = useState<DamageVector>(initialValues.damage || {});
@@ -154,16 +172,26 @@ export function RuneForm({
     setOverchargeEffects(overchargeEffects.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
 
+  const prepareRune = async (): Promise<RuneDef | null> => {
     if (!code || !concept.trim()) {
       alert("Code and concept are required");
-      return;
+      return null;
     }
 
-    // ID validation is handled by validation state
-    // ID validation is handled by IdInput component
+    // Upload pending image before submitting
+    let finalImageMediaId = imageMediaId;
+    try {
+      if (imageUploadRef.current) {
+        const uploadedId = await imageUploadRef.current.uploadFile();
+        if (uploadedId) {
+          finalImageMediaId = uploadedId;
+        }
+      }
+    } catch (error) {
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      return null;
+    }
 
     const rune: RuneDef = {
       code,
@@ -179,21 +207,74 @@ export function RuneForm({
       ...(effects.length > 0 ? { effects } : {}),
       ...(overchargeEffects.length > 0 ? { overchargeEffects } : {}),
       ...(dotAffinity !== undefined ? { dotAffinity } : {}),
-      ...(imagePath ? { imagePath } : {}),
+      ...(finalImageMediaId ? { imageMediaId: finalImageMediaId } : {}),
     };
 
-    onSubmit(rune);
+    return rune;
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const data = await prepareRune();
+    if (data) {
+      onSubmit(data);
+    }
+  };
+
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (formRef.current) {
+      (formRef.current as any).validateAndSubmit = async () => {
+        const data = await prepareRune();
+        if (data) {
+          onSubmit(data);
+        }
+      };
+    }
+  }, [code, concept, powerFactor, controlFactor, instabilityBase, tags, manaCost, damage, ccInstant, pen, effects, overchargeEffects, dotAffinity, imageMediaId, onSubmit]);
+
+  // Fetch image URL when editing (only on mount, not after uploads)
+  useEffect(() => {
+    if (imageMediaId && isEdit) {
+      fetch(`/api/payload/media/${imageMediaId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            const url = data.url;
+            if (url.startsWith('http://localhost') || url.startsWith('https://')) {
+              try {
+                const urlObj = new URL(url);
+                setImageUrl(urlObj.pathname);
+              } catch {
+                setImageUrl(url);
+              }
+            } else {
+              setImageUrl(url.startsWith('/') ? url : `/${url}`);
+            }
+          }
+        })
+        .catch(err => console.error("Failed to fetch image:", err));
+    } else if (!imageMediaId) {
+      setImageUrl(undefined);
+    }
+  }, [imageMediaId, isEdit]);
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto">
-      <ImageUpload
-        currentImagePath={imagePath}
-        contentType="runes"
-        entityId={code}
-        onImageUploaded={setImagePath}
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto">
+      <MediaUpload
+        ref={imageUploadRef}
+        currentMediaId={imageMediaId}
+        currentMediaUrl={imageUrl}
+        onMediaUploaded={(mediaId) => {
+          setImageMediaId(mediaId);
+          if (!mediaId) {
+            setImageUrl(undefined);
+          }
+        }}
         label="Rune Image"
         disabled={saving}
+        compact
       />
 
       {isEdit ? (
@@ -205,6 +286,8 @@ export function RuneForm({
           placeholder="Rune Code"
           label="Code (Rune Letter)"
           disabled={true}
+          projectId={projectId}
+          excludeId={editEntryId}
         />
       ) : (
         <div>
@@ -235,6 +318,8 @@ export function RuneForm({
               label=""
               disabled={false}
               className="hidden"
+              projectId={projectId}
+              excludeId={isEdit ? editEntryId : undefined}
             />
           )}
         </div>

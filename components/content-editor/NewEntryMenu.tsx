@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { CharacterForm, CharacterFormFooter } from "@/components/character/CharacterForm";
 import { CreatureForm, CreatureFormFooter } from "@/components/creature/CreatureForm";
 import { RuneForm } from "@/components/rune/RuneForm";
+import { RuneFormFooter } from "@/components/rune/RuneFormFooter";
 import { RegionForm, RegionFormFooter, type RegionFormData } from "@/components/region/RegionForm";
 import { ObjectForm, ObjectFormFooter, type ObjectFormData } from "@/components/object/ObjectForm";
 import { LoreForm, LoreFormFooter, type LoreFormData } from "@/components/lore/LoreForm";
@@ -152,6 +153,26 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
   };
 
   // Helper to transform Payload character to CharacterDefinition
+  const payloadToRune = (payload: any): Partial<RuneDef> & { imageMediaId?: number } => {
+    return {
+      code: payload.code,
+      concept: payload.concept,
+      powerFactor: payload.powerFactor,
+      controlFactor: payload.controlFactor,
+      instabilityBase: payload.instabilityBase,
+      tags: payload.tags || [],
+      manaCost: payload.manaCost,
+      damage: payload.damage,
+      ccInstant: payload.ccInstant,
+      pen: payload.pen,
+      effects: payload.effects,
+      overchargeEffects: payload.overchargeEffects,
+      dotAffinity: payload.dotAffinity,
+      imagePath: payload.image?.url || payload.imagePath,
+      imageMediaId: payload.image?.id || payload.image, // Include media ID for form
+    };
+  };
+
   const payloadToCharacter = (payload: any): Partial<CharacterDefinition> & { image?: number } => {
     const combatStats = payload.combatStats || {};
     return {
@@ -250,22 +271,51 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
 
   // Rune handlers - use Payload API
   const handleCreateRune = async (rune: RuneDef) => {
+    if (saving) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/payload/runes", {
-        method: "POST",
+      const isEdit = !!editData && !!editEntry;
+      const url = isEdit 
+        ? `/api/payload/runes/${editData.id}`
+        : "/api/payload/runes";
+      
+      // Transform rune data for Payload
+      const payloadData: any = {
+        project: parseInt(projectId),
+        code: rune.code,
+        concept: rune.concept,
+        powerFactor: rune.powerFactor,
+        controlFactor: rune.controlFactor,
+        instabilityBase: rune.instabilityBase,
+        tags: rune.tags,
+        manaCost: rune.manaCost,
+        damage: rune.damage || null,
+        ccInstant: rune.ccInstant || null,
+        pen: rune.pen || null,
+        effects: rune.effects || null,
+        overchargeEffects: rune.overchargeEffects || null,
+        dotAffinity: rune.dotAffinity || null,
+      };
+      
+      // Include image if provided
+      if ((rune as any).imageMediaId) {
+        payloadData.image = (rune as any).imageMediaId;
+      }
+      
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...rune, project: parseInt(projectId) }),
+        body: JSON.stringify(payloadData),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || "Failed to create rune");
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} rune`);
       }
       onEntryCreated?.("runes");
       closeModal();
     } catch (error) {
-      console.error("Failed to create rune:", error);
-      alert(`Failed to create rune: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Failed to save rune:", error);
+      alert(`Failed to save rune: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -581,13 +631,36 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       <Modal
         isOpen={activeModal === "rune"}
         onClose={closeModal}
-        title="Create New Rune"
+        title={editData ? `Edit ${editData.concept || "Rune"}` : "Create New Rune"}
+        footer={
+          <RuneFormFooter
+            isEdit={!!editData}
+            saving={saving}
+            onCancel={closeModal}
+            onSubmit={() => {
+              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
+              if (form?.validateAndSubmit) {
+                form.validateAndSubmit();
+              } else {
+                form?.requestSubmit();
+              }
+            }}
+          />
+        }
       >
-        <RuneForm
-          onSubmit={handleCreateRune}
-          onCancel={closeModal}
-          saving={saving}
-        />
+        {loadingEdit ? (
+          <div className="p-6 text-center text-text-muted">Loading...</div>
+        ) : (
+          <RuneForm
+            initialValues={editData ? payloadToRune(editData) : undefined}
+            isEdit={!!editData}
+            onSubmit={handleCreateRune}
+            onCancel={closeModal}
+            saving={saving}
+            projectId={projectId}
+            editEntryId={editData?.id}
+          />
+        )}
       </Modal>
 
       {/* Region Modal */}
