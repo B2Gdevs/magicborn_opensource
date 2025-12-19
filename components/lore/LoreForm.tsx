@@ -234,26 +234,6 @@ export function LoreForm({
           placeholder="The ancient texts speak of a time when..."
         />
       </div>
-
-      <div className="flex gap-2 pt-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
-        >
-          {saving ? "Saving..." : submitLabel || (isEdit ? "Update Lore" : "Create Lore")}
-        </button>
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold disabled:opacity-50"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
     </form>
   );
 }

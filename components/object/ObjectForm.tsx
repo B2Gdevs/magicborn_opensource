@@ -61,20 +61,14 @@ export function ObjectForm({
   const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
   const formRef = useRef<HTMLFormElement>(null);
 
-  useEffect(() => {
-    if (formRef.current) {
-      (formRef.current as any).submitForm = () => formRef.current?.requestSubmit();
-    }
-  }, []);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Validate and prepare object data
+  const prepareObject = (): ObjectFormData | null => {
     if (!name.trim()) {
       alert("Name is required");
-      return;
+      return null;
     }
 
-    onSubmit({
+    return {
       name: name.trim(),
       description: description.trim() || undefined,
       type,
@@ -82,7 +76,27 @@ export function ObjectForm({
       weight,
       value,
       imagePath,
-    });
+    };
+  };
+
+  // Expose validation function for external submission (used by footer)
+  useEffect(() => {
+    if (formRef.current) {
+      (formRef.current as any).validateAndSubmit = () => {
+        const data = prepareObject();
+        if (data) {
+          onSubmit(data);
+        }
+      };
+    }
+  }, [name, description, type, rarity, weight, value, imagePath, onSubmit]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const data = prepareObject();
+    if (data) {
+      onSubmit(data);
+    }
   };
 
   return (
@@ -182,26 +196,6 @@ export function ObjectForm({
           />
         </div>
       </div>
-
-      <div className="flex gap-2 pt-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
-        >
-          {saving ? "Saving..." : submitLabel || (isEdit ? "Update Item" : "Create Item")}
-        </button>
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold disabled:opacity-50"
-          >
-            Cancel
-          </button>
-        )}
-      </div>
     </form>
   );
 }
@@ -219,11 +213,21 @@ export function ObjectFormFooter({
   onCancel?: () => void;
   onSubmit: () => void;
 }) {
+  const handleSubmit = async () => {
+    // Find the form and call its validateAndSubmit method
+    const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => void };
+    if (form?.validateAndSubmit) {
+      form.validateAndSubmit();
+    } else {
+      onSubmit();
+    }
+  };
+
   return (
     <div className="flex gap-3">
       <button
         type="button"
-        onClick={onSubmit}
+        onClick={handleSubmit}
         disabled={saving}
         className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
       >

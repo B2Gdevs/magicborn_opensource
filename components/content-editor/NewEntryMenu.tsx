@@ -614,8 +614,12 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
             saving={saving}
             onCancel={closeModal}
             onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
-              form?.submitForm?.() || form?.requestSubmit();
+              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => void };
+              if (form?.validateAndSubmit) {
+                form.validateAndSubmit();
+              } else {
+                form?.requestSubmit();
+              }
             }}
           />
         }
@@ -644,8 +648,12 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
             saving={saving}
             onCancel={closeModal}
             onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
-              form?.submitForm?.() || form?.requestSubmit();
+              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
+              if (form?.validateAndSubmit) {
+                form.validateAndSubmit();
+              } else {
+                form?.requestSubmit();
+              }
             }}
           />
         }
