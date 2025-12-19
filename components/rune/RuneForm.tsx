@@ -261,7 +261,7 @@ export function RuneForm({
   }, [imageMediaId, isEdit]);
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
       {/* Image upload inline with Code and Concept */}
       <div className="flex gap-4 items-start">
         <MediaUpload
