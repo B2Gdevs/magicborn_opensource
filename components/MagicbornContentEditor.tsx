@@ -12,7 +12,6 @@ import {
   Gem, 
   User, 
   Ghost, 
-  Globe, 
   BarChart3,
   Terminal
 } from "lucide-react";
@@ -22,18 +21,6 @@ import EffectEditor from "@components/EffectEditor";
 import RuneEditor from "@components/RuneEditor";
 import CharacterEditor from "@components/CharacterEditor";
 import CreatureEditor from "@components/CreatureEditor";
-import dynamic from "next/dynamic";
-import ResourcePlaceholder from "@components/ResourcePlaceholder";
-
-// Dynamically import EnvironmentEditor to avoid SSR issues
-const EnvironmentEditor = dynamic(() => import("./environment/EnvironmentEditor"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center h-full bg-deep text-text-muted">
-      <p>Loading environment editor...</p>
-    </div>
-  ),
-});
 import { TabButton } from "@components/ui/TabButton";
 import DeveloperWorkbench, { type WorkbenchTab } from "@components/DeveloperWorkbench";
 import { Tooltip } from "@components/ui/Tooltip";
@@ -45,7 +32,6 @@ export type EditorType =
   | "runes"
   | "characters"
   | "creatures"
-  | "environments"
   | "automations"
   | "status";
 
@@ -102,12 +88,6 @@ function createDefaultTabs(): EditorTab[] {
       component: <CreatureEditor />,
     },
     {
-      id: "environments",
-      label: "Environments",
-      icon: <Globe className="w-4 h-4" />,
-      component: null, // Handled separately - dynamically imported
-    },
-    {
       id: "status",
       label: "Status",
       icon: <BarChart3 className="w-4 h-4" />,
@@ -159,8 +139,6 @@ export function MagicbornContentEditor({
       <div className="flex-1 overflow-hidden min-h-0">
         {activeTab === "status" ? (
           <StatusContent />
-        ) : activeTab === "environments" ? (
-          <EnvironmentEditor />
         ) : (
           activeEditor
         )}

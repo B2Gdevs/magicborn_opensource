@@ -50,41 +50,59 @@ This document tracks which `/app/api/game-data/**` routes have been migrated to 
 - **Usage**: RuneForm, RuneEditor
 - **Action**: ⏳ **KEEP** - Need to create Payload collection first
 
-### `/app/api/game-data/environments`
-- **Status**: ⚠️ Still in use
-- **Payload Collection**: ❌ Does not exist
-- **Usage**: EnvironmentForm, EnvironmentEditor
-- **Action**: ⏳ **KEEP** - Need to create Payload collection first
-
 ### `/app/api/game-data/maps`
 - **Status**: ⚠️ Still in use
 - **Payload Collection**: ❌ Does not exist
 - **Usage**: MapForm, MapEditor
 - **Action**: ⏳ **KEEP** - Need to create Payload collection first
 
-### `/app/api/game-data/map-regions`
-- **Status**: ⚠️ Still in use
-- **Payload Collection**: ❌ Does not exist (but `Locations` might cover this)
-- **Usage**: MapRegionForm
-- **Action**: ⏳ **KEEP** - May be covered by Locations collection
-
-### `/app/api/game-data/map-placements`
-- **Status**: ⚠️ Still in use
-- **Payload Collection**: ❌ Does not exist
-- **Usage**: MapPlacementForm
-- **Action**: ⏳ **KEEP** - Need to create Payload collection first
-
-### `/app/api/game-data/stories`
-- **Status**: ⚠️ Still in use
-- **Payload Collection**: ✅ `lore` exists (may cover this)
-- **Usage**: Story listing
-- **Action**: ⏳ **KEEP** - Verify if Lore collection covers this
-
 ### `/app/api/game-data/ids`
 - **Status**: ⚠️ Still in use
 - **Purpose**: ID validation endpoint
-- **Usage**: IdInput component validation
-- **Action**: ⏳ **KEEP** - May need to update to use Payload API
+- **Usage**: May be used by old clients (IdInput uses Payload API directly)
+- **Action**: ⏳ **REVIEW** - Check if still needed, IdInput uses Payload API
+
+---
+
+## ❌ Removed (No Longer Needed)
+
+### `/app/api/game-data/environments`
+- **Status**: ❌ Removed
+- **Reason**: Old canvas-based map editor removed, not needed
+- **Action**: ✅ **DELETED**
+
+### `/app/api/game-data/map-regions`
+- **Status**: ❌ Removed
+- **Reason**: Old map editor removed, regions now handled by Locations collection
+- **Action**: ✅ **DELETED**
+
+### `/app/api/game-data/map-placements`
+- **Status**: ❌ Removed
+- **Reason**: Old map editor removed, not needed
+- **Action**: ✅ **DELETED**
+
+### `/app/api/game-data/stories`
+- **Status**: ❌ Removed
+- **Reason**: Covered by Lore collection
+- **Action**: ✅ **DELETED**
+
+### Old Map Editor Components
+- **Status**: ❌ Removed
+- **Components Deleted**:
+  - `EnvironmentEditor.tsx`
+  - `MapCanvas.tsx`
+  - `CellSelectionFeedback.tsx`
+  - `CellSelectionLayer.tsx`
+  - `GridLayer.tsx`
+  - `StatusBar.tsx`
+  - `RegionEditForm.tsx`
+  - `WorldRegionForm.tsx`
+  - `MapImageUpload.tsx`
+  - `EnvironmentForm.tsx`
+  - `EnvironmentSelector.tsx`
+  - `InheritanceChainDisplay.tsx`
+  - `AreaInfoDisplay.tsx`
+- **Action**: ✅ **DELETED** - Entire `components/environment/` directory removed
 
 ---
 
