@@ -80,6 +80,7 @@ export interface Config {
     'style-guide-entries': StyleGuideEntry;
     effects: Effect;
     spells: Spell;
+    objects: Object;
     'project-snapshots': ProjectSnapshot;
     'ai-generations': AiGeneration;
     'payload-kv': PayloadKv;
@@ -102,6 +103,7 @@ export interface Config {
     'style-guide-entries': StyleGuideEntriesSelect<false> | StyleGuideEntriesSelect<true>;
     effects: EffectsSelect<false> | EffectsSelect<true>;
     spells: SpellsSelect<false> | SpellsSelect<true>;
+    objects: ObjectsSelect<false> | ObjectsSelect<true>;
     'project-snapshots': ProjectSnapshotsSelect<false> | ProjectSnapshotsSelect<true>;
     'ai-generations': AiGenerationsSelect<false> | AiGenerationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -657,6 +659,34 @@ export interface Spell {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "objects".
+ */
+export interface Object {
+  id: number;
+  project: number | Project;
+  /**
+   * Unique identifier for the object (e.g., "ember-crystal"). Used for API lookups.
+   */
+  slug?: string | null;
+  name: string;
+  description?: string | null;
+  type?: ('weapon' | 'armor' | 'consumable' | 'material' | 'key' | 'artifact' | 'misc') | null;
+  rarity?: ('common' | 'uncommon' | 'rare' | 'epic' | 'legendary') | null;
+  image?: (number | null) | Media;
+  /**
+   * Weight of the item
+   */
+  weight?: number | null;
+  /**
+   * Value in gold
+   */
+  value?: number | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "project-snapshots".
  */
 export interface ProjectSnapshot {
@@ -800,6 +830,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'spells';
         value: number | Spell;
+      } | null)
+    | ({
+        relationTo: 'objects';
+        value: number | Object;
       } | null)
     | ({
         relationTo: 'project-snapshots';
@@ -1123,6 +1157,24 @@ export interface SpellsSelect<T extends boolean = true> {
   effects?: T;
   hidden?: T;
   hint?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "objects_select".
+ */
+export interface ObjectsSelect<T extends boolean = true> {
+  project?: T;
+  slug?: T;
+  name?: T;
+  description?: T;
+  type?: T;
+  rarity?: T;
+  image?: T;
+  weight?: T;
+  value?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;

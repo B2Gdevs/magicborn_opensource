@@ -6,7 +6,43 @@
 import { useState, useRef, useEffect } from "react";
 import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { IdInput } from "@components/ui/IdInput";
-import { ObjectType, OBJECT_TYPE_OPTIONS, ItemRarity, ITEM_RARITY_OPTIONS } from "@/lib/payload/constants";
+
+// Client-safe enums (inline to avoid webpack require issues)
+enum ObjectType {
+  Weapon = 'weapon',
+  Armor = 'armor',
+  Consumable = 'consumable',
+  Material = 'material',
+  Key = 'key',
+  Artifact = 'artifact',
+  Misc = 'misc',
+}
+
+enum ItemRarity {
+  Common = 'common',
+  Uncommon = 'uncommon',
+  Rare = 'rare',
+  Epic = 'epic',
+  Legendary = 'legendary',
+}
+
+const OBJECT_TYPE_OPTIONS = [
+  { label: 'Weapon', value: ObjectType.Weapon },
+  { label: 'Armor', value: ObjectType.Armor },
+  { label: 'Consumable', value: ObjectType.Consumable },
+  { label: 'Material', value: ObjectType.Material },
+  { label: 'Key Item', value: ObjectType.Key },
+  { label: 'Artifact', value: ObjectType.Artifact },
+  { label: 'Miscellaneous', value: ObjectType.Misc },
+] as const;
+
+const ITEM_RARITY_OPTIONS = [
+  { label: 'Common', value: ItemRarity.Common },
+  { label: 'Uncommon', value: ItemRarity.Uncommon },
+  { label: 'Rare', value: ItemRarity.Rare },
+  { label: 'Epic', value: ItemRarity.Epic },
+  { label: 'Legendary', value: ItemRarity.Legendary },
+] as const;
 
 export interface ObjectFormData {
   id?: string;
