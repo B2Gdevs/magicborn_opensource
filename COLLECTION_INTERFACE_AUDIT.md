@@ -52,45 +52,37 @@ This document tracks the alignment between Payload CMS collections and their cor
 
 ---
 
-### ⚠️ Spells
+### ✅ Spells
 **Payload Collection**: `lib/payload/collections/Spells.ts`
 **Interface**: `lib/data/namedSpells.ts` - `NamedSpellBlueprint`
 
-**Status**: ⚠️ **Misaligned**
+**Status**: ✅ **Aligned** (recently fixed)
 - Payload: `image` (upload relationship → Media)
-- Interface: `imagePath?: string` ❌ (should be `imageId?: number`)
+- Interface: `imageId?: number` ✅
 - Payload: `spellId` (unique text field)
-- Interface: `id: NamedSpellId` - should map to `spellId`
+- Interface: `id: NamedSpellId` - maps to `spellId` in handlers ✅
 
 **Fields**:
 - Payload: `spellId`, `name`, `description`, `tags`, `image`, `requiredRunes`, `allowedExtraRunes`, `minDamageFocus`, `minTotalPower`, `requiresNamedSourceId`, `minTotalFamiliarityScore`, `minRuneFamiliarity`, `requiredFlags`, `effects`, `hidden`, `hint`
-- Interface: `id`, `name`, `description`, `tags`, `imagePath`, `requiredRunes`, `allowedExtraRunes`, `minDamageFocus`, `minTotalPower`, `requiresNamedSourceId`, `minRuneFamiliarity`, `minTotalFamiliarityScore`, `requiredFlags`, `effects`, `hidden`, `hint`
-
-**Action Required**:
-- Update `NamedSpellBlueprint` to use `imageId?: number` instead of `imagePath?: string`
-- Map `id` to `spellId` field
+- Interface: `id`, `name`, `description`, `tags`, `imageId`, `requiredRunes`, `allowedExtraRunes`, `minDamageFocus`, `minTotalPower`, `requiresNamedSourceId`, `minRuneFamiliarity`, `minTotalFamiliarityScore`, `requiredFlags`, `effects`, `hidden`, `hint`
 
 ---
 
-### ⚠️ Effects
+### ✅ Effects
 **Payload Collection**: `lib/payload/collections/Effects.ts`
 **Interface**: `lib/data/effects.ts` - `EffectDefinition`
 
-**Status**: ⚠️ **Misaligned**
+**Status**: ✅ **Aligned** (recently fixed)
 - Payload: `image` (upload relationship → Media)
-- Interface: `imagePath?: string` ❌ (should be `imageId?: number`)
+- Interface: `imageId?: number` ✅
 - Payload: `effectType` (select field, unique)
-- Interface: `id: EffectType` - should map to `effectType`
+- Interface: `id: EffectType` - maps to `effectType` in handlers ✅
 - Payload: `blueprint` (group with `baseMagnitude`, `baseDurationSec`, `self`)
-- Interface: `blueprint: EffectBlueprint` - structure matches but needs verification
+- Interface: `blueprint: EffectBlueprint` ✅
 
 **Fields**:
 - Payload: `effectType`, `name`, `description`, `category`, `isBuff`, `maxStacks`, `iconKey`, `image`, `blueprint` (group)
-- Interface: `id`, `name`, `description`, `category`, `blueprint`, `maxStacks`, `isBuff`, `iconKey`, `imagePath`
-
-**Action Required**:
-- Update `EffectDefinition` to use `imageId?: number` instead of `imagePath?: string`
-- Map `id` to `effectType` field
+- Interface: `id`, `name`, `description`, `category`, `blueprint`, `maxStacks`, `isBuff`, `iconKey`, `imageId`
 
 ---
 
@@ -158,22 +150,16 @@ This document tracks the alignment between Payload CMS collections and their cor
 
 ### Collections Needing Interface Updates
 
-1. **Characters** (`CharacterDefinition`)
+1. **Characters** (`CharacterDefinition`) - **See `CHARACTERS_COMBAT_STATS_CLARIFICATION.md`**
    - Change `imagePath?: string` → `imageId?: number`
    - Map `id` → `slug`
-   - Nest combat stats in `combatStats` object
-
-2. **Spells** (`NamedSpellBlueprint`)
-   - Change `imagePath?: string` → `imageId?: number`
-   - Map `id` → `spellId`
-
-3. **Effects** (`EffectDefinition`)
-   - Change `imagePath?: string` → `imageId?: number`
-   - Map `id` → `effectType`
+   - **Combat stats structure needs clarification** - see clarification document
 
 ### Collections Already Aligned
 
 - ✅ Runes (`RuneDef`) - Fixed
+- ✅ Spells (`NamedSpellBlueprint`) - Fixed
+- ✅ Effects (`EffectDefinition`) - Fixed
 - ✅ Objects - No legacy interface
 - ✅ Lore - No legacy interface
 - ✅ Locations - No legacy interface

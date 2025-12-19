@@ -78,10 +78,9 @@ export interface NamedSpellBlueprint {
   effects?: EffectBlueprint[];
 
   /**
-   * Path to the spell's image in public/game-content/spells/
-   * Example: "/game-content/spells/ember_ray.png"
+   * Payload Media ID for the spell's image
    */
-  imagePath?: string;
+  imageId?: number;
 }
 
 /** 🔥 Ember Ray – base named Fire ray */

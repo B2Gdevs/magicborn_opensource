@@ -19,10 +19,9 @@ export interface EffectDefinition {
   isBuff: boolean;
   iconKey?: string;
   /**
-   * Path to the effect's image in public/game-content/effects/
-   * Example: "/game-content/effects/burn.png"
+   * Payload Media ID for the effect's image
    */
-  imagePath?: string;
+  imageId?: number;
 }
 
 export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {

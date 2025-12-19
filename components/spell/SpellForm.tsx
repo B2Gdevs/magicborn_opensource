@@ -101,7 +101,7 @@ export function SpellForm({
   const formRef = useRef<HTMLFormElement>(null);
 
   // Validate and prepare spell data
-  const prepareSpell = async (): Promise<(NamedSpellBlueprint & { image?: number }) | null> => {
+  const prepareSpell = async (): Promise<NamedSpellBlueprint | null> => {
     if (!name.trim()) {
       alert("Name is required");
       return null;
@@ -156,8 +156,7 @@ export function SpellForm({
       minTotalFamiliarityScore,
       requiredFlags: requiredFlags.length > 0 ? requiredFlags : undefined,
       effects: effects.length > 0 ? effects : undefined,
-      imagePath: imageUrl || undefined, // Keep for backward compatibility
-      image: finalImageMediaId, // Payload Media ID
+      imageId: finalImageMediaId, // Payload Media ID
       hidden,
       hint: hint.trim() || "Try experimenting with different rune combinations.",
     };

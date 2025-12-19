@@ -87,7 +87,7 @@ export function EffectForm({
   const formRef = useRef<HTMLFormElement>(null);
 
   // Validate and prepare effect data
-  const prepareEffect = async (): Promise<(EffectDefinition & { image?: number }) | null> => {
+  const prepareEffect = async (): Promise<EffectDefinition | null> => {
     if (!id.trim()) {
       alert("ID (Effect Type) is required");
       return null;
@@ -141,8 +141,7 @@ export function EffectForm({
       blueprint,
       iconKey: iconKey.trim() || undefined,
       maxStacks: maxStacks && maxStacks > 0 ? maxStacks : undefined,
-      imagePath: imageUrl || undefined, // Keep for backward compatibility
-      image: finalImageMediaId, // Payload Media ID
+      imageId: finalImageMediaId, // Payload Media ID
     };
   };
 

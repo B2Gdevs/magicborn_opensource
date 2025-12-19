@@ -439,7 +439,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
   };
 
   // Spell handlers
-  const handleCreateSpell = async (spell: NamedSpellBlueprint & { image?: number }) => {
+  const handleCreateSpell = async (spell: NamedSpellBlueprint) => {
     if (saving) return;
     setSaving(true);
     try {
@@ -469,8 +469,8 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       };
       
       // Include image if provided
-      if (spell.image) {
-        payloadData.image = spell.image;
+      if (spell.imageId) {
+        payloadData.image = spell.imageId;
       }
       
       const res = await fetch(url, {
@@ -516,8 +516,8 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       };
       
       // Include image if provided
-      if (effect.image) {
-        payloadData.image = effect.image;
+      if (effect.imageId) {
+        payloadData.image = effect.imageId;
       }
       
       const res = await fetch(url, {
