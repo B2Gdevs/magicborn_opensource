@@ -1,5 +1,5 @@
 // scripts/migrate-rune-images.ts
-// One-time migration script to update existing runes with images from public/game-content/runes/
+// One-time migration script to update existing runes with images from public/design/images/game-icons/runes/
 // Run: npx tsx scripts/migrate-rune-images.ts [projectId]
 // Example: npx tsx scripts/migrate-rune-images.ts 1
 
@@ -51,17 +51,10 @@ async function migrateRuneImages() {
 
       const existingRune = existing.docs[0]
 
-      // Skip if already has an image
-      if (existingRune.image) {
-        console.log(`  ✓ Rune ${rune.code} (${rune.concept}) already has an image, skipping`)
-        skipped++
-        continue
-      }
-
-      // Check if image exists in public/game-content/runes/
+      // Check if image exists in public/design/images/game-icons/runes/
       // Try imagePath first, then fallback to {code}.png, {code}.webp, etc.
       let imagePath: string | null = null
-      const runesDir = path.join(process.cwd(), 'public', 'game-content', 'runes')
+      const runesDir = path.join(process.cwd(), 'public', 'design', 'images', 'game-icons', 'runes')
       
       if (rune.imagePath) {
         const candidatePath = path.join(runesDir, path.basename(rune.imagePath))
@@ -103,6 +96,26 @@ async function migrateRuneImages() {
       }
       const mimetype = mimeTypes[ext] || 'image/png'
 
+      let mediaId: number
+
+      // Check if rune already has an image - if so, we'll replace it
+      if (existingRune.image) {
+        const existingImageId = typeof existingRune.image === 'object' 
+          ? existingRune.image.id 
+          : existingRune.image
+        
+        // Delete old media if it exists
+        try {
+          await payload.delete({
+            collection: Collections.Media,
+            id: existingImageId,
+          })
+          console.log(`    Deleted old image for ${rune.code}`)
+        } catch (error) {
+          // Media might not exist, continue anyway
+        }
+      }
+
       // Upload to Payload Media
       const media = await payload.create({
         collection: Collections.Media,
@@ -117,9 +130,9 @@ async function migrateRuneImages() {
         },
       } as any)
 
-      const mediaId = (media as any).id
+      mediaId = (media as any).id
 
-      // Update rune with image
+      // Update rune with image (always update, even if it had one before)
       await payload.update({
         collection: Collections.Runes,
         id: existingRune.id,
@@ -128,7 +141,7 @@ async function migrateRuneImages() {
         },
       })
 
-      console.log(`  ✓ Migrated image for ${rune.code} (${rune.concept}): ${path.basename(imagePath)}`)
+      console.log(`  ✓ ${existingRune.image ? 'Updated' : 'Migrated'} image for ${rune.code} (${rune.concept}): ${path.basename(imagePath)}`)
       migrated++
     } catch (error: any) {
       console.error(`  ✗ Error migrating ${rune.code} (${rune.concept}):`, error.message)
