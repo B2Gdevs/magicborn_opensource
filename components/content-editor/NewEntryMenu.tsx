@@ -310,10 +310,27 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         ? `/api/payload/objects/${editData.id}`
         : "/api/payload/objects";
       
+      // Transform object data for Payload (include image media ID and slug)
+      const payloadData: any = {
+        name: data.name,
+        slug: data.slug,
+        description: data.description,
+        type: data.type,
+        rarity: data.rarity,
+        weight: data.weight,
+        value: data.value,
+        project: parseInt(projectId),
+      };
+      
+      // Include image if provided
+      if (data.image) {
+        payloadData.image = data.image;
+      }
+      
       const res = await fetch(url, {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, project: parseInt(projectId) }),
+        body: JSON.stringify(payloadData),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -633,6 +650,8 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
             onSubmit={handleCreateObject}
             onCancel={closeModal}
             saving={saving}
+            projectId={projectId}
+            editEntryId={editData?.id}
           />
         )}
       </Modal>

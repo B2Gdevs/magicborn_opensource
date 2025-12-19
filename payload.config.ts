@@ -24,6 +24,7 @@ import { StyleGuideEntries } from './lib/payload/collections/StyleGuideEntries'
 // Collections - Game Data (Magicborn-specific)
 import { Effects } from './lib/payload/collections/Effects'
 import { Spells } from './lib/payload/collections/Spells'
+import { Objects } from './lib/payload/collections/Objects'
 
 // Collections - System
 import { ProjectSnapshots } from './lib/payload/collections/ProjectSnapshots'
@@ -58,6 +59,7 @@ export default buildConfig({
     // Game Data
     Effects,
     Spells,
+    Objects,
     // System
     ProjectSnapshots,
     AIGenerations,

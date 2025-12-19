@@ -4,15 +4,18 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ImageUpload } from "@components/ui/ImageUpload";
+import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
+import { IdInput } from "@components/ui/IdInput";
 
 export interface ObjectFormData {
   id?: string;
+  slug?: string;
   name: string;
   description?: string;
   type?: "weapon" | "armor" | "consumable" | "material" | "key" | "artifact" | "misc";
   rarity?: "common" | "uncommon" | "rare" | "epic" | "legendary";
   imagePath?: string;
+  image?: number; // Payload Media ID
   weight?: number;
   value?: number;
 }
@@ -24,6 +27,8 @@ interface ObjectFormProps {
   onCancel?: () => void;
   saving?: boolean;
   submitLabel?: string;
+  projectId?: string;
+  editEntryId?: number;
 }
 
 const OBJECT_TYPES = [
@@ -44,6 +49,14 @@ const RARITIES = [
   { value: "legendary", label: "Legendary", color: "text-amber-400" },
 ] as const;
 
+// Helper to convert name to slug (e.g., "Ember Crystal" -> "ember-crystal")
+function nameToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function ObjectForm({
   initialValues = {},
   isEdit = false,
@@ -51,49 +64,114 @@ export function ObjectForm({
   onCancel,
   saving = false,
   submitLabel,
+  projectId,
+  editEntryId,
 }: ObjectFormProps) {
   const [name, setName] = useState(initialValues.name || "");
+  const [slug, setSlug] = useState(initialValues.slug || (initialValues.name ? nameToSlug(initialValues.name) : ""));
   const [description, setDescription] = useState(initialValues.description || "");
   const [type, setType] = useState<ObjectFormData["type"]>(initialValues.type || "misc");
   const [rarity, setRarity] = useState<ObjectFormData["rarity"]>(initialValues.rarity || "common");
   const [weight, setWeight] = useState<number | undefined>(initialValues.weight);
   const [value, setValue] = useState<number | undefined>(initialValues.value);
-  const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
+  const [imageMediaId, setImageMediaId] = useState<number | undefined>(
+    typeof initialValues.image === 'number' 
+      ? initialValues.image 
+      : typeof initialValues.image === 'object' && initialValues.image?.id
+        ? initialValues.image.id
+        : undefined
+  );
+  const [imageUrl, setImageUrl] = useState<string | undefined>(initialValues.imagePath);
   const formRef = useRef<HTMLFormElement>(null);
+  const imageUploadRef = useRef<MediaUploadRef>(null);
+
+  // Auto-generate slug from name
+  useEffect(() => {
+    if (!isEdit && name) {
+      setSlug(nameToSlug(name));
+    }
+  }, [name, isEdit]);
+
+  // Fetch image URL when editing
+  useEffect(() => {
+    if (imageMediaId && isEdit) {
+      fetch(`/api/payload/media/${imageMediaId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            const url = data.url;
+            if (url.startsWith('http://localhost') || url.startsWith('https://')) {
+              try {
+                const urlObj = new URL(url);
+                setImageUrl(urlObj.pathname);
+              } catch {
+                setImageUrl(url);
+              }
+            } else {
+              setImageUrl(url.startsWith('/') ? url : `/${url}`);
+            }
+          }
+        })
+        .catch(err => console.error("Failed to fetch image:", err));
+    } else if (!imageMediaId) {
+      setImageUrl(undefined);
+    }
+  }, [imageMediaId, isEdit]);
 
   // Validate and prepare object data
-  const prepareObject = (): ObjectFormData | null => {
+  const prepareObject = async (): Promise<ObjectFormData | null> => {
     if (!name.trim()) {
       alert("Name is required");
       return null;
     }
 
+    if (!slug.trim()) {
+      alert("Slug is required");
+      return null;
+    }
+
+    // Upload pending image before submitting
+    let finalImageMediaId = imageMediaId;
+    try {
+      if (imageUploadRef.current) {
+        const uploadedId = await imageUploadRef.current.uploadFile();
+        if (uploadedId) {
+          finalImageMediaId = uploadedId;
+        }
+      }
+    } catch (error) {
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      return null;
+    }
+
     return {
       name: name.trim(),
+      slug: slug.trim(),
       description: description.trim() || undefined,
       type,
       rarity,
       weight,
       value,
-      imagePath,
+      imagePath: imageUrl || undefined, // Keep for backward compatibility
+      image: finalImageMediaId, // Payload Media ID
     };
   };
 
   // Expose validation function for external submission (used by footer)
   useEffect(() => {
     if (formRef.current) {
-      (formRef.current as any).validateAndSubmit = () => {
-        const data = prepareObject();
+      (formRef.current as any).validateAndSubmit = async () => {
+        const data = await prepareObject();
         if (data) {
           onSubmit(data);
         }
       };
     }
-  }, [name, description, type, rarity, weight, value, imagePath, onSubmit]);
+  }, [name, slug, description, type, rarity, weight, value, imageMediaId, onSubmit]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data = prepareObject();
+    const data = await prepareObject();
     if (data) {
       onSubmit(data);
     }
@@ -101,10 +179,16 @@ export function ObjectForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-      <ImageUpload
-        currentImagePath={imagePath}
-        contentType="objects"
-        onImageUploaded={setImagePath}
+      <MediaUpload
+        ref={imageUploadRef}
+        currentMediaId={imageMediaId}
+        currentMediaUrl={imageUrl}
+        onMediaUploaded={(mediaId) => {
+          setImageMediaId(mediaId);
+          if (!mediaId) {
+            setImageUrl(undefined);
+          }
+        }}
         label="Item Image"
         disabled={saving}
         compact
@@ -123,6 +207,32 @@ export function ObjectForm({
           required
         />
       </div>
+
+      {!isEdit && (
+        <IdInput
+          value={slug}
+          onChange={setSlug}
+          contentType="objects"
+          isEdit={false}
+          placeholder="Auto-generated from name"
+          label="Slug (auto-generated from name)"
+          projectId={projectId}
+          disabled={false}
+        />
+      )}
+      {isEdit && (
+        <div>
+          <label className="block text-sm font-semibold text-text-secondary mb-1">
+            Slug
+          </label>
+          <input
+            type="text"
+            value={slug}
+            disabled
+            className="w-full px-3 py-2 bg-deep/50 border border-border rounded text-text-muted cursor-not-allowed"
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>

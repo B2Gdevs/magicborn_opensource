@@ -125,6 +125,9 @@ export const Collections = {
   Effects: 'effects',
   Spells: 'spells',
   Runes: 'runes',
+  Objects: 'objects',
+  Creatures: 'creatures',
+  Maps: 'maps',
 } as const
 
 // ============================================
