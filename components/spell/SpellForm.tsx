@@ -150,6 +150,7 @@ export function SpellForm({
         onImageUploaded={setImagePath}
         label="Spell Image"
         disabled={saving}
+        compact
       />
 
       <div>

@@ -19,6 +19,8 @@ interface CharacterFormProps {
   onCancel?: () => void;
   saving?: boolean;
   submitLabel?: string;
+  projectId?: string;
+  editEntryId?: number; // Payload ID for edit mode
 }
 
 export function CharacterForm({
@@ -29,6 +31,8 @@ export function CharacterForm({
   onCancel,
   saving = false,
   submitLabel,
+  projectId,
+  editEntryId,
 }: CharacterFormProps) {
   const [id, setId] = useState(initialValues.id || "");
   const [name, setName] = useState(initialValues.name || "");
@@ -45,28 +49,17 @@ export function CharacterForm({
   const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Expose form submit handler for Modal footer
-  useEffect(() => {
-    if (formRef.current) {
-      (formRef.current as any).submitForm = () => {
-        formRef.current?.requestSubmit();
-      };
-    }
-  }, []);
-
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // Validate and prepare character data
+  const prepareCharacter = (): CharacterDefinition | null => {
     if (!id.trim() || !name.trim() || !description.trim()) {
       alert("ID, name, and description are required");
-      return;
+      return null;
     }
 
     // ID validation is handled by IdInput component
 
-    const character: CharacterDefinition = {
-      id: id.trim(),
+    return {
+      id: id.trim().toLowerCase(), // Normalize to lowercase for slug
       name: name.trim(),
       description: description.trim(),
       mana,
@@ -82,12 +75,22 @@ export function CharacterForm({
       ...(costEfficiency !== undefined ? { costEfficiency } : {}),
       ...(imagePath ? { imagePath } : {}),
     };
-
-    onSubmit(character);
   };
 
+  // Expose validation function for external submission
+  useEffect(() => {
+    if (formRef.current) {
+      (formRef.current as any).validateAndSubmit = () => {
+        const character = prepareCharacter();
+        if (character) {
+          onSubmit(character);
+        }
+      };
+    }
+  }, [id, name, description, mana, maxMana, hp, maxHp, affinity, elementXp, elementAffinity, controlBonus, costEfficiency, imagePath, onSubmit]);
+
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+    <form ref={formRef} className="space-y-4">
       <ImageUpload
         currentImagePath={imagePath}
         contentType="characters"
@@ -95,6 +98,7 @@ export function CharacterForm({
         onImageUploaded={setImagePath}
         label="Character Image"
         disabled={saving}
+        compact
       />
 
       <IdInput
@@ -105,6 +109,8 @@ export function CharacterForm({
         placeholder="e.g., kael"
         autoGenerateFrom={name}
         disabled={saving}
+        projectId={projectId}
+        excludeId={isEdit ? editEntryId : undefined}
       />
 
       <div>
@@ -173,11 +179,22 @@ export function CharacterFormFooter({
   onCancel?: () => void;
   onSubmit: () => void;
 }) {
+  const handleSubmit = () => {
+    // Find the form and call its validateAndSubmit method
+    const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => void };
+    if (form?.validateAndSubmit) {
+      form.validateAndSubmit();
+    } else {
+      // Fallback to direct call if method not available
+      onSubmit();
+    }
+  };
+
   return (
     <div className="flex gap-3">
       <button
         type="button"
-        onClick={onSubmit}
+        onClick={handleSubmit}
         disabled={saving}
         className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
       >

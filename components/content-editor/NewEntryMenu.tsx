@@ -3,22 +3,77 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, ChevronDown, User, MapPin, Package, BookOpen, Sparkles, Gem, Zap } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { CharacterForm, CharacterFormFooter } from "@/components/character/CharacterForm";
 import { CreatureForm, CreatureFormFooter } from "@/components/creature/CreatureForm";
 import { RuneForm } from "@/components/rune/RuneForm";
+import { RegionForm, RegionFormFooter, type RegionFormData } from "@/components/region/RegionForm";
+import { ObjectForm, ObjectFormFooter, type ObjectFormData } from "@/components/object/ObjectForm";
+import { LoreForm, LoreFormFooter, type LoreFormData } from "@/components/lore/LoreForm";
+import { EffectForm } from "@/components/effect/EffectForm";
+import { SpellForm } from "@/components/spell/SpellForm";
 import type { CharacterDefinition } from "@/lib/data/characters";
 import type { CreatureDefinition } from "@/lib/data/creatures";
 import type { RuneDef } from "@/lib/packages/runes";
-import { characterClient, creatureClient, runeClient } from "@/lib/api/clients";
+import type { EffectDefinition } from "@/lib/data/effects";
+import type { NamedSpellBlueprint } from "@/lib/data/namedSpells";
+// Using Payload API directly instead of old clients
+
+// Client-safe constants (inline to avoid webpack require issues)
+const COLLECTIONS = {
+  Characters: 'characters',
+  Locations: 'locations',
+  Lore: 'lore',
+  Spells: 'spells',
+  Runes: 'runes',
+  Effects: 'effects',
+} as const;
+
+const CHARACTER_FIELDS = {
+  Project: 'project',
+  Slug: 'slug',
+  Name: 'name',
+  Description: 'description',
+  Image: 'image',
+  CombatStats: 'combatStats',
+  RuneFamiliarity: 'runeFamiliarity',
+} as const;
 
 interface NewEntryMenuProps {
   projectId: string;
   isMagicbornMode: boolean;
   onEntryCreated?: (category: string) => void;
+  triggerType?: string | null; // Programmatically trigger a specific entry type modal
+  onTriggerHandled?: () => void;
+  editEntry?: { categoryId: string; entryId: string } | null;
+  onEditClosed?: () => void;
 }
+
+// Map category IDs to entry types
+const categoryToEntryType: Record<string, EntryType> = {
+  characters: "character",
+  creatures: "creature",
+  regions: "region",
+  objects: "object",
+  stories: "story",
+  spells: "spell",
+  runes: "rune",
+  effects: "effect",
+};
+
+// Map category IDs to Payload collections
+const categoryToCollection: Record<string, string> = {
+  characters: COLLECTIONS.Characters,
+  creatures: "creatures", // TODO: Add to constants when collection is created
+  regions: COLLECTIONS.Locations,
+  objects: "objects", // TODO: Add to constants when collection is created
+  stories: COLLECTIONS.Lore,
+  spells: COLLECTIONS.Spells,
+  runes: COLLECTIONS.Runes,
+  effects: COLLECTIONS.Effects,
+};
 
 type EntryType = "character" | "creature" | "region" | "object" | "story" | "spell" | "rune" | "effect";
 
@@ -40,12 +95,49 @@ const entryTypes: EntryConfig[] = [
   { id: "effect", name: "Effect", icon: <Zap className="w-4 h-4" />, magicbornOnly: true },
 ];
 
-export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated }: NewEntryMenuProps) {
+export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, triggerType, onTriggerHandled, editEntry, onEditClosed }: NewEntryMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<EntryType | null>(null);
   const [saving, setSaving] = useState(false);
+  const [editData, setEditData] = useState<any>(null);
+  const [loadingEdit, setLoadingEdit] = useState(false);
 
   const availableTypes = entryTypes.filter(t => !t.magicbornOnly || isMagicbornMode);
+
+  // Handle programmatic trigger from context menu
+  useEffect(() => {
+    if (triggerType && availableTypes.some(t => t.id === triggerType)) {
+      setActiveModal(triggerType as EntryType);
+      onTriggerHandled?.();
+    }
+  }, [triggerType, onTriggerHandled, availableTypes]);
+
+  // Handle edit entry
+  useEffect(() => {
+    if (editEntry) {
+      const entryType = categoryToEntryType[editEntry.categoryId];
+      const collection = categoryToCollection[editEntry.categoryId];
+      
+      if (entryType && collection) {
+        setLoadingEdit(true);
+        fetch(`/api/payload/${collection}/${editEntry.entryId}`)
+          .then(res => res.json())
+          .then(data => {
+            setEditData(data);
+            setActiveModal(entryType);
+          })
+          .catch(err => {
+            console.error("Failed to load entry:", err);
+            alert("Failed to load entry for editing");
+            onEditClosed?.();
+          })
+          .finally(() => setLoadingEdit(false));
+      }
+    } else {
+      // Clear edit data when editEntry is cleared
+      setEditData(null);
+    }
+  }, [editEntry, onEditClosed]);
 
   const handleSelect = (type: EntryType) => {
     setIsOpen(false);
@@ -55,28 +147,94 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated }: New
   const closeModal = () => {
     setActiveModal(null);
     setSaving(false);
+    setEditData(null);
+    onEditClosed?.();
   };
 
-  // Character handlers
+  // Helper to transform Payload character to CharacterDefinition
+  const payloadToCharacter = (payload: any): Partial<CharacterDefinition> => {
+    const combatStats = payload.combatStats || {};
+    return {
+      id: payload.slug || payload.id?.toString() || "", // Use slug as ID
+      name: payload.name || "",
+      description: payload.description || "",
+      hp: combatStats.hp || 0,
+      maxHp: combatStats.maxHp || 0,
+      mana: combatStats.mana || 0,
+      maxMana: combatStats.maxMana || 0,
+      affinity: combatStats.affinity || {},
+      elementXp: combatStats.elementXp,
+      elementAffinity: combatStats.elementAffinity,
+      controlBonus: combatStats.controlBonus,
+      costEfficiency: combatStats.costEfficiency,
+      imagePath: payload.image?.url || payload.imagePath,
+    };
+  };
+
+  // Character handlers - use Payload API
   const handleCreateCharacter = async (character: CharacterDefinition) => {
+    if (saving) return; // Prevent duplicate submissions
     setSaving(true);
     try {
-      await characterClient.create(character);
+      const isEdit = !!editData && !!editEntry;
+      
+      // Transform CharacterDefinition to Payload format
+      const payloadData = {
+        [CHARACTER_FIELDS.Slug]: character.id.trim().toLowerCase(), // Store custom ID in slug field
+        [CHARACTER_FIELDS.Name]: character.name.trim(),
+        [CHARACTER_FIELDS.Description]: character.description.trim(),
+        [CHARACTER_FIELDS.Project]: parseInt(projectId),
+        [CHARACTER_FIELDS.CombatStats]: {
+          hp: character.hp,
+          maxHp: character.maxHp,
+          mana: character.mana,
+          maxMana: character.maxMana,
+          affinity: character.affinity,
+          ...(character.elementXp && { elementXp: character.elementXp }),
+          ...(character.elementAffinity && { elementAffinity: character.elementAffinity }),
+          ...(character.controlBonus !== undefined && { controlBonus: character.controlBonus }),
+          ...(character.costEfficiency !== undefined && { costEfficiency: character.costEfficiency }),
+        },
+      };
+
+      const url = isEdit 
+        ? `/api/payload/${COLLECTIONS.Characters}/${editData.id}`
+        : `/api/payload/${COLLECTIONS.Characters}`;
+      
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloadData),
+      });
+      
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} character`);
+      }
+      
       onEntryCreated?.("characters");
       closeModal();
     } catch (error) {
-      console.error("Failed to create character:", error);
-      alert(`Failed to create character: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Failed to save character:", error);
+      alert(`Failed to save character: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }
   };
 
-  // Creature handlers
+  // Creature handlers - use Payload API
   const handleCreateCreature = async (creature: CreatureDefinition) => {
     setSaving(true);
     try {
-      await creatureClient.create(creature);
+      const res = await fetch("/api/payload/creatures", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...creature, project: parseInt(projectId) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || "Failed to create creature");
+      }
       onEntryCreated?.("creatures");
       closeModal();
     } catch (error) {
@@ -87,11 +245,19 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated }: New
     }
   };
 
-  // Rune handlers
+  // Rune handlers - use Payload API
   const handleCreateRune = async (rune: RuneDef) => {
     setSaving(true);
     try {
-      await runeClient.create(rune);
+      const res = await fetch("/api/payload/runes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...rune, project: parseInt(projectId) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || "Failed to create rune");
+      }
       onEntryCreated?.("runes");
       closeModal();
     } catch (error) {
@@ -102,10 +268,137 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated }: New
     }
   };
 
-  // Placeholder for types not yet implemented
-  const handleNotImplemented = () => {
-    alert("This entry type is not yet implemented in the Content Editor. Coming soon!");
-    closeModal();
+  // Region handlers
+  const handleCreateRegion = async (data: RegionFormData) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const isEdit = !!editData && !!editEntry;
+      const url = isEdit 
+        ? `/api/payload/locations/${editData.id}`
+        : "/api/payload/locations";
+      
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, project: parseInt(projectId) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} region`);
+      }
+      onEntryCreated?.("regions");
+      closeModal();
+    } catch (error) {
+      console.error("Failed to save region:", error);
+      alert(`Failed to save region: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Object handlers
+  const handleCreateObject = async (data: ObjectFormData) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const isEdit = !!editData && !!editEntry;
+      const url = isEdit 
+        ? `/api/payload/objects/${editData.id}`
+        : "/api/payload/objects";
+      
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, project: parseInt(projectId) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} object`);
+      }
+      onEntryCreated?.("objects");
+      closeModal();
+    } catch (error) {
+      console.error("Failed to save object:", error);
+      alert(`Failed to save object: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Lore handlers
+  const handleCreateLore = async (data: LoreFormData) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const isEdit = !!editData && !!editEntry;
+      const url = isEdit 
+        ? `/api/payload/lore/${editData.id}`
+        : "/api/payload/lore";
+      
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, project: parseInt(projectId) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} lore`);
+      }
+      onEntryCreated?.("stories");
+      closeModal();
+    } catch (error) {
+      console.error("Failed to save lore:", error);
+      alert(`Failed to save lore: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Spell handlers
+  const handleCreateSpell = async (spell: NamedSpellBlueprint) => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/payload/spells", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...spell, project: parseInt(projectId) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || "Failed to create spell");
+      }
+      onEntryCreated?.("spells");
+      closeModal();
+    } catch (error) {
+      console.error("Failed to create spell:", error);
+      alert(`Failed to create spell: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Effect handlers
+  const handleCreateEffect = async (effect: EffectDefinition) => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/payload/effects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...effect, project: parseInt(projectId) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || "Failed to create effect");
+      }
+      onEntryCreated?.("effects");
+      closeModal();
+    } catch (error) {
+      console.error("Failed to create effect:", error);
+      alert(`Failed to create effect: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -144,24 +437,31 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated }: New
       <Modal
         isOpen={activeModal === "character"}
         onClose={closeModal}
-        title="Create New Character"
+        title={editData ? `Edit ${editData.name || "Character"}` : "Create New Character"}
         footer={
           <CharacterFormFooter
-            isEdit={false}
+            isEdit={!!editData}
             saving={saving}
             onCancel={closeModal}
             onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
-              form?.submitForm?.() || form?.requestSubmit();
+              // Footer will handle submission via validateAndSubmit
             }}
           />
         }
       >
-        <CharacterForm
-          onSubmit={handleCreateCharacter}
-          onCancel={closeModal}
-          saving={saving}
-        />
+        {loadingEdit ? (
+          <div className="p-6 text-center text-text-muted">Loading...</div>
+        ) : (
+          <CharacterForm
+            initialValues={editData ? payloadToCharacter(editData) : undefined}
+            isEdit={!!editData}
+            onSubmit={handleCreateCharacter}
+            onCancel={closeModal}
+            saving={saving}
+            projectId={projectId}
+            editEntryId={editData?.id}
+          />
+        )}
       </Modal>
 
       {/* Creature Modal */}
@@ -201,76 +501,120 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated }: New
         />
       </Modal>
 
-      {/* Placeholder modals for not-yet-implemented types */}
+      {/* Region Modal */}
       <Modal
         isOpen={activeModal === "region"}
         onClose={closeModal}
-        title="Create New Region"
+        title={editData ? `Edit ${editData.name || "Region"}` : "Create New Region"}
+        footer={
+          <RegionFormFooter
+            isEdit={!!editData}
+            saving={saving}
+            onCancel={closeModal}
+            onSubmit={() => {
+              const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
+              form?.submitForm?.() || form?.requestSubmit();
+            }}
+          />
+        }
       >
-        <div className="p-6 text-center text-text-muted">
-          <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Region editor coming soon!</p>
-          <p className="text-sm mt-2">This will use the hierarchical cell-based region system.</p>
-          <button onClick={closeModal} className="mt-4 px-4 py-2 bg-deep border border-border rounded-lg">
-            Close
-          </button>
-        </div>
+        {loadingEdit ? (
+          <div className="p-6 text-center text-text-muted">Loading...</div>
+        ) : (
+          <RegionForm
+            initialValues={editData || undefined}
+            isEdit={!!editData}
+            onSubmit={handleCreateRegion}
+            onCancel={closeModal}
+            saving={saving}
+          />
+        )}
       </Modal>
 
+      {/* Object Modal */}
       <Modal
         isOpen={activeModal === "object"}
         onClose={closeModal}
-        title="Create New Object/Item"
+        title={editData ? `Edit ${editData.name || "Item"}` : "Create New Object/Item"}
+        footer={
+          <ObjectFormFooter
+            isEdit={!!editData}
+            saving={saving}
+            onCancel={closeModal}
+            onSubmit={() => {
+              const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
+              form?.submitForm?.() || form?.requestSubmit();
+            }}
+          />
+        }
       >
-        <div className="p-6 text-center text-text-muted">
-          <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Object/Item editor coming soon!</p>
-          <button onClick={closeModal} className="mt-4 px-4 py-2 bg-deep border border-border rounded-lg">
-            Close
-          </button>
-        </div>
+        {loadingEdit ? (
+          <div className="p-6 text-center text-text-muted">Loading...</div>
+        ) : (
+          <ObjectForm
+            initialValues={editData || undefined}
+            isEdit={!!editData}
+            onSubmit={handleCreateObject}
+            onCancel={closeModal}
+            saving={saving}
+          />
+        )}
       </Modal>
 
+      {/* Lore Modal */}
       <Modal
         isOpen={activeModal === "story"}
         onClose={closeModal}
-        title="Create New Book/Story"
+        title={editData ? `Edit ${editData.title || "Lore Entry"}` : "Create New Lore Entry"}
+        footer={
+          <LoreFormFooter
+            isEdit={!!editData}
+            saving={saving}
+            onCancel={closeModal}
+            onSubmit={() => {
+              const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
+              form?.submitForm?.() || form?.requestSubmit();
+            }}
+          />
+        }
       >
-        <div className="p-6 text-center text-text-muted">
-          <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Book/Story editor coming soon!</p>
-          <button onClick={closeModal} className="mt-4 px-4 py-2 bg-deep border border-border rounded-lg">
-            Close
-          </button>
-        </div>
+        {loadingEdit ? (
+          <div className="p-6 text-center text-text-muted">Loading...</div>
+        ) : (
+          <LoreForm
+            initialValues={editData || undefined}
+            isEdit={!!editData}
+            onSubmit={handleCreateLore}
+            onCancel={closeModal}
+            saving={saving}
+          />
+        )}
       </Modal>
 
+      {/* Spell Modal */}
       <Modal
         isOpen={activeModal === "spell"}
         onClose={closeModal}
         title="Create New Spell"
       >
-        <div className="p-6 text-center text-text-muted">
-          <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Spell editor coming soon!</p>
-          <button onClick={closeModal} className="mt-4 px-4 py-2 bg-deep border border-border rounded-lg">
-            Close
-          </button>
-        </div>
+        <SpellForm
+          onSubmit={handleCreateSpell}
+          onCancel={closeModal}
+          saving={saving}
+        />
       </Modal>
 
+      {/* Effect Modal */}
       <Modal
         isOpen={activeModal === "effect"}
         onClose={closeModal}
         title="Create New Effect"
       >
-        <div className="p-6 text-center text-text-muted">
-          <Zap className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Effect editor coming soon!</p>
-          <button onClick={closeModal} className="mt-4 px-4 py-2 bg-deep border border-border rounded-lg">
-            Close
-          </button>
-        </div>
+        <EffectForm
+          onSubmit={handleCreateEffect}
+          onCancel={closeModal}
+          saving={saving}
+        />
       </Modal>
     </>
   );

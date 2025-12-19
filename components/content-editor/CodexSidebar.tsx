@@ -22,12 +22,26 @@ import {
   ChevronRight,
   ChevronDown,
   FolderOpen,
-  Home,
-  ArrowLeft
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Copy,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { NewEntryMenu } from "./NewEntryMenu";
+import { ContextMenu, ContextMenuItem } from "./ContextMenu";
+import { EntryActionsMenu } from "./EntryActionsMenu";
+
+// Client-safe constants (inline to avoid webpack require issues)
+const COLLECTIONS = {
+  Characters: 'characters',
+  Locations: 'locations',
+  Lore: 'lore',
+  Spells: 'spells',
+  Runes: 'runes',
+  Effects: 'effects',
+} as const;
 
 interface Category {
   id: string;
@@ -42,20 +56,73 @@ interface CodexSidebarProps {
   onCategorySelect: (category: string | null) => void;
 }
 
+// Map category IDs to entry types used by NewEntryMenu
+const categoryToEntryType: Record<string, string> = {
+  characters: "character",
+  creatures: "creature",
+  regions: "region",
+  objects: "object",
+  stories: "story",
+  spells: "spell",
+  runes: "rune",
+  effects: "effect",
+};
+
+// Map category IDs to Payload collections
+const categoryToCollection: Record<string, string> = {
+  characters: COLLECTIONS.Characters,
+  creatures: "creatures", // TODO: Add to constants when collection is created
+  regions: COLLECTIONS.Locations,
+  objects: "objects", // TODO: Add to constants when collection is created
+  stories: COLLECTIONS.Lore,
+  spells: COLLECTIONS.Spells,
+  runes: COLLECTIONS.Runes,
+  effects: COLLECTIONS.Effects,
+};
+
 export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: CodexSidebarProps) {
   const { isMagicbornMode, loading: modeLoading } = useMagicbornMode(projectId);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [categoryEntries, setCategoryEntries] = useState<Record<string, { id: string; name: string }[]>>({});
   const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    type: "category" | "entry";
+    categoryId: string;
+    entry?: { id: string; name: string };
+  } | null>(null);
+  
+  // For triggering NewEntryMenu programmatically
+  const [triggerNewEntry, setTriggerNewEntry] = useState<string | null>(null);
+  
+  // For edit mode
+  const [editEntry, setEditEntry] = useState<{
+    categoryId: string;
+    entryId: string;
+  } | null>(null);
+
   const refreshCategory = (categoryId: string) => {
-    // Clear cached entries to force refetch
+    // Clear cache and loading state to force fresh fetch
     setCategoryEntries(prev => {
       const next = { ...prev };
       delete next[categoryId];
       return next;
     });
-    fetchCategoryEntries(categoryId);
+    setLoadingCategories(prev => {
+      const next = new Set(prev);
+      next.delete(categoryId);
+      return next;
+    });
+    // Expand category if not already expanded so entries are visible
+    if (!expandedCategories.has(categoryId)) {
+      setExpandedCategories(prev => new Set(prev).add(categoryId));
+    }
+    // Force fetch even if category isn't expanded
+    fetchCategoryEntries(categoryId, true);
   };
 
   // Core categories (always visible)
@@ -63,7 +130,7 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     { id: "characters", name: "Characters", icon: <User className="w-4 h-4" /> },
     { id: "regions", name: "Regions", icon: <MapPin className="w-4 h-4" /> },
     { id: "objects", name: "Objects/Items", icon: <Package className="w-4 h-4" /> },
-    { id: "stories", name: "Books & Stories", icon: <BookOpen className="w-4 h-4" /> },
+    { id: "stories", name: "Lore", icon: <BookOpen className="w-4 h-4" /> },
   ];
 
   // Magicborn categories (only when mode is ON)
@@ -78,21 +145,16 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   const allCategories = [...coreCategories, ...magicbornCategories];
 
   // Fetch entries when a category is expanded
-  const fetchCategoryEntries = async (categoryId: string) => {
-    if (categoryEntries[categoryId] || loadingCategories.has(categoryId)) {
+  const fetchCategoryEntries = async (categoryId: string, force = false) => {
+    // Skip if already loaded and not forcing, or if already loading and not forcing
+    if (!force && (categoryEntries[categoryId] || loadingCategories.has(categoryId))) {
       return;
     }
 
     setLoadingCategories(prev => new Set(prev).add(categoryId));
 
     try {
-      // Map category to Payload collection
-      const collectionMap: Record<string, string> = {
-        characters: "characters",
-        // Add more mappings as collections are created
-      };
-
-      const collection = collectionMap[categoryId];
+      const collection = categoryToCollection[categoryId];
       
       if (collection) {
         const response = await fetch(`/api/payload/${collection}?where[project][equals]=${projectId}&limit=50`);
@@ -100,7 +162,7 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         if (response.ok) {
           const result = await response.json();
           const entries = result.docs?.map((doc: any) => ({
-            id: doc.id,
+            id: String(doc.id), // Payload numeric ID as string
             name: doc.name || doc.title || `Entry ${doc.id}`,
           })) || [];
           
@@ -109,14 +171,12 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
             [categoryId]: entries,
           }));
         } else {
-          // No entries or collection doesn't exist yet
           setCategoryEntries(prev => ({
             ...prev,
             [categoryId]: [],
           }));
         }
       } else {
-        // Collection not implemented yet
         setCategoryEntries(prev => ({
           ...prev,
           [categoryId]: [],
@@ -143,11 +203,147 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
       newExpanded.delete(categoryId);
     } else {
       newExpanded.add(categoryId);
-      // Fetch entries when expanding
       fetchCategoryEntries(categoryId);
     }
     setExpandedCategories(newExpanded);
     onCategorySelect(categoryId);
+  };
+
+  const handleContextMenu = (
+    e: React.MouseEvent,
+    type: "category" | "entry",
+    categoryId: string,
+    entry?: { id: string; name: string }
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, type, categoryId, entry });
+  };
+
+  const handleDelete = async (categoryId: string, entryId: string) => {
+    const collection = categoryToCollection[categoryId];
+    if (!collection) return;
+
+    if (!confirm("Are you sure you want to delete this entry?")) return;
+
+    try {
+      await fetch(`/api/payload/${collection}/${entryId}`, {
+        method: "DELETE",
+      });
+      refreshCategory(categoryId);
+    } catch (error) {
+      console.error("Failed to delete:", error);
+    }
+  };
+
+  const handleDuplicate = async (categoryId: string, entryId: string) => {
+    const collection = categoryToCollection[categoryId];
+    if (!collection) return;
+
+    try {
+      const res = await fetch(`/api/payload/${collection}/${entryId}`);
+      const original = await res.json();
+
+      const copy = { ...original };
+      delete copy.id;
+      delete copy.createdAt;
+      delete copy.updatedAt;
+      if (copy.name) copy.name = `${copy.name} (Copy)`;
+      if (copy.title) copy.title = `${copy.title} (Copy)`;
+
+      await fetch(`/api/payload/${collection}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(copy),
+      });
+
+      refreshCategory(categoryId);
+    } catch (error) {
+      console.error("Failed to duplicate:", error);
+    }
+  };
+
+  const handleBulkDelete = async (categoryId: string) => {
+    const collection = categoryToCollection[categoryId];
+    if (!collection) return;
+
+    const entries = getEntries(categoryId);
+    if (entries.length === 0) return;
+
+    const categoryName = allCategories.find(c => c.id === categoryId)?.name || categoryId;
+    const confirmed = confirm(
+      `Are you sure you want to delete all ${entries.length} ${categoryName.toLowerCase()}? This action will be versioned.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // Delete all entries in parallel
+      await Promise.all(
+        entries.map(entry =>
+          fetch(`/api/payload/${collection}/${entry.id}`, {
+            method: "DELETE",
+          })
+        )
+      );
+      refreshCategory(categoryId);
+    } catch (error) {
+      console.error("Failed to delete entries:", error);
+      alert("Failed to delete some entries. Please try again.");
+    }
+  };
+
+  const getContextMenuItems = (): ContextMenuItem[] => {
+    if (!contextMenu) return [];
+
+    const { type, categoryId, entry } = contextMenu;
+    const categoryName = allCategories.find(c => c.id === categoryId)?.name || categoryId;
+    const singularName = categoryName.endsWith("s") ? categoryName.slice(0, -1) : categoryName;
+
+    if (type === "category") {
+      const entries = getEntries(categoryId);
+      return [
+        {
+          label: `New ${singularName}`,
+          icon: <Plus className="w-4 h-4" />,
+          onClick: () => setTriggerNewEntry(categoryToEntryType[categoryId] || categoryId),
+        },
+        ...(entries.length > 0 ? [
+          { label: "", onClick: () => {}, divider: true },
+          {
+            label: `Delete All ${categoryName} (${entries.length})`,
+            icon: <Trash2 className="w-4 h-4" />,
+            onClick: () => handleBulkDelete(categoryId),
+            danger: true,
+          },
+        ] : []),
+      ];
+    }
+
+    // Entry context menu
+    return [
+      {
+        label: "Edit",
+        icon: <Edit className="w-4 h-4" />,
+        onClick: () => {
+          if (entry) {
+            setEditEntry({ categoryId, entryId: entry.id });
+          }
+        },
+      },
+      {
+        label: "Duplicate",
+        icon: <Copy className="w-4 h-4" />,
+        onClick: () => entry && handleDuplicate(categoryId, entry.id),
+      },
+      { label: "", onClick: () => {}, divider: true },
+      {
+        label: "Delete",
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => entry && handleDelete(categoryId, entry.id),
+        danger: true,
+      },
+    ];
   };
 
   const isExpanded = (categoryId: string) => expandedCategories.has(categoryId);
@@ -210,7 +406,14 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         <NewEntryMenu
           projectId={projectId}
           isMagicbornMode={isMagicbornMode}
-          onEntryCreated={(category) => refreshCategory(category)}
+          onEntryCreated={(category) => {
+            refreshCategory(category);
+            setEditEntry(null);
+          }}
+          triggerType={triggerNewEntry}
+          onTriggerHandled={() => setTriggerNewEntry(null)}
+          editEntry={editEntry}
+          onEditClosed={() => setEditEntry(null)}
         />
       </div>
 
@@ -220,6 +423,7 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
           <div key={category.id}>
             <button
               onClick={() => toggleCategory(category.id)}
+              onContextMenu={(e) => handleContextMenu(e, "category", category.id)}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
                 selectedCategory === category.id
                   ? "bg-ember/20 border border-ember/30 text-ember-glow"
@@ -244,12 +448,20 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
                   </div>
                 ) : getEntries(category.id).length > 0 ? (
                   getEntries(category.id).map((entry) => (
-                    <button
+                    <div
                       key={entry.id}
-                      className="w-full text-left text-sm text-text-secondary hover:text-ember-glow px-3 py-1 rounded hover:bg-deep/50 truncate"
+                      className="group flex items-center justify-between w-full text-sm text-text-secondary hover:text-ember-glow px-3 py-1 rounded hover:bg-deep/50"
+                      onContextMenu={(e) => handleContextMenu(e, "entry", category.id, entry)}
                     >
-                      {entry.name}
-                    </button>
+                      <span className="truncate flex-1">{entry.name}</span>
+                      <EntryActionsMenu
+                        entry={entry}
+                        categoryId={category.id}
+                        onEdit={() => setEditEntry({ categoryId: category.id, entryId: entry.id })}
+                        onDuplicate={() => handleDuplicate(category.id, entry.id)}
+                        onDelete={() => handleDelete(category.id, entry.id)}
+                      />
+                    </div>
                   ))
                 ) : (
                   <div className="text-sm text-text-muted px-3 py-1 italic">
@@ -284,7 +496,16 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
           Saved
         </button>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={getContextMenuItems()}
+        />
+      )}
     </aside>
   );
 }
-

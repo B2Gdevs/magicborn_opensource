@@ -135,3 +135,16 @@ export const Globals = {
   SidebarConfig: 'sidebar-config',
 } as const
 
+// ============================================
+// CHARACTER FIELD NAMES
+// ============================================
+export const CharacterFields = {
+  Project: 'project',
+  Slug: 'slug',
+  Name: 'name',
+  Description: 'description',
+  Image: 'image',
+  CombatStats: 'combatStats',
+  RuneFamiliarity: 'runeFamiliarity',
+} as const
+

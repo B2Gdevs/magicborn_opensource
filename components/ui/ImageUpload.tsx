@@ -8,12 +8,13 @@ import Image from "next/image";
 
 interface ImageUploadProps {
   currentImagePath?: string;
-  contentType: "spells" | "effects" | "runes" | "characters" | "creatures" | "environments" | "maps";
+  contentType: "spells" | "effects" | "runes" | "characters" | "creatures" | "environments" | "maps" | "regions" | "objects" | "lore";
   entityId?: string;
   onImageUploaded: (imagePath: string) => void;
   onImageDimensions?: (width: number, height: number) => void;
   label?: string;
   disabled?: boolean;
+  compact?: boolean; // Smaller size for dialogs
 }
 
 export function ImageUpload({
@@ -24,6 +25,7 @@ export function ImageUpload({
   onImageDimensions,
   label = "Image",
   disabled = false,
+  compact = false,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -149,8 +151,9 @@ export function ImageUpload({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`
-          relative w-full aspect-square border-2 border-dashed rounded-lg overflow-hidden
+          relative w-full border-2 border-dashed rounded-lg overflow-hidden
           transition-all cursor-pointer
+          ${compact ? "h-32" : "aspect-square"}
           ${isDragging 
             ? "border-ember-glow bg-ember/10 scale-[1.02]" 
             : hasImage 
@@ -202,16 +205,16 @@ export function ImageUpload({
             )}
           </>
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+          <div className={`absolute inset-0 flex flex-col items-center justify-center ${compact ? "p-2" : "p-6"} text-center`}>
             {uploading ? (
-              <div className="space-y-4">
-                <div className="w-16 h-16 border-4 border-ember border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="text-text-secondary font-semibold">Uploading...</p>
+              <div className={compact ? "space-y-2" : "space-y-4"}>
+                <div className={`${compact ? "w-8 h-8 border-2" : "w-16 h-16 border-4"} border-ember border-t-transparent rounded-full animate-spin mx-auto`}></div>
+                <p className={`text-text-secondary font-semibold ${compact ? "text-xs" : ""}`}>Uploading...</p>
               </div>
             ) : (
               <>
                 <svg
-                  className="w-16 h-16 text-text-muted mb-4"
+                  className={`${compact ? "w-8 h-8 mb-1" : "w-16 h-16 mb-4"} text-text-muted`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -223,15 +226,19 @@ export function ImageUpload({
                     d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                   />
                 </svg>
-                <p className="text-text-secondary font-semibold mb-2">
-                  {isDragging ? "Drop image here" : "Click or drag image here"}
+                <p className={`text-text-secondary font-semibold ${compact ? "text-xs mb-1" : "mb-2"}`}>
+                  {isDragging ? "Drop image here" : "Click or drag image"}
                 </p>
-                <p className="text-xs text-text-muted">
-                  PNG, JPEG, WebP, or GIF
-                </p>
-                <p className="text-xs text-text-muted mt-1">
-                  Recommended: WebP for best compression
-                </p>
+                {!compact && (
+                  <>
+                    <p className="text-xs text-text-muted">
+                      PNG, JPEG, WebP, or GIF
+                    </p>
+                    <p className="text-xs text-text-muted mt-1">
+                      Recommended: WebP for best compression
+                    </p>
+                  </>
+                )}
               </>
             )}
           </div>

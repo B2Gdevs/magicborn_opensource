@@ -115,6 +115,7 @@ export function EffectForm({
         onImageUploaded={setImagePath}
         label="Effect Image"
         disabled={saving}
+        compact
       />
 
       {isEdit ? (

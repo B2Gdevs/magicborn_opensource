@@ -3,11 +3,12 @@
 
 import type { CollectionConfig } from 'payload/types'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
+import { Collections, CharacterFields } from '../constants'
 
 export const Characters: CollectionConfig = {
-  slug: 'characters',
+  slug: Collections.Characters,
   admin: {
-    useAsTitle: 'name',
+    useAsTitle: CharacterFields.Name,
   },
   versions: {
     drafts: true,
@@ -38,32 +39,49 @@ export const Characters: CollectionConfig = {
   },
   fields: [
     {
-      name: 'project',
+      name: CharacterFields.Project,
       type: 'relationship',
-      relationTo: 'projects',
+      relationTo: Collections.Projects,
       required: true,
-      // Auto-fill from URL context or user's active project
     },
     {
-      name: 'name',
+      name: CharacterFields.Slug,
+      type: 'text',
+      required: true,
+      unique: true,
+      admin: {
+        description: 'Unique identifier for this character (e.g., "kael", "morgana")',
+      },
+      validate: (value: string) => {
+        if (!value || !value.trim()) {
+          return 'Slug is required'
+        }
+        // Only lowercase letters, numbers, underscores, and hyphens
+        if (!/^[a-z0-9_-]+$/.test(value)) {
+          return 'Slug must contain only lowercase letters, numbers, underscores, and hyphens'
+        }
+        return true
+      },
+    },
+    {
+      name: CharacterFields.Name,
       type: 'text',
       required: true,
     },
     {
-      name: 'description',
+      name: CharacterFields.Description,
       type: 'textarea',
       required: false,
     },
     {
-      name: 'image',
+      name: CharacterFields.Image,
       type: 'upload',
-      relationTo: 'media',
+      relationTo: Collections.Media,
       required: false,
     },
     // Magicborn-specific fields (only shown when project.magicbornMode is true)
-    // These will be conditionally rendered in the UI
     {
-      name: 'combatStats',
+      name: CharacterFields.CombatStats,
       type: 'json',
       required: false,
       admin: {
@@ -71,7 +89,7 @@ export const Characters: CollectionConfig = {
       },
     },
     {
-      name: 'runeFamiliarity',
+      name: CharacterFields.RuneFamiliarity,
       type: 'json',
       required: false,
       admin: {
