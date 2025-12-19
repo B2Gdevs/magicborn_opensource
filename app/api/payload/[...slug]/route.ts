@@ -64,13 +64,13 @@ function normalizeMediaUrl(url: string, filename?: string): string {
       url = urlObj.pathname
     } catch {
       // If URL parsing fails, construct from filename
-      url = filename ? `/api/media/file/${filename}` : ''
+      url = filename ? `/media/${filename}` : ''
     }
   }
   
-  // Ensure it uses /api/media/file/ format if we have a filename
-  if (filename && !url.includes('/api/media/file/')) {
-    url = `/api/media/file/${filename}`
+  // Ensure it uses /media/ format if we have a filename (Payload's staticURL)
+  if (filename && !url.includes('/media/')) {
+    url = `/media/${filename}`
   }
   
   return url
@@ -137,9 +137,9 @@ export async function GET(
             normalizedUrl = mediaDoc.filename ? `/api/media/file/${mediaDoc.filename}` : ''
           }
         }
-        // Ensure it uses /api/media/file/ format
-        if (mediaDoc.filename && !normalizedUrl.includes('/api/media/file/')) {
-          normalizedUrl = `/api/media/file/${mediaDoc.filename}`
+        // Ensure it uses /media/ format (Payload's staticURL)
+        if (mediaDoc.filename && !normalizedUrl.includes('/media/')) {
+          normalizedUrl = `/media/${mediaDoc.filename}`
         }
         return NextResponse.json({ ...mediaDoc, url: normalizedUrl })
       }
@@ -213,7 +213,8 @@ export async function POST(
         const mediaData = media as any
         // Payload returns URLs - normalize to relative path
         // Payload might return absolute URLs with wrong port, so normalize to relative
-        let mediaUrl = mediaData.url || (mediaData.filename ? `/api/media/file/${mediaData.filename}` : '')
+        // Use /media/ format (Payload's staticURL configuration)
+        let mediaUrl = mediaData.url || (mediaData.filename ? `/media/${mediaData.filename}` : '')
         
         // Normalize absolute URLs to relative paths
         if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
@@ -222,13 +223,16 @@ export async function POST(
             mediaUrl = urlObj.pathname
           } catch {
             // If URL parsing fails, construct from filename
-            mediaUrl = mediaData.filename ? `/api/media/file/${mediaData.filename}` : ''
+            mediaUrl = mediaData.filename ? `/media/${mediaData.filename}` : ''
           }
         }
         
-        // Ensure it starts with /api/media/file/ if we have a filename
+        // Ensure it uses /media/ format (Payload's staticURL)
         if (!mediaUrl && mediaData.filename) {
-          mediaUrl = `/api/media/file/${mediaData.filename}`
+          mediaUrl = `/media/${mediaData.filename}`
+        } else if (mediaData.filename && !mediaUrl.includes('/media/')) {
+          // If URL doesn't match expected format, reconstruct it
+          mediaUrl = `/media/${mediaData.filename}`
         }
         
         return NextResponse.json({ 

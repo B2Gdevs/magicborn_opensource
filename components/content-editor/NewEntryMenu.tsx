@@ -162,7 +162,19 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         imageUrl = urlObj.pathname
       } catch {
         // If URL parsing fails, construct from filename
-        imageUrl = payload.image?.filename ? `/api/media/file/${payload.image.filename}` : payload.imagePath
+        // Normalize image URL if present
+      let imageUrl = payload.image?.url || payload.imagePath
+      if (imageUrl && (imageUrl.startsWith('http://localhost') || imageUrl.startsWith('https://'))) {
+        try {
+          const urlObj = new URL(imageUrl)
+          imageUrl = urlObj.pathname
+        } catch {
+          // If URL parsing fails, construct from filename
+          imageUrl = payload.image?.filename ? `/media/${payload.image.filename}` : payload.imagePath
+        }
+      } else if (payload.image?.filename && !imageUrl?.includes('/media/')) {
+        imageUrl = `/media/${payload.image.filename}`
+      }
       }
     }
     

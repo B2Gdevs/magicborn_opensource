@@ -76,8 +76,8 @@ export const MediaUpload = forwardRef<MediaUploadRef, MediaUploadProps>(({
             setPreview(url.startsWith('/') ? url : `/${url}`);
           }
         } else if (data.filename) {
-          // Fallback: construct URL from filename
-          setPreview(`/api/media/file/${data.filename}`);
+          // Fallback: construct URL from filename (Payload's staticURL is /media)
+          setPreview(`/media/${data.filename}`);
         }
         
         return mediaId;
