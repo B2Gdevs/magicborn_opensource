@@ -47,13 +47,14 @@ export function CharacterForm({
   const [controlBonus, setControlBonus] = useState<number | undefined>(initialValues.controlBonus);
   const [costEfficiency, setCostEfficiency] = useState<number | undefined>(initialValues.costEfficiency);
   const [imageMediaId, setImageMediaId] = useState<number | undefined>(
-    typeof (initialValues as any).image === 'number' 
+    initialValues.imageId ||
+    (typeof (initialValues as any).image === 'number' 
       ? (initialValues as any).image 
       : typeof (initialValues as any).image === 'object' && (initialValues as any).image?.id
         ? (initialValues as any).image.id
-        : undefined
+        : undefined)
   );
-  const [imageUrl, setImageUrl] = useState<string | undefined>(initialValues.imagePath);
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const imageUploadRef = useRef<MediaUploadRef>(null);
 
@@ -122,8 +123,8 @@ export function CharacterForm({
       ...(Object.keys(elementAffinity).length > 0 ? { elementAffinity } : {}),
       ...(controlBonus !== undefined ? { controlBonus } : {}),
       ...(costEfficiency !== undefined ? { costEfficiency } : {}),
-      // Include image media ID for Payload (imagePath is kept for backward compatibility)
-      ...(finalImageMediaId ? { image: finalImageMediaId, imagePath: imageUrl } : {}),
+      // Include image media ID for Payload
+      ...(finalImageMediaId ? { imageId: finalImageMediaId } : {}),
     };
   };
 

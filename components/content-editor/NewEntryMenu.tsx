@@ -20,6 +20,7 @@ import type { CreatureDefinition } from "@/lib/data/creatures";
 import type { RuneDef } from "@/lib/packages/runes";
 import type { EffectDefinition } from "@/lib/data/effects";
 import type { NamedSpellBlueprint } from "@/lib/data/namedSpells";
+import type { EffectInstance } from "@core/effects";
 // Using Payload API directly instead of old clients
 
 // Client-safe constants (inline to avoid webpack require issues)
@@ -172,23 +173,49 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
     };
   };
 
-  const payloadToCharacter = (payload: any): Partial<CharacterDefinition> & { image?: number } => {
-    const combatStats = payload.combatStats || {};
+  const payloadToCharacter = (payload: any): Partial<CharacterDefinition> => {
+    // Unmarshal combatStats JSON with proper typing
+    const combatStats = (payload.combatStats || {}) as {
+      hp?: number;
+      maxHp?: number;
+      mana?: number;
+      maxMana?: number;
+      affinity?: Record<string, number>;
+      elementXp?: Record<string, number>;
+      elementAffinity?: Record<string, number>;
+      controlBonus?: number;
+      costEfficiency?: number;
+      effects?: Array<{
+        type: string;
+        magnitude: number;
+        durationSec: number;
+        stacks?: number;
+        appliedAt?: number;
+      }>;
+    };
+    
     return {
       id: payload.slug || payload.id?.toString() || "", // Use slug as ID
       name: payload.name || "",
       description: payload.description || "",
-      hp: combatStats.hp || 0,
-      maxHp: combatStats.maxHp || 0,
-      mana: combatStats.mana || 0,
-      maxMana: combatStats.maxMana || 0,
+      hp: combatStats.hp ?? 0,
+      maxHp: combatStats.maxHp ?? 0,
+      mana: combatStats.mana ?? 0,
+      maxMana: combatStats.maxMana ?? 0,
       affinity: combatStats.affinity || {},
       elementXp: combatStats.elementXp,
       elementAffinity: combatStats.elementAffinity,
       controlBonus: combatStats.controlBonus,
       costEfficiency: combatStats.costEfficiency,
-      imagePath: payload.image?.url || payload.imagePath,
-      image: payload.image?.id || payload.image, // Include media ID for form
+      // Effects stored in Payload - ensure proper typing with defaults
+      effects: (combatStats.effects || []).map((eff: any): EffectInstance => ({
+        type: eff.type,
+        magnitude: eff.magnitude ?? 0,
+        durationSec: eff.durationSec ?? 0,
+        self: eff.self ?? false, // Default to false if not specified
+      })),
+      imageId: typeof payload.image === 'object' ? payload.image?.id : payload.image, // Payload Media ID
+      storyIds: [], // Stories managed separately
     };
   };
 
@@ -215,9 +242,11 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
           ...(character.elementAffinity && { elementAffinity: character.elementAffinity }),
           ...(character.controlBonus !== undefined && { controlBonus: character.controlBonus }),
           ...(character.costEfficiency !== undefined && { costEfficiency: character.costEfficiency }),
+          // Store effects in Payload (properly typed JSON)
+          ...(character.effects && character.effects.length > 0 && { effects: character.effects }),
         },
-        // Include image media ID if provided (from MediaUpload)
-        ...((character as any).image ? { [CHARACTER_FIELDS.Image]: (character as any).image } : {}),
+        // Include image media ID if provided
+        ...(character.imageId ? { [CHARACTER_FIELDS.Image]: character.imageId } : {}),
       };
 
       const url = isEdit 

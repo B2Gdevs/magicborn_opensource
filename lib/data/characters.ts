@@ -14,7 +14,7 @@ import type { EffectInstance } from "@core/effects";
 export interface CharacterDefinition extends CombatActor {
   // Character-specific metadata
   description: string;
-  imagePath?: string; // Path to image in public/game-content/characters/
+  imageId?: number; // Payload Media ID for character image
   storyIds: string[]; // Array of story file names from mordreds_legacy/stories (e.g., ["the-breath-between-footsteps"])
 
   // Player-specific fields (optional, for player-like characters)
