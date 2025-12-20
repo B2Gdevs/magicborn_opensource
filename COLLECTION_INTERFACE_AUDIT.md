@@ -29,26 +29,26 @@ This document tracks the alignment between Payload CMS collections and their cor
 
 ---
 
-### ⚠️ Characters
+### ✅ Characters
 **Payload Collection**: `lib/payload/collections/Characters.ts`
 **Interface**: `lib/data/characters.ts` - `CharacterDefinition`
 
-**Status**: ⚠️ **Misaligned**
+**Status**: ✅ **Aligned** (recently fixed)
 - Payload: `image` (upload relationship → Media)
-- Interface: `imagePath?: string` ❌ (should be `imageId?: number`)
+- Interface: `imageId?: number` ✅
 - Payload: `slug` (unique text field)
-- Interface: Uses `id` (string) - should map to `slug`
-- Payload: `combatStats` (JSON field)
-- Interface: Has individual combat stat fields (hp, maxHp, mana, etc.) - should be nested in `combatStats`
+- Interface: Uses `id` (string) - maps to `slug` in handlers ✅
+- Payload: `combatStats` (JSON field containing hp, maxHp, mana, maxMana, affinity, elementXp, elementAffinity, controlBonus, costEfficiency, effects)
+- Interface: Flat structure extending `CombatActor` ✅ (easily marshals to/from JSON)
 
 **Fields**:
 - Payload: `slug`, `name`, `description`, `image`, `combatStats` (JSON), `runeFamiliarity` (JSON)
-- Interface: `id`, `name`, `description`, `imagePath`, individual combat stats, `storyIds`, `controlBonus`, `costEfficiency`
+- Interface: `id`, `name`, `description`, `imageId`, flat combat stats (hp, maxHp, mana, maxMana, affinity, elementXp, elementAffinity, effects), `storyIds`, `controlBonus`, `costEfficiency`
 
-**Action Required**: 
-- Update `CharacterDefinition` to use `imageId?: number` instead of `imagePath?: string`
-- Map `id` to `slug` field
-- Nest combat stats in `combatStats` object
+**Transformation**:
+- `handleCreateCharacter`: Marshals flat `CharacterDefinition` → nested `combatStats` JSON for Payload
+- `payloadToCharacter`: Unmarshals nested `combatStats` JSON → flat `CharacterDefinition` with proper typing
+- Effects are stored in Payload and properly typed when loaded
 
 ---
 
@@ -150,16 +150,14 @@ This document tracks the alignment between Payload CMS collections and their cor
 
 ### Collections Needing Interface Updates
 
-1. **Characters** (`CharacterDefinition`) - **See `CHARACTERS_COMBAT_STATS_CLARIFICATION.md`**
-   - Change `imagePath?: string` → `imageId?: number`
-   - Map `id` → `slug`
-   - **Combat stats structure needs clarification** - see clarification document
+None! All collections are now aligned. ✅
 
 ### Collections Already Aligned
 
 - ✅ Runes (`RuneDef`) - Fixed
 - ✅ Spells (`NamedSpellBlueprint`) - Fixed
 - ✅ Effects (`EffectDefinition`) - Fixed
+- ✅ Characters (`CharacterDefinition`) - Fixed
 - ✅ Objects - No legacy interface
 - ✅ Lore - No legacy interface
 - ✅ Locations - No legacy interface
