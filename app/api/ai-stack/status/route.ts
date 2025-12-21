@@ -305,19 +305,125 @@ async function checkPostgres(): Promise<ServiceStatus> {
   }
 }
 
+async function checkLMStudio(): Promise<ServiceStatus> {
+  const checkedUrls: string[] = [];
+  try {
+    // LM Studio runs locally on port 1234 (not in Docker)
+    // When checking from Docker, need to use host.docker.internal to reach the host
+    const endpoints = ["/v1/models", "/", "/health"];
+    // Try multiple host options: host.docker.internal (Mac/Windows), 172.17.0.1 (Linux), localhost
+    const hosts = [
+      "http://host.docker.internal:1234", // Docker Desktop (Mac/Windows)
+      "http://172.17.0.1:1234", // Docker default gateway (Linux)
+      "http://127.0.0.1:1234", // Localhost (if not in Docker)
+    ];
+    
+    for (const host of hosts) {
+      for (const endpoint of endpoints) {
+        const url = `${host}${endpoint}`;
+        checkedUrls.push(url);
+        try {
+          const response = await fetch(url, {
+            signal: AbortSignal.timeout(2000),
+          });
+          // Any response (even 404) means the service is running
+          if (response.status < 500) {
+            return {
+              name: "LM Studio",
+              status: "running",
+              url: "http://127.0.0.1:1234",
+              message: "LM Studio is running locally",
+              checkedUrls,
+            };
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+    
+    return { 
+      name: "LM Studio", 
+      status: "stopped", 
+      message: "Not running. Download and run LM Studio locally.",
+      url: "https://lmstudio.ai",
+      checkedUrls,
+    };
+  } catch (error) {
+    return { 
+      name: "LM Studio", 
+      status: "stopped", 
+      message: "Not running. Download and run LM Studio locally.",
+      url: "https://lmstudio.ai",
+      checkedUrls,
+    };
+  }
+}
+
+async function checkOpenWebUI(): Promise<ServiceStatus> {
+  const checkedUrls: string[] = [];
+  try {
+    // OpenWebUI typically runs on port 8080
+    const endpoints = ["/", "/api/v1/health", "/health"];
+    const hosts = ["http://openwebui:8080", "http://localhost:8080"];
+    
+    for (const host of hosts) {
+      for (const endpoint of endpoints) {
+        const url = `${host}${endpoint}`;
+        checkedUrls.push(url);
+        try {
+          const response = await fetch(url, {
+            signal: AbortSignal.timeout(2000),
+          });
+          // Any response (even 404) means the service is running
+          if (response.status < 500) {
+            return {
+              name: "OpenWebUI",
+              status: "running",
+              url: "http://localhost:8080",
+              message: "OpenWebUI is running",
+              checkedUrls,
+            };
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+    
+    return { 
+      name: "OpenWebUI", 
+      status: "stopped", 
+      message: "Not responding",
+      url: "http://localhost:8080",
+      checkedUrls,
+    };
+  } catch (error) {
+    return { 
+      name: "OpenWebUI", 
+      status: "stopped", 
+      message: "Not running or not accessible",
+      url: "http://localhost:8080",
+      checkedUrls,
+    };
+  }
+}
+
 export async function GET() {
   try {
-    const [ollama, n8n, qdrant, docker, postgres, sqlite] = await Promise.all([
+    const [ollama, n8n, qdrant, docker, postgres, sqlite, lmstudio, openwebui] = await Promise.all([
       checkOllama(),
       checkN8n(),
       checkQdrant(),
       checkDocker(),
       checkPostgres(),
       Promise.resolve(checkSQLite()),
+      checkLMStudio(),
+      checkOpenWebUI(),
     ]);
 
     return NextResponse.json({
-      services: [ollama, n8n, qdrant, docker, postgres, sqlite],
+      services: [ollama, n8n, qdrant, docker, postgres, sqlite, lmstudio, openwebui],
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

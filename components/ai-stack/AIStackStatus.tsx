@@ -15,7 +15,9 @@ import {
   Cpu,
   Workflow,
   Box,
-  Server
+  Server,
+  Sparkles,
+  Globe
 } from "lucide-react";
 
 interface ServiceStatus {
@@ -65,7 +67,7 @@ export default function AIStackStatus() {
   const getStatusIcon = (status: ServiceStatus["status"]) => {
     switch (status) {
       case "running":
-        return <CheckCircle2 className="w-5 h-5 text-moss-glow" />;
+        return <CheckCircle2 className="w-5 h-5 text-green-500" />;
       case "stopped":
         return <XCircle className="w-5 h-5 text-red-400" />;
       case "error":
@@ -95,12 +97,14 @@ export default function AIStackStatus() {
     if (name.includes("Docker")) return <Server className="w-5 h-5" />;
     if (name.includes("PostgreSQL")) return <Database className="w-5 h-5" />;
     if (name.includes("SQLite")) return <Database className="w-5 h-5" />;
+    if (name.includes("LM Studio")) return <Sparkles className="w-5 h-5" />;
+    if (name.includes("OpenWebUI")) return <Globe className="w-5 h-5" />;
     return <Server className="w-5 h-5" />;
   };
 
   return (
-    <div className="h-full overflow-y-auto p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="w-full">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
