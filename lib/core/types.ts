@@ -16,10 +16,28 @@ export type RuneCode =
 
 /**
  * Sparse vector of rune weights.
- * Used to describe the normalized “profile” of a spell,
+ * Used to describe the normalized "profile" of a spell,
  * and also rune familiarity on actors.
  */
 export type AlphabetVector = Partial<Record<RuneCode, number>>;
+
+/**
+ * Base entity interface - all game entities share these standardized fields.
+ * This ensures consistent access to id, name, description, image, and landmarkIcon
+ * when querying from the database.
+ */
+export interface BaseEntity {
+  /** Unique identifier (slug) for the entity */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Optional description */
+  description?: string;
+  /** Payload Media ID for the main image */
+  imageId?: number;
+  /** Payload Media ID for the landmark/icon image (used for maps, UI icons, etc.) */
+  landmarkIconId?: number;
+}
 
 /**
  * Base combat actor: both Player and Creature share this.

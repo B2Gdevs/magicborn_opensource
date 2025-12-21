@@ -82,6 +82,7 @@ export interface Config {
     spells: Spell;
     runes: Rune;
     objects: Object;
+    creatures: Creature;
     'project-snapshots': ProjectSnapshot;
     'ai-generations': AiGeneration;
     'payload-kv': PayloadKv;
@@ -106,6 +107,7 @@ export interface Config {
     spells: SpellsSelect<false> | SpellsSelect<true>;
     runes: RunesSelect<false> | RunesSelect<true>;
     objects: ObjectsSelect<false> | ObjectsSelect<true>;
+    creatures: CreaturesSelect<false> | CreaturesSelect<true>;
     'project-snapshots': ProjectSnapshotsSelect<false> | ProjectSnapshotsSelect<true>;
     'ai-generations': AiGenerationsSelect<false> | AiGenerationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -310,12 +312,16 @@ export interface Character {
   id: number;
   project: number | Project;
   /**
-   * Unique identifier for this character (e.g., "kael", "morgana")
+   * Auto-generated unique identifier (e.g., "kael", "morgana"). Generated from name if not provided.
    */
-  slug: string;
+  slug?: string | null;
   name: string;
   description?: string | null;
   image?: (number | null) | Media;
+  /**
+   * Icon/image for map display or UI representation
+   */
+  landmarkIcon?: (number | null) | Media;
   /**
    * Combat stats (only visible when Magicborn Mode is enabled)
    */
@@ -353,7 +359,7 @@ export interface Lore {
   project: number | Project;
   title: string;
   /**
-   * URL-friendly identifier for public pages
+   * Auto-generated URL-friendly identifier. Generated from title if not provided.
    */
   slug?: string | null;
   category: 'history' | 'magic-system' | 'culture' | 'geography' | 'religion' | 'faction';
@@ -381,6 +387,10 @@ export interface Lore {
    */
   isPublic?: boolean | null;
   featuredImage?: (number | null) | Media;
+  /**
+   * Icon/image for map display or UI representation
+   */
+  landmarkIcon?: (number | null) | Media;
   relatedCharacters?: (number | Character)[] | null;
   relatedLocations?: (number | Location)[] | null;
   /**
@@ -403,6 +413,9 @@ export interface Location {
   id: number;
   project: number | Project;
   name: string;
+  /**
+   * Auto-generated unique identifier. Generated from name if not provided.
+   */
   slug?: string | null;
   locationType?: ('region' | 'city' | 'town' | 'village' | 'dungeon' | 'landmark' | 'building') | null;
   description?: {
@@ -518,6 +531,10 @@ export interface StyleGuideEntry {
 export interface Effect {
   id: number;
   /**
+   * Auto-generated unique identifier. Generated from name if not provided.
+   */
+  slug?: string | null;
+  /**
    * Maps to EffectType enum in core/enums
    */
   effectType:
@@ -548,6 +565,10 @@ export interface Effect {
    */
   iconKey?: string | null;
   image?: (number | null) | Media;
+  /**
+   * Icon/image for map display or UI representation
+   */
+  landmarkIcon?: (number | null) | Media;
   blueprint: {
     baseMagnitude: number;
     baseDurationSec: number;
@@ -564,9 +585,9 @@ export interface Effect {
 export interface Spell {
   id: number;
   /**
-   * Unique identifier (e.g., ember_ray)
+   * Auto-generated unique identifier (e.g., ember_ray). Generated from name if not provided.
    */
-  spellId: string;
+  spellId?: string | null;
   name: string;
   description: string;
   /**
@@ -574,6 +595,10 @@ export interface Spell {
    */
   tags?: ('Fire' | 'Ray' | 'Burn' | 'Mind' | 'Debuff' | 'Silence' | 'Water' | 'Shield' | 'Heal')[] | null;
   image?: (number | null) | Media;
+  /**
+   * Icon/image for map display or UI representation
+   */
+  landmarkIcon?: (number | null) | Media;
   /**
    * Array of RuneCode values required for this spell
    */
@@ -667,6 +692,10 @@ export interface Rune {
   id: number;
   project: number | Project;
   /**
+   * Auto-generated unique identifier. Generated from concept if not provided.
+   */
+  slug?: string | null;
+  /**
    * Single letter code (A-Z) for the rune
    */
   code: string;
@@ -674,6 +703,10 @@ export interface Rune {
    * Conceptual name (e.g., "Fire", "Air")
    */
   concept: string;
+  /**
+   * Description of the rune
+   */
+  description?: string | null;
   /**
    * Power multiplier (typically 0.5-1.5)
    */
@@ -754,6 +787,10 @@ export interface Rune {
    * Rune icon/image
    */
   image?: (number | null) | Media;
+  /**
+   * Icon/image for map display or UI representation
+   */
+  landmarkIcon?: (number | null) | Media;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -766,7 +803,7 @@ export interface Object {
   id: number;
   project: number | Project;
   /**
-   * Unique identifier for the object (e.g., "ember-crystal"). Used for API lookups.
+   * Auto-generated unique identifier (e.g., "ember-crystal"). Generated from name if not provided.
    */
   slug?: string | null;
   name: string;
@@ -775,6 +812,10 @@ export interface Object {
   rarity?: ('common' | 'uncommon' | 'rare' | 'epic' | 'legendary') | null;
   image?: (number | null) | Media;
   /**
+   * Icon/image for map display or UI representation
+   */
+  landmarkIcon?: (number | null) | Media;
+  /**
    * Weight of the item
    */
   weight?: number | null;
@@ -782,6 +823,76 @@ export interface Object {
    * Value in gold
    */
   value?: number | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "creatures".
+ */
+export interface Creature {
+  id: number;
+  project: number | Project;
+  /**
+   * Auto-generated unique identifier (e.g., "shadow-beast"). Generated from name if not provided.
+   */
+  slug?: string | null;
+  name: string;
+  description?: string | null;
+  image?: (number | null) | Media;
+  /**
+   * Icon/image for map display or UI representation
+   */
+  landmarkIcon?: (number | null) | Media;
+  /**
+   * Combat stats (HP, Mana, etc.)
+   */
+  combatStats?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Rune familiarity data (only visible when Magicborn Mode is enabled)
+   */
+  runeFamiliarity?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Element XP data (only visible when Magicborn Mode is enabled)
+   */
+  elementXp?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Element affinity data (only visible when Magicborn Mode is enabled)
+   */
+  elementAffinity?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -939,6 +1050,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'objects';
         value: number | Object;
+      } | null)
+    | ({
+        relationTo: 'creatures';
+        value: number | Creature;
       } | null)
     | ({
         relationTo: 'project-snapshots';
@@ -1122,6 +1237,7 @@ export interface CharactersSelect<T extends boolean = true> {
   name?: T;
   description?: T;
   image?: T;
+  landmarkIcon?: T;
   combatStats?: T;
   runeFamiliarity?: T;
   updatedAt?: T;
@@ -1141,6 +1257,7 @@ export interface LoreSelect<T extends boolean = true> {
   excerpt?: T;
   isPublic?: T;
   featuredImage?: T;
+  landmarkIcon?: T;
   relatedCharacters?: T;
   relatedLocations?: T;
   relatedLore?: T;
@@ -1217,6 +1334,7 @@ export interface StyleGuideEntriesSelect<T extends boolean = true> {
  * via the `definition` "effects_select".
  */
 export interface EffectsSelect<T extends boolean = true> {
+  slug?: T;
   effectType?: T;
   name?: T;
   description?: T;
@@ -1225,6 +1343,7 @@ export interface EffectsSelect<T extends boolean = true> {
   maxStacks?: T;
   iconKey?: T;
   image?: T;
+  landmarkIcon?: T;
   blueprint?:
     | T
     | {
@@ -1246,6 +1365,7 @@ export interface SpellsSelect<T extends boolean = true> {
   description?: T;
   tags?: T;
   image?: T;
+  landmarkIcon?: T;
   requiredRunes?: T;
   allowedExtraRunes?: T;
   minDamageFocus?:
@@ -1272,8 +1392,10 @@ export interface SpellsSelect<T extends boolean = true> {
  */
 export interface RunesSelect<T extends boolean = true> {
   project?: T;
+  slug?: T;
   code?: T;
   concept?: T;
+  description?: T;
   powerFactor?: T;
   controlFactor?: T;
   instabilityBase?: T;
@@ -1286,6 +1408,7 @@ export interface RunesSelect<T extends boolean = true> {
   overchargeEffects?: T;
   dotAffinity?: T;
   image?: T;
+  landmarkIcon?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1302,8 +1425,28 @@ export interface ObjectsSelect<T extends boolean = true> {
   type?: T;
   rarity?: T;
   image?: T;
+  landmarkIcon?: T;
   weight?: T;
   value?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "creatures_select".
+ */
+export interface CreaturesSelect<T extends boolean = true> {
+  project?: T;
+  slug?: T;
+  name?: T;
+  description?: T;
+  image?: T;
+  landmarkIcon?: T;
+  combatStats?: T;
+  runeFamiliarity?: T;
+  elementXp?: T;
+  elementAffinity?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;

@@ -1,11 +1,17 @@
 // components/region/RegionForm.tsx
-// Form for creating/editing regions (locations)
+// Form for creating/editing regions (locations) with React Hook Form
 
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { GridSelector } from "@components/ui/GridSelector";
 import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
+import { BasicInfoSection } from "@components/ui/BasicInfoSection";
+import { useIdValidation } from "@/lib/hooks/useIdValidation";
+import { MapPin, User } from "lucide-react";
 
 // Client-safe constants
 const COLLECTIONS = {
@@ -41,6 +47,7 @@ interface RegionFormProps {
     saving?: boolean;
     submitLabel?: string;
     projectId?: string; // For fetching parent regions
+    editEntryId?: number;
 }
 
 const REGION_TYPES = [
@@ -53,6 +60,107 @@ const REGION_TYPES = [
     { value: "room", label: "Room" },
 ] as const;
 
+// Validation schema
+const regionSchema = z.object({
+    id: z.string().min(1, "ID is required").regex(/^[a-z0-9_-]+$/, "ID must be lowercase letters, numbers, underscores, and hyphens only"),
+    name: z.string().min(1, "Name is required"),
+    description: z.string().optional().default(""),
+    type: z.enum(["world", "continent", "region", "city", "district", "building", "room"]).default("region"),
+    parentLocation: z.number().optional(),
+    level: z.number().min(0).default(0),
+    climate: z.string().optional(),
+    terrain: z.string().optional(),
+    population: z.string().optional(),
+    imageMediaId: z.number().optional(),
+    landmarkIconMediaId: z.number().optional(),
+});
+
+type RegionFormDataInput = z.infer<typeof regionSchema>;
+
+// Helper to convert name to ID
+function nameToId(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+
+// Check ID uniqueness
+async function checkIdUniqueness(
+    id: string,
+    projectId?: string,
+    excludeId?: number
+): Promise<{ isUnique: boolean; error?: string }> {
+    if (!id.trim()) {
+        return { isUnique: true };
+    }
+
+    const normalizedId = id.trim().toLowerCase();
+
+    try {
+        const queryParts: string[] = [];
+        queryParts.push(`where[slug][equals]=${encodeURIComponent(normalizedId)}`);
+        
+        if (projectId) {
+            const projectIdNum = typeof projectId === 'string' ? parseInt(projectId, 10) : projectId;
+            if (!isNaN(projectIdNum)) {
+                queryParts.push(`where[project][equals]=${projectIdNum}`);
+            }
+        }
+        
+        if (excludeId) {
+            queryParts.push(`where[id][not_equals]=${excludeId}`);
+        }
+        
+        queryParts.push('limit=1');
+        
+        const queryString = queryParts.join('&');
+        const url = `/api/payload/locations?${queryString}`;
+        
+        const res = await fetch(url);
+        
+        if (!res.ok) {
+            return { isUnique: true };
+        }
+        
+        const data = await res.json();
+        const docs = data.docs || data.results || (Array.isArray(data) ? data : []);
+        
+        if (!Array.isArray(docs) || docs.length === 0) {
+            return { isUnique: true };
+        }
+        
+        const matchingDoc = docs.find((doc: any) => {
+            const docSlug = doc.slug?.toLowerCase()?.trim();
+            return docSlug === normalizedId;
+        });
+        
+        if (matchingDoc) {
+            return { 
+                isUnique: false, 
+                error: `A region with ID "${id}" already exists${projectId ? ' in this project' : ''}. Please choose a different ID.` 
+            };
+        }
+        
+        return { isUnique: true };
+    } catch (error) {
+        console.error("Error checking ID uniqueness:", error);
+        return { isUnique: true };
+    }
+}
+
+// Form sections for sidebar navigation
+type FormSection = "basic" | "properties" | "grid";
+
+// Get form sections
+const getFormSections = (): Array<{ id: FormSection; label: string; icon: typeof User }> => {
+    return [
+        { id: "basic", label: "Basic Info", icon: User },
+        { id: "properties", label: "Region Properties", icon: MapPin },
+        { id: "grid", label: "Grid Placement", icon: MapPin },
+    ];
+};
+
 export function RegionForm({
     initialValues = {},
     isEdit = false,
@@ -61,43 +169,131 @@ export function RegionForm({
     saving = false,
     submitLabel,
     projectId,
+    editEntryId,
 }: RegionFormProps) {
-    const [name, setName] = useState(initialValues.name || "");
-    const [description, setDescription] = useState(initialValues.description || "");
-    const [type, setType] = useState<RegionFormData["type"]>(initialValues.type || "region");
-    const [parentLocation, setParentLocation] = useState<number | undefined>(
-        typeof initialValues.parentLocation === 'number' ? initialValues.parentLocation : undefined
+    const [activeSection, setActiveSection] = useState<FormSection>("basic");
+    const [imageMediaId, setImageMediaId] = useState<number | undefined>(
+        typeof initialValues.featuredImage === 'number'
+            ? initialValues.featuredImage
+            : typeof initialValues.featuredImage === 'object' && initialValues.featuredImage && 'id' in initialValues.featuredImage
+                ? (initialValues.featuredImage as { id: number }).id
+                : undefined
     );
-    const [level, setLevel] = useState(initialValues.level ?? (initialValues.parentLocation ? 1 : 0));
+    const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+    const [landmarkIconMediaId, setLandmarkIconMediaId] = useState<number | undefined>(
+        typeof initialValues.landmarkIcon === 'number'
+            ? initialValues.landmarkIcon
+            : typeof initialValues.landmarkIcon === 'object' && initialValues.landmarkIcon && 'id' in initialValues.landmarkIcon
+                ? (initialValues.landmarkIcon as { id: number }).id
+                : undefined
+    );
+    const [landmarkIconUrl, setLandmarkIconUrl] = useState<string | undefined>(undefined);
+    const imageUploadRef = useRef<MediaUploadRef | null>(null);
+    const landmarkIconUploadRef = useRef<MediaUploadRef | null>(null);
+    
+    // Grid and parent region state (not in form schema, managed separately)
     const [minX, setMinX] = useState(initialValues.gridCells?.minX ?? 0);
     const [minY, setMinY] = useState(initialValues.gridCells?.minY ?? 0);
     const [width, setWidth] = useState(initialValues.gridCells?.width ?? 1);
     const [height, setHeight] = useState(initialValues.gridCells?.height ?? 1);
-    const [landmarkIconId, setLandmarkIconId] = useState<number | undefined>(
-        typeof initialValues.landmarkIcon === 'number'
-            ? initialValues.landmarkIcon
-            : typeof initialValues.landmarkIcon === 'object' && initialValues.landmarkIcon?.id
-                ? initialValues.landmarkIcon.id
-                : undefined
-    );
-    const [landmarkIconUrl, setLandmarkIconUrl] = useState<string | undefined>(undefined);
-    const [featuredImageId, setFeaturedImageId] = useState<number | undefined>(
-        typeof initialValues.featuredImage === 'number'
-            ? initialValues.featuredImage
-            : typeof initialValues.featuredImage === 'object' && initialValues.featuredImage?.id
-                ? initialValues.featuredImage.id
-                : undefined
-    );
-    const [featuredImageUrl, setFeaturedImageUrl] = useState<string | undefined>(undefined);
-    const [climate, setClimate] = useState(initialValues.climate || "");
-    const [terrain, setTerrain] = useState(initialValues.terrain || "");
-    const [population, setPopulation] = useState(initialValues.population || "");
     const [parentRegions, setParentRegions] = useState<Array<{ id: number; name: string; level: number }>>([]);
     const [occupiedCells, setOccupiedCells] = useState<Set<string>>(new Set());
     const [gridValidationError, setGridValidationError] = useState<string | null>(null);
-    const formRef = useRef<HTMLFormElement>(null);
-    const featuredImageUploadRef = useRef<MediaUploadRef>(null);
-    const landmarkIconUploadRef = useRef<MediaUploadRef>(null);
+
+    // Initialize ID from initial values or generate from name
+    const initialId = initialValues.id || (initialValues.name ? nameToId(initialValues.name) : "");
+
+    const form = useForm({
+        resolver: zodResolver(regionSchema),
+        defaultValues: {
+            id: initialId,
+            name: initialValues.name || "",
+            description: initialValues.description || "",
+            type: initialValues.type || "region",
+            parentLocation: typeof initialValues.parentLocation === 'number' ? initialValues.parentLocation : undefined,
+            level: initialValues.level ?? (initialValues.parentLocation ? 1 : 0),
+            climate: initialValues.climate || "",
+            terrain: initialValues.terrain || "",
+            population: initialValues.population || "",
+            imageMediaId,
+            landmarkIconMediaId,
+        },
+    });
+
+    const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = form;
+    const name = watch("name");
+    const id = watch("id");
+    const parentLocation = watch("parentLocation");
+
+    // Use reusable ID validation hook
+    const { idValidation, validatingId } = useIdValidation({
+        id,
+        isEdit,
+        projectId,
+        editEntryId,
+        checkIdUniqueness,
+        setError,
+        clearErrors,
+    });
+
+    // Fetch image URLs when editing
+    useEffect(() => {
+        if (imageMediaId && isEdit) {
+            fetch(`/api/payload/${COLLECTIONS.Media}/${imageMediaId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.url) {
+                        const url = data.url;
+                        if (url.startsWith('http://localhost') || url.startsWith('https://')) {
+                            try {
+                                const urlObj = new URL(url);
+                                setImageUrl(urlObj.pathname);
+                            } catch {
+                                setImageUrl(url);
+                            }
+                        } else {
+                            setImageUrl(url.startsWith('/') ? url : `/${url}`);
+                        }
+                    }
+                })
+                .catch(err => console.error("Failed to fetch image:", err));
+        } else if (!imageMediaId) {
+            setImageUrl(undefined);
+        }
+    }, [imageMediaId, isEdit]);
+
+    useEffect(() => {
+        if (landmarkIconMediaId && isEdit) {
+            fetch(`/api/payload/${COLLECTIONS.Media}/${landmarkIconMediaId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.url) {
+                        const url = data.url;
+                        if (url.startsWith('http://localhost') || url.startsWith('https://')) {
+                            try {
+                                const urlObj = new URL(url);
+                                setLandmarkIconUrl(urlObj.pathname);
+                            } catch {
+                                setLandmarkIconUrl(url);
+                            }
+                        } else {
+                            setLandmarkIconUrl(url.startsWith('/') ? url : `/${url}`);
+                        }
+                    }
+                })
+                .catch(err => console.error("Failed to fetch landmark icon:", err));
+        } else if (!landmarkIconMediaId) {
+            setLandmarkIconUrl(undefined);
+        }
+    }, [landmarkIconMediaId, isEdit]);
+
+    // Auto-generate ID from name
+    useEffect(() => {
+        if (!isEdit && name && !id) {
+            const generatedId = nameToId(name);
+            setValue("id", generatedId);
+        }
+    }, [name, isEdit, id, setValue]);
 
     // Fetch parent regions and calculate occupied cells
     useEffect(() => {
@@ -115,7 +311,7 @@ export function RegionForm({
                     // Calculate occupied cells for regions with the same parent (or no parent if this is top-level)
                     const occupied = new Set<string>();
                     const currentParentId = parentLocation || null;
-                    const currentEditId = isEdit ? (initialValues as any)?.id : null;
+                    const currentEditId = isEdit ? editEntryId : null;
 
                     data.docs?.forEach((doc: any) => {
                         // Skip current region being edited
@@ -143,72 +339,20 @@ export function RegionForm({
                 })
                 .catch(err => console.error("Failed to fetch parent regions:", err));
         }
-    }, [projectId, parentLocation, isEdit, initialValues]);
+    }, [projectId, parentLocation, isEdit, editEntryId]);
 
     // Auto-calculate level from parent
     useEffect(() => {
         if (parentLocation) {
             const parent = parentRegions.find(r => r.id === parentLocation);
             if (parent) {
-                setLevel(parent.level + 1);
+                setValue("level", parent.level + 1);
             }
         } else {
-            setLevel(0);
+            setValue("level", 0);
         }
-    }, [parentLocation, parentRegions]);
+    }, [parentLocation, parentRegions, setValue]);
 
-    // Fetch media URLs when editing (only on mount, not after uploads)
-    useEffect(() => {
-        if (landmarkIconId) {
-            fetch(`/api/payload/${COLLECTIONS.Media}/${landmarkIconId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.url) {
-                        // Normalize URL
-                        const url = data.url;
-                        if (url.startsWith('http://localhost') || url.startsWith('https://')) {
-                            try {
-                                const urlObj = new URL(url);
-                                setLandmarkIconUrl(urlObj.pathname);
-                            } catch {
-                                setLandmarkIconUrl(url);
-                            }
-                        } else {
-                            setLandmarkIconUrl(url.startsWith('/') ? url : `/${url}`);
-                        }
-                    }
-                })
-                .catch(err => console.error("Failed to fetch landmark icon:", err));
-        } else {
-            setLandmarkIconUrl(undefined);
-        }
-    }, [landmarkIconId]);
-
-    useEffect(() => {
-        if (featuredImageId) {
-            fetch(`/api/payload/${COLLECTIONS.Media}/${featuredImageId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.url) {
-                        // Normalize URL
-                        const url = data.url;
-                        if (url.startsWith('http://localhost') || url.startsWith('https://')) {
-                            try {
-                                const urlObj = new URL(url);
-                                setFeaturedImageUrl(urlObj.pathname);
-                            } catch {
-                                setFeaturedImageUrl(url);
-                            }
-                        } else {
-                            setFeaturedImageUrl(url.startsWith('/') ? url : `/${url}`);
-                        }
-                    }
-                })
-                .catch(err => console.error("Failed to fetch featured image:", err));
-        } else {
-            setFeaturedImageUrl(undefined);
-        }
-    }, [featuredImageId]);
 
     // Validate grid selection for overlaps
     const validateGridSelection = (): string | null => {
@@ -241,273 +385,315 @@ export function RegionForm({
         return null;
     };
 
-    // Validate and prepare region data
-    const prepareRegion = async (): Promise<RegionFormData | null> => {
-        if (!name.trim()) {
-            alert("Name is required");
-            return null;
+    // Scroll to section when active section changes
+    useEffect(() => {
+        const sectionElement = document.getElementById(`section-${activeSection}`);
+        if (sectionElement) {
+            sectionElement.scrollIntoView({ behavior: "smooth", block: "start" });
         }
+    }, [activeSection]);
 
+    // Track active section based on scroll position
+    const formContentRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const formContent = formContentRef.current;
+        if (!formContent) return;
+
+        const handleScroll = () => {
+            const sections = getFormSections();
+            const scrollPosition = formContent.scrollTop + 100; // Offset for sticky header
+
+            for (let i = sections.length - 1; i >= 0; i--) {
+                const section = sections[i];
+                const element = document.getElementById(`section-${section.id}`);
+                if (element && formContent.contains(element)) {
+                    const offsetTop = element.offsetTop - formContent.offsetTop;
+                    if (scrollPosition >= offsetTop) {
+                        setActiveSection(section.id);
+                        break;
+                    }
+                }
+            }
+        };
+
+        formContent.addEventListener("scroll", handleScroll);
+        return () => formContent.removeEventListener("scroll", handleScroll);
+    }, []);
+
+    const sections = getFormSections();
+
+    const onSubmitForm = async (data: RegionFormDataInput) => {
         // Validate grid cells
         const gridError = validateGridSelection();
         if (gridError) {
             alert(gridError);
             setGridValidationError(gridError);
-            return null;
+            return;
         }
         setGridValidationError(null);
 
-        // Upload pending images before submitting
-        let finalFeaturedImageId = featuredImageId;
-        let finalLandmarkIconId = landmarkIconId;
+        // Check ID validation one more time before submitting
+        if (!isEdit && idValidation && !idValidation.isUnique) {
+            alert(idValidation.error || "ID validation failed. Please choose a different ID.");
+            return;
+        }
 
+        // Upload pending images before submitting
+        let finalImageMediaId = imageMediaId;
+        let finalLandmarkIconMediaId = landmarkIconMediaId;
         try {
-            if (featuredImageUploadRef.current) {
-                const uploadedId = await featuredImageUploadRef.current.uploadFile();
+            if (imageUploadRef.current) {
+                const uploadedId = await imageUploadRef.current.uploadFile();
                 if (uploadedId) {
-                    finalFeaturedImageId = uploadedId;
+                    finalImageMediaId = uploadedId;
                 }
             }
             if (landmarkIconUploadRef.current) {
                 const uploadedId = await landmarkIconUploadRef.current.uploadFile();
                 if (uploadedId) {
-                    finalLandmarkIconId = uploadedId;
+                    finalLandmarkIconMediaId = uploadedId;
                 }
             }
         } catch (error) {
             alert(`Failed to upload images: ${error instanceof Error ? error.message : "Unknown error"}`);
-            return null;
+            return;
         }
 
-        return {
-            name: name.trim(),
-            description: description.trim() || undefined,
-            type,
-            parentLocation: parentLocation || undefined,
-            level,
+        const regionData: RegionFormData = {
+            id: data.id.trim(),
+            name: data.name.trim(),
+            description: data.description?.trim() || undefined,
+            type: data.type,
+            parentLocation: data.parentLocation,
+            level: data.level,
             gridCells: {
                 minX,
                 minY,
                 width,
                 height,
             },
-            landmarkIcon: finalLandmarkIconId,
-            featuredImage: finalFeaturedImageId,
-            climate: climate.trim() || undefined,
-            terrain: terrain.trim() || undefined,
-            population: population.trim() || undefined,
+            landmarkIcon: finalLandmarkIconMediaId,
+            featuredImage: finalImageMediaId,
+            climate: data.climate?.trim() || undefined,
+            terrain: data.terrain?.trim() || undefined,
+            population: data.population?.trim() || undefined,
         };
+
+        onSubmit(regionData);
     };
 
-    // Expose validation function for external submission (used by footer)
-    useEffect(() => {
-        if (formRef.current) {
-            (formRef.current as any).validateAndSubmit = async () => {
-                const region = await prepareRegion();
-                if (region) {
-                    onSubmit(region);
-                }
-            };
-        }
-    }, [name, description, type, parentLocation, level, minX, minY, width, height, landmarkIconId, featuredImageId, climate, terrain, population, onSubmit]);
-
     return (
-        <form ref={formRef} className="space-y-4">
-            {/* Region Image - Compact */}
-            <div>
-                <MediaUpload
-                    ref={featuredImageUploadRef}
-                    currentMediaId={featuredImageId}
-                    currentMediaUrl={featuredImageUrl}
-                    onMediaUploaded={(mediaId) => {
-                        setFeaturedImageId(mediaId);
-                        if (!mediaId) {
-                            setFeaturedImageUrl(undefined);
-                        }
-                    }}
-                    label="Region Image"
-                    disabled={saving}
-                    compact
-                />
-            </div>
+        <div className="flex h-full">
+            {/* Sidebar Navigation */}
+            <aside className="w-64 border-r border-border bg-shadow flex-shrink-0">
+                <nav className="p-4 space-y-1 sticky top-0">
+                    {sections.map((section) => {
+                        const Icon = section.icon;
+                        const isActive = activeSection === section.id;
+                        return (
+                            <button
+                                key={section.id}
+                                onClick={() => setActiveSection(section.id)}
+                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                                    isActive
+                                        ? "bg-deep text-ember-glow"
+                                        : "text-text-muted hover:text-text-primary hover:bg-deep/50"
+                                }`}
+                            >
+                                <Icon className="w-4 h-4" />
+                                <span className="text-sm font-medium">{section.label}</span>
+                            </button>
+                        );
+                    })}
+                </nav>
+            </aside>
 
-            {/* Landmark Icon - Compact */}
-            <div>
-                <MediaUpload
-                    ref={landmarkIconUploadRef}
-                    currentMediaId={landmarkIconId}
-                    currentMediaUrl={landmarkIconUrl}
-                    onMediaUploaded={(mediaId) => {
-                        setLandmarkIconId(mediaId);
-                        if (!mediaId) {
-                            setLandmarkIconUrl(undefined);
-                        }
-                    }}
-                    label="Landmark Icon"
-                    disabled={saving}
-                    compact
-                />
-                <p className="text-xs text-text-muted mt-1">
-                    Icon displayed on the map for this region
-                </p>
-            </div>
-
-            <div>
-                <label className="block text-sm font-semibold text-text-secondary mb-1">
-                    Name <span className="text-ember">*</span>
-                </label>
-                <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-                    placeholder="e.g., The Ember Wastes"
-                    required
-                />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-                <div>
-                    <label className="block text-sm font-semibold text-text-secondary mb-1">
-                        Type
-                    </label>
-                    <select
-                        value={type}
-                        onChange={(e) => setType(e.target.value as RegionFormData["type"])}
-                        className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-                    >
-                        {REGION_TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold text-text-secondary mb-1">
-                        Level
-                    </label>
-                    <input
-                        type="number"
-                        min="0"
-                        value={level}
-                        onChange={(e) => setLevel(parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-                        title="Hierarchy level (0 = world, 1 = continent, etc.)"
+            {/* Form Content */}
+            <div ref={formContentRef} className="flex-1 overflow-y-auto">
+                <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
+                    {/* Basic Info Section */}
+                    <BasicInfoSection
+                        register={register}
+                        watch={watch}
+                        setValue={setValue}
+                        errors={errors}
+                        idValue={id}
+                        idPlaceholder="e.g., ember-wastes"
+                        isEdit={isEdit}
+                        idValidation={idValidation}
+                        validatingId={validatingId}
+                        onIdChange={(newId) => {
+                            setValue("id", newId);
+                        }}
+                        nameValue={name}
+                        namePlaceholder="e.g., The Ember Wastes"
+                        autoGenerateIdFromName={true}
+                        descriptionValue={watch("description") || ""}
+                        descriptionPlaceholder="A vast desert of crimson sand..."
+                        imageMediaId={imageMediaId}
+                        imageUrl={imageUrl}
+                        onImageUploaded={(mediaId) => {
+                            setImageMediaId(mediaId);
+                            setValue("imageMediaId", mediaId);
+                            if (!mediaId) {
+                                setImageUrl(undefined);
+                            }
+                        }}
+                        imageUploadRef={imageUploadRef}
+                        landmarkIconMediaId={landmarkIconMediaId}
+                        landmarkIconUrl={landmarkIconUrl}
+                        onLandmarkIconUploaded={(mediaId) => {
+                            setLandmarkIconMediaId(mediaId);
+                            setValue("landmarkIconMediaId", mediaId);
+                            if (!mediaId) {
+                                setLandmarkIconUrl(undefined);
+                            }
+                        }}
+                        landmarkIconUploadRef={landmarkIconUploadRef}
+                        showLandmarkIcon={true}
+                        saving={saving}
+                        projectId={projectId}
+                        editEntryId={editEntryId}
                     />
-                </div>
+
+                    {/* Region-Specific Fields */}
+                    <section id="section-properties" className="space-y-4">
+                        <div className="flex items-center gap-2 mb-4">
+                            <MapPin className="w-5 h-5 text-ember-glow" />
+                            <h2 className="text-xl font-bold text-glow">Region Properties</h2>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+                                    <span>Type</span>
+                                </label>
+                                <select
+                                    {...register("type")}
+                                    className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+                                >
+                                    {REGION_TYPES.map((t) => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+                                    <span>Level</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    {...register("level", { valueAsNumber: true })}
+                                    className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+                                    title="Hierarchy level (0 = world, 1 = continent, etc.)"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+                                <span>Parent Region</span>
+                            </label>
+                            <select
+                                {...register("parentLocation", { 
+                                    setValueAs: (v) => v === "" ? undefined : parseInt(v, 10)
+                                })}
+                                className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+                            >
+                                <option value="">None (Top Level)</option>
+                                {parentRegions
+                                    .filter(r => !isEdit || r.id !== editEntryId)
+                                    .map((region) => (
+                                        <option key={region.id} value={region.id}>
+                                            {region.name} (Level {region.level})
+                                        </option>
+                                    ))}
+                            </select>
+                            <p className="text-xs text-text-muted mt-1">
+                                Select a parent region to create a nested/hierarchical structure
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+                                    <span>Climate</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    {...register("climate")}
+                                    className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+                                    placeholder="e.g., Arid"
+                                />
+                            </div>
+                            <div>
+                                <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+                                    <span>Terrain</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    {...register("terrain")}
+                                    className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+                                    placeholder="e.g., Desert"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+                                <span>Population</span>
+                            </label>
+                            <input
+                                type="text"
+                                {...register("population")}
+                                className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
+                                placeholder="e.g., Sparse nomadic tribes"
+                            />
+                        </div>
+                    </section>
+
+                    {/* Grid Cell Coordinates */}
+                    <section id="section-grid" className="space-y-4 border-t border-border pt-4">
+                        <div className="flex items-center gap-2 mb-4">
+                            <MapPin className="w-5 h-5 text-ember-glow" />
+                            <h2 className="text-xl font-bold text-glow">Grid Placement</h2>
+                        </div>
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-glow">8×8 Grid</h3>
+                            {occupiedCells.size > 0 && (
+                                <span className="text-xs text-text-muted">
+                                    {occupiedCells.size} cell{occupiedCells.size !== 1 ? 's' : ''} occupied
+                                </span>
+                            )}
+                        </div>
+                        <GridSelector
+                            minX={minX}
+                            minY={minY}
+                            width={width}
+                            height={height}
+                            onSelectionChange={(newMinX, newMinY, newWidth, newHeight) => {
+                                setMinX(newMinX);
+                                setMinY(newMinY);
+                                setWidth(newWidth);
+                                setHeight(newHeight);
+                                setGridValidationError(null); // Clear error on change
+                            }}
+                            disabled={saving}
+                            gridSize={8}
+                            occupiedCells={occupiedCells}
+                            currentEditId={editEntryId}
+                        />
+                        {gridValidationError && (
+                            <p className="text-xs text-red-400 mt-2">{gridValidationError}</p>
+                        )}
+                        <p className="text-xs text-text-muted mt-2">
+                            Red cells are occupied. Select only vacant cells.
+                        </p>
+                    </section>
+                </form>
             </div>
-
-            <div>
-                <label className="block text-sm font-semibold text-text-secondary mb-1">
-                    Parent Region
-                </label>
-                <select
-                    value={parentLocation || ""}
-                    onChange={(e) => setParentLocation(e.target.value ? parseInt(e.target.value) : undefined)}
-                    className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-                >
-                    <option value="">None (Top Level)</option>
-                    {parentRegions
-                        .filter(r => !isEdit || r.id !== (initialValues as any)?.id)
-                        .map((region) => (
-                            <option key={region.id} value={region.id}>
-                                {region.name} (Level {region.level})
-                            </option>
-                        ))}
-                </select>
-                <p className="text-xs text-text-muted mt-1">
-                    Select a parent region to create a nested/hierarchical structure
-                </p>
-            </div>
-
-            <div>
-                <label className="block text-sm font-semibold text-text-secondary mb-1">
-                    Description
-                </label>
-                <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary min-h-[80px]"
-                    placeholder="A vast desert of crimson sand..."
-                />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-                <div>
-                    <label className="block text-sm font-semibold text-text-secondary mb-1">
-                        Climate
-                    </label>
-                    <input
-                        type="text"
-                        value={climate}
-                        onChange={(e) => setClimate(e.target.value)}
-                        className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-                        placeholder="e.g., Arid"
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold text-text-secondary mb-1">
-                        Terrain
-                    </label>
-                    <input
-                        type="text"
-                        value={terrain}
-                        onChange={(e) => setTerrain(e.target.value)}
-                        className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-                        placeholder="e.g., Desert"
-                    />
-                </div>
-            </div>
-
-            <div>
-                <label className="block text-sm font-semibold text-text-secondary mb-1">
-                    Population
-                </label>
-                <input
-                    type="text"
-                    value={population}
-                    onChange={(e) => setPopulation(e.target.value)}
-                    className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-                    placeholder="e.g., Sparse nomadic tribes"
-                />
-            </div>
-
-            {/* Grid Cell Coordinates */}
-            <div className="border-t border-border pt-4">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-glow">Grid Placement (8×8 Grid)</h3>
-                    {occupiedCells.size > 0 && (
-                        <span className="text-xs text-text-muted">
-                            {occupiedCells.size} cell{occupiedCells.size !== 1 ? 's' : ''} occupied
-                        </span>
-                    )}
-                </div>
-                <GridSelector
-                    minX={minX}
-                    minY={minY}
-                    width={width}
-                    height={height}
-                    onSelectionChange={(newMinX, newMinY, newWidth, newHeight) => {
-                        setMinX(newMinX);
-                        setMinY(newMinY);
-                        setWidth(newWidth);
-                        setHeight(newHeight);
-                        setGridValidationError(null); // Clear error on change
-                    }}
-                    disabled={saving}
-                    gridSize={8}
-                    occupiedCells={occupiedCells}
-                    currentEditId={(initialValues as any)?.id}
-                />
-                {gridValidationError && (
-                    <p className="text-xs text-red-400 mt-2">{gridValidationError}</p>
-                )}
-                <p className="text-xs text-text-muted mt-2">
-                    Red cells are occupied. Select only vacant cells.
-                </p>
-            </div>
-
-
-        </form>
+        </div>
     );
 }
 
@@ -525,10 +711,9 @@ export function RegionFormFooter({
     onSubmit: () => void;
 }) {
     const handleSubmit = async () => {
-        // Find the form and call its validateAndSubmit method
-        const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
-        if (form?.validateAndSubmit) {
-            await form.validateAndSubmit();
+        const form = document.querySelector('form') as HTMLFormElement;
+        if (form) {
+            form.requestSubmit();
         } else {
             onSubmit();
         }

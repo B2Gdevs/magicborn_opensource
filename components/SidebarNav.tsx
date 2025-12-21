@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Home,
   BookOpen,
@@ -48,7 +48,7 @@ import {
   Pencil,
   type LucideIcon,
 } from "lucide-react";
-import { SiDiscord, SiGithub, SiTwitter, SiYoutube, SiTwitch, SiInstagram, SiTiktok, SiLinkedin, SiReddit, SiPatreon } from "react-icons/si";
+import { SiDiscord, SiGithub, SiX, SiYoutube, SiTwitch, SiInstagram, SiTiktok, SiLinkedin, SiReddit, SiPatreon } from "react-icons/si";
 import { SidebarEditor } from "./sidebar/SidebarEditor";
 
 // Icon mapping
@@ -62,7 +62,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 const SOCIAL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   discord: SiDiscord,
   github: SiGithub,
-  twitter: SiTwitter,
+  twitter: SiX,
   youtube: SiYoutube,
   twitch: SiTwitch,
   instagram: SiInstagram,
@@ -131,6 +131,29 @@ export default function SidebarNav() {
   const [canEdit, setCanEdit] = useState(false);
   const [showEditButton, setShowEditButton] = useState(false);
 
+  // Check auth status
+  const checkAuth = useCallback(async () => {
+    try {
+      const res = await fetch("/api/payload/users/me");
+      if (res.ok) {
+        const data = await res.json();
+        // Check various response structures
+        const user = data?.user || data;
+        const role = user?.role;
+        const isSuperuser = user?.isSuperuser;
+        if (isSuperuser || (role && ['superuser', 'editor'].includes(role))) {
+          setCanEdit(true);
+        } else {
+          setCanEdit(false);
+        }
+      } else {
+        setCanEdit(false);
+      }
+    } catch {
+      setCanEdit(false);
+    }
+  }, []);
+
   // Fetch sidebar config
   useEffect(() => {
     fetch("/api/payload/globals/sidebar-config")
@@ -148,20 +171,26 @@ export default function SidebarNav() {
       })
       .catch(() => {});
 
-    // Check if user can edit
-    fetch("/api/payload/users/me")
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        // Check various response structures
-        const user = data?.user || data;
-        const role = user?.role;
-        const isSuperuser = user?.isSuperuser;
-        if (isSuperuser || (role && ['superuser', 'editor'].includes(role))) {
-          setCanEdit(true);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    // Initial auth check
+    checkAuth();
+
+    // Listen for auth changes from other components
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+    window.addEventListener('auth-changed', handleAuthChange);
+    
+    // Also re-check on window focus as a fallback
+    const handleFocus = () => {
+      checkAuth();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('auth-changed', handleAuthChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [checkAuth]);
 
   const navItems = config.navItems?.filter(item => {
     if (!item.enabled) return false;

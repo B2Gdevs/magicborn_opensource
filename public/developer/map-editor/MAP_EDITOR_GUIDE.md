@@ -839,3 +839,4 @@ setSelectionMode("placement");
 - [GRID_SYSTEM.md](./technical/GRID_SYSTEM.md) - Grid system and cell coordinates
 - [MAP_SIZING_STANDARDS.md](./technical/MAP_SIZING_STANDARDS.md) - Standard map sizes and configurations
 
+

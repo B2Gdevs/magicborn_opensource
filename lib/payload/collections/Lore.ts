@@ -4,6 +4,7 @@
 import type { CollectionConfig } from 'payload'
 import { Collections, LORE_CATEGORY_OPTIONS } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadWithFlag } from '../access/roles'
+import { autoGenerateSlugHook } from '../utils/slugGeneration'
 
 export const Lore: CollectionConfig = {
   slug: Collections.Lore,
@@ -20,6 +21,11 @@ export const Lore: CollectionConfig = {
     create: isEditorOrAbove,
     update: isEditorOrAbove,
     delete: isSuperuser,
+  },
+  hooks: {
+    beforeChange: [
+      autoGenerateSlugHook('slug', 'title'),
+    ],
   },
   fields: [
     {
@@ -38,7 +44,7 @@ export const Lore: CollectionConfig = {
       type: 'text',
       unique: true,
       admin: {
-        description: 'URL-friendly identifier for public pages',
+        description: 'Auto-generated URL-friendly identifier. Generated from title if not provided.',
       },
     },
     {
@@ -70,6 +76,15 @@ export const Lore: CollectionConfig = {
       name: 'featuredImage',
       type: 'upload',
       relationTo: Collections.Media,
+    },
+    {
+      name: 'landmarkIcon',
+      type: 'upload',
+      relationTo: Collections.Media,
+      required: false,
+      admin: {
+        description: 'Icon/image for map display or UI representation',
+      },
     },
     // Relationships
     {

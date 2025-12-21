@@ -6,46 +6,35 @@
 import { useState } from "react";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { VersionHistoryModal } from "./VersionHistoryModal";
+import { RoadmapDialog } from "./RoadmapDialog";
+import { SaveStatusIndicator } from "./SaveStatusIndicator";
+import { TabButton } from "./TabButton";
+import { ViewButton } from "./ViewButton";
+import { SearchInput } from "@components/ui/SearchInput";
 import { 
-  Download, 
-  HelpCircle, 
-  LayoutGrid, 
-  Table2, 
-  List, 
-  Search,
-  FileEdit,
-  MessageSquare,
-  CheckSquare,
   ClipboardList,
-  Cloud,
-  CloudOff,
-  Loader2,
+  LayoutGrid,
   History,
+  Map,
 } from "lucide-react";
-
-export type SaveStatus = "saved" | "saving" | "unsaved" | "error";
+import { ContentEditorTab, ContentEditorView, SaveStatus } from "@lib/content-editor/types";
 
 interface ContentNavigationProps {
-  activeTab: "plan" | "write" | "chat" | "review";
-  onTabChange: (tab: "plan" | "write" | "chat" | "review") => void;
-  activeView: "grid" | "matrix" | "outline";
-  onViewChange: (view: "grid" | "matrix" | "outline") => void;
+  activeTab: ContentEditorTab;
+  onTabChange: (tab: ContentEditorTab) => void;
+  activeView: ContentEditorView;
+  onViewChange: (view: ContentEditorView) => void;
   projectId: string;
   saveStatus?: SaveStatus;
   lastSaved?: Date | null;
 }
 
 const tabIcons = {
-  plan: ClipboardList,
-  write: FileEdit,
-  chat: MessageSquare,
-  review: CheckSquare,
+  [ContentEditorTab.Plan]: ClipboardList,
 };
 
 const viewIcons = {
-  grid: LayoutGrid,
-  matrix: Table2,
-  outline: List,
+  [ContentEditorView.Grid]: LayoutGrid,
 };
 
 export function ContentNavigation({
@@ -54,52 +43,31 @@ export function ContentNavigation({
   activeView,
   onViewChange,
   projectId,
-  saveStatus = "saved",
+  saveStatus = SaveStatus.Saved,
   lastSaved,
 }: ContentNavigationProps) {
   const [showVersions, setShowVersions] = useState(false);
+  const [showRoadmap, setShowRoadmap] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const availableTabs = [ContentEditorTab.Plan];
+  const availableViews = [ContentEditorView.Grid];
 
   return (
     <div className="border-b border-border bg-shadow px-6 py-4 flex-shrink-0">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           <ProjectSwitcher projectId={projectId} />
-          {/* Save Status */}
-          <div className="flex items-center gap-2 text-sm border-l border-border pl-4 ml-2">
-            {saveStatus === "saved" && (
-              <>
-                <Cloud className="w-4 h-4 text-green-500" />
-                <span className="text-text-muted">
-                  Saved
-                  {lastSaved && (
-                    <span className="ml-1 opacity-60">
-                      {lastSaved.toLocaleTimeString()}
-                    </span>
-                  )}
-                </span>
-              </>
-            )}
-            {saveStatus === "saving" && (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-ember-glow" />
-                <span className="text-text-muted">Saving...</span>
-              </>
-            )}
-            {saveStatus === "unsaved" && (
-              <>
-                <div className="w-2 h-2 rounded-full bg-amber-500" />
-                <span className="text-text-muted">Unsaved</span>
-              </>
-            )}
-            {saveStatus === "error" && (
-              <>
-                <CloudOff className="w-4 h-4 text-red-500" />
-                <span className="text-red-400">Error</span>
-              </>
-            )}
-          </div>
+          <SaveStatusIndicator status={saveStatus} lastSaved={lastSaved} />
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowRoadmap(true)}
+            className="px-3 py-1.5 text-sm bg-deep border border-border rounded hover:bg-deep/80 flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <Map className="w-4 h-4" />
+            Roadmap
+          </button>
           <button
             onClick={() => setShowVersions(true)}
             className="px-3 py-1.5 text-sm bg-deep border border-border rounded hover:bg-deep/80 flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
@@ -107,72 +75,50 @@ export function ContentNavigation({
             <History className="w-4 h-4" />
             Versions
           </button>
-          <button className="px-3 py-1.5 text-sm bg-deep border border-border rounded hover:bg-deep/80 flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors">
-            <Download className="w-4 h-4" />
-            Export
-          </button>
-          <button className="px-3 py-1.5 text-sm bg-deep border border-border rounded hover:bg-deep/80 flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors">
-            <HelpCircle className="w-4 h-4" />
-            Help
-          </button>
         </div>
       </div>
 
       {/* Main Tabs */}
       <div className="flex gap-1 mb-4">
-        {(["plan", "write", "chat", "review"] as const).map((tab) => {
-          const Icon = tabIcons[tab];
-          return (
-            <button
-              key={tab}
-              onClick={() => onTabChange(tab)}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all capitalize flex items-center gap-2 ${
-                activeTab === tab
-                  ? "bg-ember/20 border border-ember/30 text-ember-glow"
-                  : "text-text-secondary hover:text-white hover:bg-deep/50"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab}
-            </button>
-          );
-        })}
+        {availableTabs.map((tab) => (
+          <TabButton
+            key={tab}
+            tab={tab}
+            active={activeTab === tab}
+            onClick={onTabChange}
+            icon={tabIcons[tab]}
+          />
+        ))}
       </div>
 
       {/* View Options and Filter */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-text-muted mr-2">View:</span>
-          {(["grid", "matrix", "outline"] as const).map((view) => {
-            const Icon = viewIcons[view];
-            return (
-              <button
-                key={view}
-                onClick={() => onViewChange(view)}
-                className={`px-3 py-1.5 text-sm rounded capitalize flex items-center gap-1.5 ${
-                  activeView === view
-                    ? "bg-ember/20 border border-ember/30 text-ember-glow"
-                    : "text-text-secondary hover:text-white hover:bg-deep/50"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {view}
-              </button>
-            );
-          })}
+          {availableViews.map((view) => (
+            <ViewButton
+              key={view}
+              view={view}
+              active={activeView === view}
+              onClick={onViewChange}
+              icon={viewIcons[view]}
+            />
+          ))}
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-muted" />
-            <input
-              type="text"
-              placeholder="Search content..."
-              className="pl-9 pr-4 py-1.5 bg-deep border border-border rounded text-text-primary placeholder-text-muted focus:outline-none focus:border-ember-glow w-48"
-            />
-          </div>
+          <SearchInput
+            placeholder="Search content..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
         </div>
       </div>
+
+      {/* Roadmap Dialog */}
+      {showRoadmap && (
+        <RoadmapDialog onClose={() => setShowRoadmap(false)} />
+      )}
 
       {/* Version History Modal */}
       {showVersions && (

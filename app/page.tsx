@@ -20,6 +20,12 @@ async function getSiteConfig() {
 
 export default async function LandingPage() {
   const siteConfig = await getSiteConfig()
+  
+  // Normalize payload types to component types (null -> undefined)
+  const normalizedConfig = siteConfig ? {
+    ...siteConfig,
+    tagline: siteConfig.tagline ?? undefined,
+  } as any : null
 
-  return <HomepageContent siteConfig={siteConfig} />
+  return <HomepageContent siteConfig={normalizedConfig as any} />
 }

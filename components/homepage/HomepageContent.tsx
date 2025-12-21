@@ -127,6 +127,8 @@ export function HomepageContent({ siteConfig }: HomepageContentProps) {
         setShowLoginForm(false);
         setLoginEmail('');
         setLoginPassword('');
+        // Dispatch event to notify other components of auth change
+        window.dispatchEvent(new CustomEvent('auth-changed', { detail: { user: data.user } }));
       } else {
         setLoginError(data.message || 'Login failed');
       }
@@ -139,6 +141,8 @@ export function HomepageContent({ siteConfig }: HomepageContentProps) {
     try {
       await fetch('/api/payload/users/logout', { method: 'POST' });
       setUser(null);
+      // Dispatch event to notify other components of auth change
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: { user: null } }));
     } catch {
       // Ignore
     }
@@ -209,6 +213,12 @@ export function HomepageContent({ siteConfig }: HomepageContentProps) {
                 type="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+                    e.preventDefault();
+                    (e.target as HTMLInputElement).select();
+                  }
+                }}
                 className="w-full px-4 py-2 bg-deep border border-border rounded-lg text-text-primary focus:outline-none focus:border-ember-glow"
                 required
               />
@@ -219,6 +229,12 @@ export function HomepageContent({ siteConfig }: HomepageContentProps) {
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+                    e.preventDefault();
+                    (e.target as HTMLInputElement).select();
+                  }
+                }}
                 className="w-full px-4 py-2 bg-deep border border-border rounded-lg text-text-primary focus:outline-none focus:border-ember-glow"
                 required
               />

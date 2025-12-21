@@ -1,5 +1,6 @@
 import { EffectType } from "@core/enums";
 import type { EffectBlueprint } from "@core/effects";
+import type { BaseEntity } from "@core/types";
 
 export enum EffectCategory {
   DamageOverTime = "DamageOverTime",
@@ -9,19 +10,13 @@ export enum EffectCategory {
   Resource = "Resource",
 }
 
-export interface EffectDefinition {
+export interface EffectDefinition extends BaseEntity {
   id: EffectType;
-  name: string;
-  description: string;
   category: EffectCategory;
   blueprint: EffectBlueprint;
   maxStacks?: number;
   isBuff: boolean;
   iconKey?: string;
-  /**
-   * Payload Media ID for the effect's image
-   */
-  imageId?: number;
 }
 
 export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {

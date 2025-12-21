@@ -239,3 +239,4 @@ Custom route at `/api/payload/[...slug]/route.ts` handles:
 - `GET /{collection}/{id}/versions` - Fetch version history
 - Standard CRUD for all collections
 
+

@@ -237,7 +237,6 @@ export function IdInput({
   );
 }
 
-// Export validation helper for use in forms
 export function validateIdBeforeSubmit(
   id: string,
   idValidation: { isUnique: boolean; conflictingTypes: string[] } | null,

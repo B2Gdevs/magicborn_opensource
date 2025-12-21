@@ -81,7 +81,7 @@ export async function GET(
     // Handle globals: /api/payload/globals/{slug}
     if (first === 'globals' && second) {
       const global = await payload.findGlobal({
-        slug: second,
+        slug: second as 'site-config' | 'sidebar-config',
       })
       return NextResponse.json(global)
     }
@@ -90,7 +90,7 @@ export async function GET(
     if (slug.length === 3 && third === 'versions') {
       const [collection, id] = slug
       const result = await payload.findVersions({
-        collection,
+        collection: collection as any,
         where: { parent: { equals: id } },
         limit: 20,
         sort: '-updatedAt',
@@ -103,7 +103,7 @@ export async function GET(
     if (id) {
       // Get single document
       const doc = await payload.findByID({
-        collection,
+        collection: collection as any,
         id,
       })
       
@@ -126,7 +126,7 @@ export async function GET(
       const page = parseInt(searchParams.get('page') || '1')
       
       const result = await payload.find({
-        collection,
+        collection: collection as any,
         limit,
         page,
       })
@@ -198,6 +198,13 @@ export async function POST(
       }
     }
 
+    // Handle auth: /api/payload/users/logout (no body needed)
+    if (first === 'users' && second === 'logout') {
+      const response = NextResponse.json({ success: true })
+      response.cookies.delete('payload-token')
+      return response
+    }
+
     const body = await request.json()
     
     // Handle auth: /api/payload/users/login
@@ -219,17 +226,10 @@ export async function POST(
       return response
     }
 
-    // Handle auth: /api/payload/users/logout
-    if (first === 'users' && second === 'logout') {
-      const response = NextResponse.json({ success: true })
-      response.cookies.delete('payload-token')
-      return response
-    }
-
     // Handle globals: /api/payload/globals/{slug}
     if (first === 'globals' && second) {
       const global = await payload.updateGlobal({
-        slug: second,
+        slug: second as 'site-config' | 'sidebar-config',
         data: body,
       })
       return NextResponse.json(global)
@@ -237,7 +237,7 @@ export async function POST(
     
     // Regular collection create
     const doc = await payload.create({
-      collection: first,
+      collection: first as any,
       data: body,
     })
     
@@ -269,7 +269,7 @@ export async function PUT(
     const body = await request.json()
     
     const doc = await payload.update({
-      collection,
+      collection: collection as any,
       id,
       data: body,
     })
@@ -308,7 +308,7 @@ export async function DELETE(
   
   try {
     await payload.delete({
-      collection,
+      collection: collection as any,
       id,
     })
     

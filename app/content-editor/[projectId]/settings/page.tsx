@@ -5,11 +5,12 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Save, Sparkles, Trash2, Settings, Gamepad2, Cpu, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Sparkles, Trash2, Settings, Gamepad2, Cpu, AlertTriangle, TestTube } from "lucide-react";
 import Link from "next/link";
 import AIStackStatus from "@/components/ai-stack/AIStackStatus";
 import LMStudioAPIDocs from "@/components/ai-stack/LMStudioAPIDocs";
 import { ExternalLink } from "lucide-react";
+import { TestRunner } from "@/components/developer/TestRunner";
 
 interface Project {
   id: string;
@@ -19,7 +20,7 @@ interface Project {
   defaultView?: string;
 }
 
-type SettingsSection = "general" | "game-systems" | "ai-stack" | "danger";
+type SettingsSection = "general" | "game-systems" | "ai-stack" | "developer" | "danger";
 
 export default function ProjectSettingsPage() {
   const params = useParams();
@@ -98,6 +99,7 @@ export default function ProjectSettingsPage() {
     { id: "general" as SettingsSection, label: "General", icon: Settings },
     { id: "game-systems" as SettingsSection, label: "Game Systems", icon: Gamepad2 },
     { id: "ai-stack" as SettingsSection, label: "AI Stack", icon: Cpu },
+    { id: "developer" as SettingsSection, label: "Developer Tests", icon: TestTube },
     { id: "danger" as SettingsSection, label: "Danger Zone", icon: AlertTriangle },
   ];
 
@@ -221,6 +223,15 @@ export default function ProjectSettingsPage() {
                 </div>
               </div>
             </div>
+          </div>
+        );
+
+      case "developer":
+        return (
+          <div>
+            <h3 className="text-lg font-semibold mb-1 text-text-primary">Test Runner</h3>
+            <div className="h-px bg-border mb-6" />
+            <TestRunner />
           </div>
         );
 

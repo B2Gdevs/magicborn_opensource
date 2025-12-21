@@ -231,3 +231,4 @@ console.log(`Formatted: ${formatCellSizeInMeters(config)}`); // "47m"
 - [cellSizeCalculator.ts](../../../lib/utils/cellSizeCalculator.ts) - Cell size calculations
 
 
+

@@ -242,11 +242,6 @@ export const MediaUpload = forwardRef<MediaUploadRef, MediaUploadProps>(({
             className="hidden"
             disabled={disabled || uploading}
           />
-          {pendingFile && !uploading && (
-            <p className="text-xs text-text-secondary mt-1">
-              Ready to upload on save
-            </p>
-          )}
         </div>
       </div>
     );
@@ -318,20 +313,15 @@ export const MediaUpload = forwardRef<MediaUploadRef, MediaUploadProps>(({
           </>
         ) : (
           <div className={`absolute inset-0 flex flex-col items-center justify-center ${compact ? "p-2" : "p-6"} text-center`}>
-            <>
-              {pendingFile && (
-                <p className="text-xs text-ember-glow mb-2">Ready to upload on save</p>
-              )}
-              <Upload className={`${compact ? "w-8 h-8 mb-1" : "w-16 h-16 mb-4"} text-text-muted`} />
-              <p className={`text-text-secondary font-semibold ${compact ? "text-xs mb-1" : "mb-2"}`}>
-                {isDragging ? "Drop image here" : "Click or drag to upload"}
+            <Upload className={`${compact ? "w-8 h-8 mb-1" : "w-16 h-16 mb-4"} text-text-muted`} />
+            <p className={`text-text-secondary font-semibold ${compact ? "text-xs mb-1" : "mb-2"}`}>
+              {isDragging ? "Drop image here" : "Click or drag to upload"}
+            </p>
+            {!compact && (
+              <p className="text-xs text-text-muted">
+                PNG, JPEG, WebP, GIF, or SVG
               </p>
-              {!compact && (
-                <p className="text-xs text-text-muted">
-                  PNG, JPEG, WebP, GIF, or SVG
-                </p>
-              )}
-            </>
+            )}
           </div>
         )}
       </div>

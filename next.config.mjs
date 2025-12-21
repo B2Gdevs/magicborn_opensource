@@ -33,16 +33,23 @@ const nextConfig = {
         },
         // Exclude database modules from client bundle
         function ({ request }, callback) {
+          // Never externalize client-side payload files
+          if (
+            request?.includes("constants.client") ||
+            request?.includes("payload/hooks") ||
+            request?.includes("lib/payload/hooks")
+          ) {
+            return callback();
+          }
+          
           if (
             request?.includes("spells.db") ||
             request?.includes("spellsRepository") ||
             request?.includes("runesRepository") ||
             request?.includes("drizzle-orm/better-sqlite3") ||
             request?.includes("@payloadcms/db-sqlite") ||
-            // Only externalize payload server-side modules, not client hooks
-            (request?.includes("payload") && 
-             !request?.includes("hooks") &&
-             !request?.includes("lib/payload/hooks"))
+            // Only externalize payload server-side modules
+            (request?.includes("payload") && !request?.includes("hooks"))
           ) {
             return callback(null, `commonjs ${request}`);
           }

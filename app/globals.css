@@ -11,6 +11,21 @@ details summary::marker {
   display: none;
 }
 
+/* Fix for react-tooltip portal container */
+nextjs-portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9998;
+}
+
+nextjs-portal > * {
+  pointer-events: auto;
+}
+
 :root {
   /* Magicborn: Mordred's Legacy - Dark Shadowy Theme */
   --color-void: #000000;

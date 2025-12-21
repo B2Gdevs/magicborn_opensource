@@ -5,6 +5,7 @@ import type { CollectionConfig } from 'payload'
 import { DamageType, SpellTag } from '@core/enums'
 import { Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadAccess } from '../access/roles'
+import { autoGenerateSlugHook } from '../utils/slugGeneration'
 
 // Generate options from existing enums
 const DAMAGE_TYPE_OPTIONS = Object.values(DamageType).map((type) => ({
@@ -33,14 +34,18 @@ export const Spells: CollectionConfig = {
     update: isEditorOrAbove,
     delete: isSuperuser,
   },
+  hooks: {
+    beforeChange: [
+      autoGenerateSlugHook('spellId', 'name'),
+    ],
+  },
   fields: [
     {
       name: 'spellId',
       type: 'text',
-      required: true,
       unique: true,
       admin: {
-        description: 'Unique identifier (e.g., ember_ray)',
+        description: 'Auto-generated unique identifier (e.g., ember_ray). Generated from name if not provided.',
       },
     },
     {
@@ -66,6 +71,15 @@ export const Spells: CollectionConfig = {
       name: 'image',
       type: 'upload',
       relationTo: Collections.Media,
+    },
+    {
+      name: 'landmarkIcon',
+      type: 'upload',
+      relationTo: Collections.Media,
+      required: false,
+      admin: {
+        description: 'Icon/image for map display or UI representation',
+      },
     },
     // Rune requirements
     {
@@ -162,4 +176,5 @@ export const Spells: CollectionConfig = {
     },
   ],
 }
+
 

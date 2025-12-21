@@ -4,6 +4,7 @@
 import type { CollectionConfig } from 'payload/types'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 import { Collections, CharacterFields } from '../constants'
+import { autoGenerateSlugHook } from '../utils/slugGeneration'
 
 export const Characters: CollectionConfig = {
   slug: Collections.Characters,
@@ -37,6 +38,11 @@ export const Characters: CollectionConfig = {
       return await buildProjectWhereClause({ req })
     },
   },
+  hooks: {
+    beforeChange: [
+      autoGenerateSlugHook(CharacterFields.Slug, CharacterFields.Name),
+    ],
+  },
   fields: [
     {
       name: CharacterFields.Project,
@@ -47,17 +53,13 @@ export const Characters: CollectionConfig = {
     {
       name: CharacterFields.Slug,
       type: 'text',
-      required: true,
       unique: true,
       admin: {
-        description: 'Unique identifier for this character (e.g., "kael", "morgana")',
+        description: 'Auto-generated unique identifier (e.g., "kael", "morgana"). Generated from name if not provided.',
       },
       validate: (value: string) => {
-        if (!value || !value.trim()) {
-          return 'Slug is required'
-        }
-        // Only lowercase letters, numbers, underscores, and hyphens
-        if (!/^[a-z0-9_-]+$/.test(value)) {
+        // Only validate format if provided, but allow empty (will be auto-generated)
+        if (value && value.trim() && !/^[a-z0-9_-]+$/.test(value)) {
           return 'Slug must contain only lowercase letters, numbers, underscores, and hyphens'
         }
         return true
@@ -78,6 +80,15 @@ export const Characters: CollectionConfig = {
       type: 'upload',
       relationTo: Collections.Media,
       required: false,
+    },
+    {
+      name: 'landmarkIcon',
+      type: 'upload',
+      relationTo: Collections.Media,
+      required: false,
+      admin: {
+        description: 'Icon/image for map display or UI representation',
+      },
     },
     // Magicborn-specific fields (only shown when project.magicbornMode is true)
     {

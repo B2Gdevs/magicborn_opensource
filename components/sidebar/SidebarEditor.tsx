@@ -52,7 +52,7 @@ import {
   ExternalLink,
   type LucideIcon,
 } from "lucide-react";
-import { SiDiscord, SiGithub, SiTwitter, SiYoutube, SiTwitch, SiInstagram, SiTiktok, SiLinkedin, SiReddit, SiPatreon } from "react-icons/si";
+import { SiDiscord, SiGithub, SiX, SiYoutube, SiTwitch, SiInstagram, SiTiktok, SiLinkedin, SiReddit, SiPatreon } from "react-icons/si";
 
 // Icon mapping
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -67,7 +67,7 @@ const ICON_OPTIONS = Object.keys(ICON_MAP);
 const SOCIAL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   discord: SiDiscord,
   github: SiGithub,
-  twitter: SiTwitter,
+  twitter: SiX,
   youtube: SiYoutube,
   twitch: SiTwitch,
   instagram: SiInstagram,

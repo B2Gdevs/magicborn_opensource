@@ -26,6 +26,7 @@ import { Effects } from './lib/payload/collections/Effects'
 import { Spells } from './lib/payload/collections/Spells'
 import { Runes } from './lib/payload/collections/Runes'
 import { Objects } from './lib/payload/collections/Objects'
+import { Creatures } from './lib/payload/collections/Creatures'
 
 // Collections - System
 import { ProjectSnapshots } from './lib/payload/collections/ProjectSnapshots'
@@ -62,6 +63,7 @@ export default buildConfig({
     Spells,
     Runes,
     Objects,
+    Creatures,
     // System
     ProjectSnapshots,
     AIGenerations,

@@ -4,6 +4,7 @@
 import type { CollectionConfig } from 'payload'
 import { Collections, ObjectType, OBJECT_TYPE_OPTIONS, ItemRarity, ITEM_RARITY_OPTIONS } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadAccess } from '../access/roles'
+import { autoGenerateSlugHook } from '../utils/slugGeneration'
 
 export const Objects: CollectionConfig = {
   slug: Collections.Objects,
@@ -21,6 +22,11 @@ export const Objects: CollectionConfig = {
     update: isEditorOrAbove,
     delete: isSuperuser,
   },
+  hooks: {
+    beforeChange: [
+      autoGenerateSlugHook('slug', 'name'),
+    ],
+  },
   fields: [
     {
       name: 'project',
@@ -33,7 +39,7 @@ export const Objects: CollectionConfig = {
       type: 'text',
       unique: true,
       admin: {
-        description: 'Unique identifier for the object (e.g., "ember-crystal"). Used for API lookups.',
+        description: 'Auto-generated unique identifier (e.g., "ember-crystal"). Generated from name if not provided.',
       },
     },
     {
@@ -63,6 +69,15 @@ export const Objects: CollectionConfig = {
       type: 'upload',
       relationTo: Collections.Media,
       required: false,
+    },
+    {
+      name: 'landmarkIcon',
+      type: 'upload',
+      relationTo: Collections.Media,
+      required: false,
+      admin: {
+        description: 'Icon/image for map display or UI representation',
+      },
     },
     {
       name: 'weight',

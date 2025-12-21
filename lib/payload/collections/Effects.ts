@@ -6,6 +6,7 @@ import { EffectType } from '@core/enums'
 import { EffectCategory } from '@/lib/data/effects'
 import { Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadAccess } from '../access/roles'
+import { autoGenerateSlugHook } from '../utils/slugGeneration'
 
 // Generate options from existing enums
 const EFFECT_TYPE_OPTIONS = Object.values(EffectType).map((type) => ({
@@ -34,7 +35,20 @@ export const Effects: CollectionConfig = {
     update: isEditorOrAbove,
     delete: isSuperuser,
   },
+  hooks: {
+    beforeChange: [
+      autoGenerateSlugHook('slug', 'name'),
+    ],
+  },
   fields: [
+    {
+      name: 'slug',
+      type: 'text',
+      unique: true,
+      admin: {
+        description: 'Auto-generated unique identifier. Generated from name if not provided.',
+      },
+    },
     {
       name: 'effectType',
       type: 'select',
@@ -89,6 +103,15 @@ export const Effects: CollectionConfig = {
       type: 'upload',
       relationTo: Collections.Media,
     },
+    {
+      name: 'landmarkIcon',
+      type: 'upload',
+      relationTo: Collections.Media,
+      required: false,
+      admin: {
+        description: 'Icon/image for map display or UI representation',
+      },
+    },
     // Blueprint data stored as JSON for flexibility
     {
       name: 'blueprint',
@@ -113,4 +136,5 @@ export const Effects: CollectionConfig = {
     },
   ],
 }
+
 

@@ -6,18 +6,20 @@
 
 import { useState } from "react";
 import { CodexSidebar } from "./CodexSidebar";
-import { ContentNavigation, SaveStatus } from "./ContentNavigation";
+import { ContentNavigation } from "./ContentNavigation";
 import { StoryPlanView } from "./StoryPlanView";
+import { ContentEditorTab, ContentEditorView, SaveStatus } from "@lib/content-editor/types";
+import { CodexCategory } from "@lib/content-editor/constants";
 
 interface ContentEditorProps {
   projectId: string;
 }
 
 export function ContentEditor({ projectId }: ContentEditorProps) {
-  const [activeView, setActiveView] = useState<"grid" | "matrix" | "outline">("grid");
-  const [activeTab, setActiveTab] = useState<"plan" | "write" | "chat" | "review">("plan");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
+  const [activeView, setActiveView] = useState<ContentEditorView>(ContentEditorView.Grid);
+  const [activeTab, setActiveTab] = useState<ContentEditorTab>(ContentEditorTab.Plan);
+  const [selectedCategory, setSelectedCategory] = useState<CodexCategory | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(SaveStatus.Saved);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   return (
@@ -31,7 +33,7 @@ export function ContentEditor({ projectId }: ContentEditorProps) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Content Editor Navigation (tabs for Plan/Write/Chat/Review) */}
+        {/* Content Editor Navigation (tabs for Plan/etc) */}
         <ContentNavigation
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -44,22 +46,12 @@ export function ContentEditor({ projectId }: ContentEditorProps) {
 
         {/* Main Content - Story Structure */}
         <div className="flex-1 overflow-auto bg-deep/30">
-          {activeView === "grid" && (
+          {activeView === ContentEditorView.Grid && (
             <StoryPlanView
               projectId={projectId}
               onSaveStatusChange={setSaveStatus}
               onLastSavedChange={setLastSaved}
             />
-          )}
-          {activeView === "matrix" && (
-            <div className="flex items-center justify-center h-full text-text-muted">
-              Matrix view coming soon...
-            </div>
-          )}
-          {activeView === "outline" && (
-            <div className="flex items-center justify-center h-full text-text-muted">
-              Outline view coming soon...
-            </div>
           )}
         </div>
       </div>

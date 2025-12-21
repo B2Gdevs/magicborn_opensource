@@ -5,6 +5,7 @@ import type { CollectionConfig } from 'payload'
 import { DamageType, RuneTag, CrowdControlTag } from '@core/enums'
 import { Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadAccess } from '../access/roles'
+import { autoGenerateSlugHook } from '../utils/slugGeneration'
 
 // Generate options from existing enums
 const DAMAGE_TYPE_OPTIONS = Object.values(DamageType).map((type) => ({
@@ -38,12 +39,25 @@ export const Runes: CollectionConfig = {
     update: isEditorOrAbove,
     delete: isSuperuser,
   },
+  hooks: {
+    beforeChange: [
+      autoGenerateSlugHook('slug', 'concept'),
+    ],
+  },
   fields: [
     {
       name: 'project',
       type: 'relationship',
       relationTo: Collections.Projects,
       required: true,
+    },
+    {
+      name: 'slug',
+      type: 'text',
+      unique: true,
+      admin: {
+        description: 'Auto-generated unique identifier. Generated from concept if not provided.',
+      },
     },
     {
       name: 'code',
@@ -53,7 +67,7 @@ export const Runes: CollectionConfig = {
       admin: {
         description: 'Single letter code (A-Z) for the rune',
       },
-      validate: (value: string) => {
+      validate: (value: string | null | undefined) => {
         if (!value || value.length !== 1) {
           return 'Code must be a single letter (A-Z)'
         }
@@ -69,6 +83,14 @@ export const Runes: CollectionConfig = {
       required: true,
       admin: {
         description: 'Conceptual name (e.g., "Fire", "Air")',
+      },
+    },
+    {
+      name: 'description',
+      type: 'textarea',
+      required: false,
+      admin: {
+        description: 'Description of the rune',
       },
     },
     {
@@ -174,6 +196,16 @@ export const Runes: CollectionConfig = {
         description: 'Rune icon/image',
       },
     },
+    {
+      name: 'landmarkIcon',
+      type: 'upload',
+      relationTo: Collections.Media,
+      required: false,
+      admin: {
+        description: 'Icon/image for map display or UI representation',
+      },
+    },
   ],
 }
+
 

@@ -33,18 +33,10 @@ import { NewEntryMenu } from "./NewEntryMenu";
 import { ContextMenu, ContextMenuItem } from "./ContextMenu";
 import { EntryActionsMenu } from "./EntryActionsMenu";
 
-// Client-safe constants (inline to avoid webpack require issues)
-const COLLECTIONS = {
-  Characters: 'characters',
-  Locations: 'locations',
-  Lore: 'lore',
-  Spells: 'spells',
-  Runes: 'runes',
-  Effects: 'effects',
-} as const;
+import { CodexCategory, EntryType, CATEGORY_TO_ENTRY_TYPE, CATEGORY_TO_COLLECTION } from "@lib/content-editor/constants";
 
 interface Category {
-  id: string;
+  id: CodexCategory;
   name: string;
   icon: ReactNode;
   entries?: { id: string; name: string }[];
@@ -52,47 +44,23 @@ interface Category {
 
 interface CodexSidebarProps {
   projectId: string;
-  selectedCategory: string | null;
-  onCategorySelect: (category: string | null) => void;
+  selectedCategory: CodexCategory | null;
+  onCategorySelect: (category: CodexCategory | null) => void;
 }
-
-// Map category IDs to entry types used by NewEntryMenu
-const categoryToEntryType: Record<string, string> = {
-  characters: "character",
-  creatures: "creature",
-  regions: "region",
-  objects: "object",
-  stories: "story",
-  spells: "spell",
-  runes: "rune",
-  effects: "effect",
-};
-
-// Map category IDs to Payload collections
-const categoryToCollection: Record<string, string> = {
-  characters: COLLECTIONS.Characters,
-  creatures: "creatures", // TODO: Add to constants when collection is created
-  regions: COLLECTIONS.Locations,
-  objects: "objects", // TODO: Add to constants when collection is created
-  stories: COLLECTIONS.Lore,
-  spells: COLLECTIONS.Spells,
-  runes: COLLECTIONS.Runes,
-  effects: COLLECTIONS.Effects,
-};
 
 export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: CodexSidebarProps) {
   const { isMagicbornMode, loading: modeLoading } = useMagicbornMode(projectId);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [categoryEntries, setCategoryEntries] = useState<Record<string, { id: string; name: string }[]>>({});
-  const [loadingCategories, setLoadingCategories] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<CodexCategory>>(new Set());
+  const [categoryEntries, setCategoryEntries] = useState<Record<CodexCategory, { id: string; name: string }[]>>({} as Record<CodexCategory, { id: string; name: string }[]>);
+  const [loadingCategories, setLoadingCategories] = useState<Set<CodexCategory>>(new Set());
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     type: "category" | "entry";
-    categoryId: string;
+    categoryId: CodexCategory;
     entry?: { id: string; name: string };
   } | null>(null);
   
@@ -101,11 +69,11 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   
   // For edit mode
   const [editEntry, setEditEntry] = useState<{
-    categoryId: string;
+    categoryId: CodexCategory;
     entryId: string;
   } | null>(null);
 
-  const refreshCategory = (categoryId: string) => {
+  const refreshCategory = (categoryId: CodexCategory) => {
     // Clear cache and loading state to force fresh fetch
     setCategoryEntries(prev => {
       const next = { ...prev };
@@ -127,25 +95,26 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
 
   // Core categories (always visible)
   const coreCategories: Category[] = [
-    { id: "characters", name: "Characters", icon: <User className="w-4 h-4" /> },
-    { id: "regions", name: "Regions", icon: <MapPin className="w-4 h-4" /> },
-    { id: "objects", name: "Objects/Items", icon: <Package className="w-4 h-4" /> },
-    { id: "stories", name: "Lore", icon: <BookOpen className="w-4 h-4" /> },
+    { id: CodexCategory.Characters, name: "Characters", icon: <User className="w-4 h-4" /> },
+    { id: CodexCategory.Creatures, name: "Creatures", icon: <User className="w-4 h-4" /> },
+    { id: CodexCategory.Regions, name: "Regions", icon: <MapPin className="w-4 h-4" /> },
+    { id: CodexCategory.Objects, name: "Objects/Items", icon: <Package className="w-4 h-4" /> },
+    { id: CodexCategory.Stories, name: "Lore", icon: <BookOpen className="w-4 h-4" /> },
   ];
 
   // Magicborn categories (only when mode is ON)
   const magicbornCategories: Category[] = isMagicbornMode
     ? [
-        { id: "spells", name: "Spells", icon: <Sparkles className="w-4 h-4" /> },
-        { id: "runes", name: "Runes", icon: <Gem className="w-4 h-4" /> },
-        { id: "effects", name: "Effects", icon: <Zap className="w-4 h-4" /> },
+        { id: CodexCategory.Spells, name: "Spells", icon: <Sparkles className="w-4 h-4" /> },
+        { id: CodexCategory.Runes, name: "Runes", icon: <Gem className="w-4 h-4" /> },
+        { id: CodexCategory.Effects, name: "Effects", icon: <Zap className="w-4 h-4" /> },
       ]
     : [];
 
   const allCategories = [...coreCategories, ...magicbornCategories];
 
   // Fetch entries when a category is expanded
-  const fetchCategoryEntries = async (categoryId: string, force = false) => {
+  const fetchCategoryEntries = async (categoryId: CodexCategory, force = false) => {
     // Skip if already loaded and not forcing, or if already loading and not forcing
     if (!force && (categoryEntries[categoryId] || loadingCategories.has(categoryId))) {
       return;
@@ -154,17 +123,28 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     setLoadingCategories(prev => new Set(prev).add(categoryId));
 
     try {
-      const collection = categoryToCollection[categoryId];
+      const collection = CATEGORY_TO_COLLECTION[categoryId];
       
       if (collection) {
         const response = await fetch(`/api/payload/${collection}?where[project][equals]=${projectId}&limit=50`);
         
         if (response.ok) {
           const result = await response.json();
-          const entries = result.docs?.map((doc: any) => ({
-            id: String(doc.id), // Payload numeric ID as string
-            name: doc.name || doc.title || `Entry ${doc.id}`,
-          })) || [];
+          const entries = result.docs?.map((doc: any) => {
+            // Handle different name fields for different collections
+            let displayName: string;
+            if (categoryId === CodexCategory.Runes) {
+              displayName = doc.concept || doc.name || `Rune ${doc.code || doc.id}`;
+            } else if (categoryId === CodexCategory.Effects) {
+              displayName = doc.name || doc.effectType || `Effect ${doc.id}`;
+            } else {
+              displayName = doc.name || doc.title || `Entry ${doc.id}`;
+            }
+            return {
+              id: String(doc.id), // Payload numeric ID as string
+              name: displayName,
+            };
+          }) || [];
           
           setCategoryEntries(prev => ({
             ...prev,
@@ -197,7 +177,7 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     }
   };
 
-  const toggleCategory = (categoryId: string) => {
+  const toggleCategory = (categoryId: CodexCategory) => {
     const newExpanded = new Set(expandedCategories);
     if (newExpanded.has(categoryId)) {
       newExpanded.delete(categoryId);
@@ -212,7 +192,7 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   const handleContextMenu = (
     e: React.MouseEvent,
     type: "category" | "entry",
-    categoryId: string,
+    categoryId: CodexCategory,
     entry?: { id: string; name: string }
   ) => {
     e.preventDefault();
@@ -220,8 +200,8 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     setContextMenu({ x: e.clientX, y: e.clientY, type, categoryId, entry });
   };
 
-  const handleDelete = async (categoryId: string, entryId: string) => {
-    const collection = categoryToCollection[categoryId];
+  const handleDelete = async (categoryId: CodexCategory, entryId: string) => {
+    const collection = CATEGORY_TO_COLLECTION[categoryId];
     if (!collection) return;
 
     if (!confirm("Are you sure you want to delete this entry?")) return;
@@ -236,8 +216,8 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     }
   };
 
-  const handleDuplicate = async (categoryId: string, entryId: string) => {
-    const collection = categoryToCollection[categoryId];
+  const handleDuplicate = async (categoryId: CodexCategory, entryId: string) => {
+    const collection = CATEGORY_TO_COLLECTION[categoryId];
     if (!collection) return;
 
     try {
@@ -263,8 +243,8 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     }
   };
 
-  const handleBulkDelete = async (categoryId: string) => {
-    const collection = categoryToCollection[categoryId];
+  const handleBulkDelete = async (categoryId: CodexCategory) => {
+    const collection = CATEGORY_TO_COLLECTION[categoryId];
     if (!collection) return;
 
     const entries = getEntries(categoryId);
@@ -306,7 +286,7 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         {
           label: `New ${singularName}`,
           icon: <Plus className="w-4 h-4" />,
-          onClick: () => setTriggerNewEntry(categoryToEntryType[categoryId] || categoryId),
+          onClick: () => setTriggerNewEntry(CATEGORY_TO_ENTRY_TYPE[categoryId] || categoryId),
         },
         ...(entries.length > 0 ? [
           { label: "", onClick: () => {}, divider: true },
@@ -346,9 +326,9 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     ];
   };
 
-  const isExpanded = (categoryId: string) => expandedCategories.has(categoryId);
-  const isLoading = (categoryId: string) => loadingCategories.has(categoryId);
-  const getEntries = (categoryId: string) => categoryEntries[categoryId] || [];
+  const isExpanded = (categoryId: CodexCategory) => expandedCategories.has(categoryId);
+  const isLoading = (categoryId: CodexCategory) => loadingCategories.has(categoryId);
+  const getEntries = (categoryId: CodexCategory) => categoryEntries[categoryId] || [];
 
   return (
     <aside className="w-72 border-r border-border bg-shadow flex flex-col h-full">
@@ -395,19 +375,12 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
           />
         </div>
 
-        {/* Filter - future: tags will be dynamic based on project */}
-        <div className="flex gap-2 mb-4 flex-wrap">
-          <button className="px-3 py-1 text-sm bg-ember/20 border border-ember/30 rounded text-ember-glow">
-            All
-          </button>
-        </div>
-
         {/* New Entry Menu */}
         <NewEntryMenu
           projectId={projectId}
           isMagicbornMode={isMagicbornMode}
           onEntryCreated={(category) => {
-            refreshCategory(category);
+            refreshCategory(category as CodexCategory);
             setEditEntry(null);
           }}
           triggerType={triggerNewEntry}
@@ -483,18 +456,6 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
           <Settings className="w-4 h-4" />
           Settings
         </Link>
-        <button className="w-full flex items-center gap-2 px-3 py-2 text-text-secondary hover:text-ember-glow hover:bg-deep rounded-lg transition-colors">
-          <FileText className="w-4 h-4" />
-          Prompts
-        </button>
-        <button className="w-full flex items-center gap-2 px-3 py-2 text-text-secondary hover:text-ember-glow hover:bg-deep rounded-lg transition-colors">
-          <Download className="w-4 h-4" />
-          Export
-        </button>
-        <button className="w-full flex items-center gap-2 px-3 py-2 text-text-secondary hover:text-ember-glow hover:bg-deep rounded-lg transition-colors">
-          <Save className="w-4 h-4" />
-          Saved
-        </button>
       </div>
 
       {/* Context Menu */}

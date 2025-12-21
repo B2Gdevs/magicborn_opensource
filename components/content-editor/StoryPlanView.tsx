@@ -18,7 +18,7 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import type { SaveStatus } from "./ContentNavigation";
+import { SaveStatus } from "@lib/content-editor/types";
 
 interface Scene {
   id: string;
@@ -72,7 +72,7 @@ export function StoryPlanView({
   // Fetch story structure on mount
   useEffect(() => {
     fetchStoryStructure();
-    setSaveStatus("saved");
+    setSaveStatus(SaveStatus.Saved);
   }, [projectId]);
 
   const fetchStoryStructure = async () => {
@@ -148,15 +148,15 @@ export function StoryPlanView({
 
   const deleteAct = async (actId: string) => {
     if (!confirm("Delete this act and all its chapters/scenes?")) return;
-    setSaveStatus("saving");
+    setSaveStatus(SaveStatus.Saving);
     try {
       const res = await fetch(`/api/payload/acts/${actId}`, { method: "DELETE" });
       if (res.ok) {
         setActs((prev) => prev.filter((a) => a.id !== actId));
-        setSaveStatus("saved");
+        setSaveStatus(SaveStatus.Saved);
         setLastSaved(new Date());
       } else {
-        setSaveStatus("error");
+        setSaveStatus(SaveStatus.Error);
       }
     } catch (error) {
       console.error("Failed to delete act:", error);
@@ -165,7 +165,7 @@ export function StoryPlanView({
   };
 
   const addAct = async () => {
-    setSaveStatus("saving");
+    setSaveStatus(SaveStatus.Saving);
     try {
       const newOrder = acts.length;
       const res = await fetch("/api/payload/acts", {
@@ -191,10 +191,10 @@ export function StoryPlanView({
             _status: doc._status,
           },
         ]);
-        setSaveStatus("saved");
+        setSaveStatus(SaveStatus.Saved);
         setLastSaved(new Date());
       } else {
-        setSaveStatus("error");
+        setSaveStatus(SaveStatus.Error);
       }
     } catch (error) {
       console.error("Failed to create act:", error);
@@ -203,7 +203,7 @@ export function StoryPlanView({
   };
 
   const addChapter = async (actId: string) => {
-    setSaveStatus("saving");
+    setSaveStatus(SaveStatus.Saving);
     try {
       const act = acts.find((a) => a.id === actId);
       const newOrder = act?.chapters.length || 0;
@@ -238,10 +238,10 @@ export function StoryPlanView({
             };
           })
         );
-        setSaveStatus("saved");
+        setSaveStatus(SaveStatus.Saved);
         setLastSaved(new Date());
       } else {
-        setSaveStatus("error");
+        setSaveStatus(SaveStatus.Error);
       }
     } catch (error) {
       console.error("Failed to create chapter:", error);
@@ -250,7 +250,7 @@ export function StoryPlanView({
   };
 
   const addScene = async (actId: string, chapterId: string) => {
-    setSaveStatus("saving");
+    setSaveStatus(SaveStatus.Saving);
     try {
       const act = acts.find((a) => a.id === actId);
       const chapter = act?.chapters.find((c) => c.id === chapterId);
@@ -295,10 +295,10 @@ export function StoryPlanView({
             };
           })
         );
-        setSaveStatus("saved");
+        setSaveStatus(SaveStatus.Saved);
         setLastSaved(new Date());
       } else {
-        setSaveStatus("error");
+        setSaveStatus(SaveStatus.Error);
       }
     } catch (error) {
       console.error("Failed to create scene:", error);

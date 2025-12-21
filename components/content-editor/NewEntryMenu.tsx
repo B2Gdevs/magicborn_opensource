@@ -103,6 +103,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState<any>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const availableTypes = entryTypes.filter(t => !t.magicbornOnly || isMagicbornMode);
 
@@ -150,7 +151,56 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
     setActiveModal(null);
     setSaving(false);
     setEditData(null);
+    setIsDeleting(false);
     onEditClosed?.();
+  };
+
+  // Delete handler - works for all entity types
+  const handleDelete = async () => {
+    if (!editData?.id || !activeModal) return;
+
+    const collection = categoryToCollection[editEntry?.categoryId || ""] || 
+      (activeModal === "character" ? COLLECTIONS.Characters :
+       activeModal === "rune" ? COLLECTIONS.Runes :
+       activeModal === "spell" ? COLLECTIONS.Spells :
+       activeModal === "effect" ? COLLECTIONS.Effects :
+       activeModal === "region" ? COLLECTIONS.Locations :
+       activeModal === "story" ? COLLECTIONS.Lore :
+       activeModal === "object" ? "objects" :
+       activeModal === "creature" ? "creatures" : null);
+
+    if (!collection) {
+      alert("Unable to determine collection for deletion");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/payload/${collection}/${editData.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(error.error || "Failed to delete");
+      }
+
+      // Success - close modal and refresh
+      closeModal();
+      onEntryCreated?.(activeModal);
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert(`Failed to delete: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Get delete label based on entity type
+  const getDeleteLabel = (): string => {
+    if (!editData) return "this item";
+    const name = editData.name || editData.concept || editData.title || "this item";
+    return name;
   };
 
   // Helper to transform Payload character to CharacterDefinition
@@ -274,24 +324,74 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
     }
   };
 
+  // Transform Payload creature data to CreatureDefinition
+  const payloadToCreature = (payload: any): CreatureDefinition => {
+    const combatStats = payload.combatStats || {};
+    
+    return {
+      id: payload.slug || payload.id?.toString() || "", // Use slug as ID
+      name: payload.name || "",
+      description: payload.description || "",
+      hp: combatStats.hp ?? 100,
+      maxHp: combatStats.maxHp ?? 100,
+      mana: combatStats.mana ?? 50,
+      maxMana: combatStats.maxMana ?? 50,
+      affinity: combatStats.affinity || {},
+      elementXp: combatStats.elementXp,
+      elementAffinity: combatStats.elementAffinity,
+      effects: [], // Effects are runtime state
+      storyIds: [], // Stories managed separately
+      imageId: typeof payload.image === 'object' ? payload.image?.id : payload.image,
+      landmarkIconId: typeof payload.landmarkIcon === 'object' ? payload.landmarkIcon?.id : payload.landmarkIcon,
+    };
+  };
+
   // Creature handlers - use Payload API
   const handleCreateCreature = async (creature: CreatureDefinition) => {
+    if (saving) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/payload/creatures", {
-        method: "POST",
+      const isEdit = !!editData && !!editEntry;
+      
+      // Transform CreatureDefinition to Payload format
+      const payloadData = {
+        slug: creature.id.trim().toLowerCase(),
+        name: creature.name.trim(),
+        description: creature.description.trim(),
+        project: parseInt(projectId),
+        combatStats: {
+          hp: creature.hp,
+          maxHp: creature.maxHp,
+          mana: creature.mana,
+          maxMana: creature.maxMana,
+          affinity: creature.affinity,
+          ...(creature.elementXp && { elementXp: creature.elementXp }),
+          ...(creature.elementAffinity && { elementAffinity: creature.elementAffinity }),
+        },
+        ...(creature.imageId ? { image: creature.imageId } : {}),
+        ...(creature.landmarkIconId ? { landmarkIcon: creature.landmarkIconId } : {}),
+      };
+
+      const url = isEdit 
+        ? `/api/payload/creatures/${editData.id}`
+        : "/api/payload/creatures";
+      
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...creature, project: parseInt(projectId) }),
+        body: JSON.stringify(payloadData),
       });
+      
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || "Failed to create creature");
+        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} creature`);
       }
+      
       onEntryCreated?.("creatures");
       closeModal();
     } catch (error) {
-      console.error("Failed to create creature:", error);
-      alert(`Failed to create creature: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Failed to save creature:", error);
+      alert(`Failed to save creature: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -605,6 +705,9 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         isOpen={activeModal === "character"}
         onClose={closeModal}
         title={editData ? `Edit ${editData.name || "Character"}` : "Create New Character"}
+        onDelete={editData ? handleDelete : undefined}
+        deleteLabel={editData ? editData.name || "character" : undefined}
+        isDeleting={isDeleting}
         footer={
           <CharacterFormFooter
             isEdit={!!editData}
@@ -635,24 +738,35 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       <Modal
         isOpen={activeModal === "creature"}
         onClose={closeModal}
-        title="Create New Creature"
+        title={editData ? `Edit ${editData.name || "Creature"}` : "Create New Creature"}
+        onDelete={editData ? handleDelete : undefined}
+        deleteLabel={editData ? editData.name || "creature" : undefined}
+        isDeleting={isDeleting}
         footer={
           <CreatureFormFooter
-            isEdit={false}
+            isEdit={!!editData}
             saving={saving}
             onCancel={closeModal}
             onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
-              form?.submitForm?.() || form?.requestSubmit();
+              const form = document.querySelector('form') as HTMLFormElement;
+              form?.requestSubmit();
             }}
           />
         }
       >
-        <CreatureForm
-          onSubmit={handleCreateCreature}
-          onCancel={closeModal}
-          saving={saving}
-        />
+        {loadingEdit ? (
+          <div className="p-8 text-center text-text-muted">Loading...</div>
+        ) : (
+          <CreatureForm
+            initialValues={editData ? payloadToCreature(editData) : undefined}
+            isEdit={!!editData}
+            onSubmit={handleCreateCreature}
+            onCancel={closeModal}
+            saving={saving}
+            projectId={projectId}
+            editEntryId={editData?.id}
+          />
+        )}
       </Modal>
 
       {/* Rune Modal */}
@@ -660,6 +774,9 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         isOpen={activeModal === "rune"}
         onClose={closeModal}
         title={editData ? `Edit ${editData.concept || "Rune"}` : "Create New Rune"}
+        onDelete={editData ? handleDelete : undefined}
+        deleteLabel={editData ? editData.concept || "rune" : undefined}
+        isDeleting={isDeleting}
         footer={
           <RuneFormFooter
             isEdit={!!editData}
@@ -696,6 +813,9 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         isOpen={activeModal === "region"}
         onClose={closeModal}
         title={editData ? `Edit ${editData.name || "Region"}` : "Create New Region"}
+        onDelete={editData ? handleDelete : undefined}
+        deleteLabel={editData ? editData.name || "region" : undefined}
+        isDeleting={isDeleting}
         footer={
           <RegionFormFooter
             isEdit={!!editData}
@@ -726,6 +846,9 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         isOpen={activeModal === "object"}
         onClose={closeModal}
         title={editData ? `Edit ${editData.name || "Item"}` : "Create New Object/Item"}
+        onDelete={editData ? handleDelete : undefined}
+        deleteLabel={editData ? editData.name || "item" : undefined}
+        isDeleting={isDeleting}
         footer={
           <ObjectFormFooter
             isEdit={!!editData}
@@ -762,6 +885,9 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         isOpen={activeModal === "story"}
         onClose={closeModal}
         title={editData ? `Edit ${editData.title || "Lore Entry"}` : "Create New Lore Entry"}
+        onDelete={editData ? handleDelete : undefined}
+        deleteLabel={editData ? editData.title || "lore entry" : undefined}
+        isDeleting={isDeleting}
         footer={
           <LoreFormFooter
             isEdit={!!editData}
@@ -796,6 +922,9 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         isOpen={activeModal === "spell"}
         onClose={closeModal}
         title={editData ? `Edit ${editData.name || "Spell"}` : "Create New Spell"}
+        onDelete={editData ? handleDelete : undefined}
+        deleteLabel={editData ? editData.name || "spell" : undefined}
+        isDeleting={isDeleting}
         footer={
           <SpellFormFooter
             isEdit={!!editData}
@@ -826,6 +955,9 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         isOpen={activeModal === "effect"}
         onClose={closeModal}
         title={editData ? `Edit ${editData.name || "Effect"}` : "Create New Effect"}
+        onDelete={editData ? handleDelete : undefined}
+        deleteLabel={editData ? editData.name || "effect" : undefined}
+        isDeleting={isDeleting}
         footer={
           <EffectFormFooter
             isEdit={!!editData}
