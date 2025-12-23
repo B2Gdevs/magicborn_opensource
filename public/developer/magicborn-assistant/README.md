@@ -141,3 +141,4 @@ The AI system works with Docker networking:
 - Open WebUI REST API: https://docs.openwebui.com/api
 - Our OpenAPI Spec: `http://localhost:4300/api/docs/openapi.json`
 
+

@@ -123,6 +123,16 @@ export const Lore: CollectionConfig = {
         },
       ],
     },
+    {
+      name: 'aiContextPrompt',
+      type: 'textarea',
+      label: 'Lore AI Context',
+      admin: {
+        description: 'Context about this lore entry that the AI should consider when generating content. Include key facts, historical significance, and connections to other elements.',
+        placeholder: 'This ancient ritual was practiced by the first mages to channel elemental power...',
+      },
+      required: false,
+    },
   ],
 }
 

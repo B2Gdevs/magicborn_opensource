@@ -14,6 +14,7 @@ import { Media } from './lib/payload/collections/Media'
 import { Acts } from './lib/payload/collections/Acts'
 import { Chapters } from './lib/payload/collections/Chapters'
 import { Scenes } from './lib/payload/collections/Scenes'
+import { Pages } from './lib/payload/collections/Pages'
 
 // Collections - Content
 import { Characters } from './lib/payload/collections/Characters'
@@ -53,6 +54,7 @@ export default buildConfig({
     Acts,
     Chapters,
     Scenes,
+    Pages,
     // Content
     Characters,
     Lore,

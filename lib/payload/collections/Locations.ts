@@ -170,6 +170,16 @@ export const Locations: CollectionConfig = {
       relationTo: Collections.Characters,
       hasMany: true,
     },
+    {
+      name: 'aiContextPrompt',
+      type: 'textarea',
+      label: 'Location AI Context',
+      admin: {
+        description: 'Context about this location that the AI should consider. Include atmosphere, history, notable features, and any special rules or characteristics.',
+        placeholder: 'The Whispering Woods is an ancient forest where magic flows freely. The trees themselves seem to watch and listen...',
+      },
+      required: false,
+    },
   ],
 }
 

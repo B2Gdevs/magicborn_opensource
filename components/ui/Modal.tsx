@@ -122,7 +122,7 @@ export function Modal({
 
         {/* Fixed Footer */}
         {footer && (
-          <div className="flex-shrink-0 px-6 py-4 border-t border-border bg-shadow/50">
+          <div className="flex-shrink-0 px-6 py-3 border-t border-border/50">
             {footer}
           </div>
         )}

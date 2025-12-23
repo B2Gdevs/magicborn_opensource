@@ -79,6 +79,37 @@ export const Projects: CollectionConfig = {
       ],
       defaultValue: 'grid',
     },
+    // AI Prompt Configuration
+    {
+      name: 'aiSystemPrompt',
+      type: 'textarea',
+      label: 'AI System Prompt',
+      admin: {
+        description: 'Base system prompt that defines how the AI assistant behaves. This sets the tone, style, and role of the AI for this project.',
+        placeholder: 'You are a creative writing assistant for the Magicborn universe...',
+      },
+      required: false,
+    },
+    {
+      name: 'aiProjectStory',
+      type: 'textarea',
+      label: 'Project Story & Context',
+      admin: {
+        description: 'The overarching story, world, and context for this project. This provides background that the AI uses when generating content.',
+        placeholder: 'Magicborn is a fantasy world where magic is born from the elements...',
+      },
+      required: false,
+    },
+    {
+      name: 'aiAssistantBehavior',
+      type: 'textarea',
+      label: 'Assistant Behavior Guidelines',
+      admin: {
+        description: 'Specific instructions on how the AI should behave, what style to use, and any constraints or preferences.',
+        placeholder: 'Write in a descriptive, immersive style. Focus on character development and world-building...',
+      },
+      required: false,
+    },
   ],
 }
 

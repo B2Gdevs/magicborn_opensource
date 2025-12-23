@@ -1,0 +1,695 @@
+{
+	"info": {
+		"_postman_id": "magicborn-api-collection",
+		"name": "Magicborn API - CRUD Testing",
+		"description": "Complete CRUD operations for testing refactoring changes. Includes Content Editor and Codex operations.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.environment.set('auth_token', jsonData.token);",
+									"        pm.environment.set('user_id', jsonData.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@magicborn.local\",\n    \"password\": \"changethis\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/users/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "users", "login"]
+						}
+					}
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/payload/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "users", "me"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Projects",
+			"item": [
+				{
+					"name": "List Projects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/projects?limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "projects"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.docs && jsonData.docs.length > 0) {",
+									"        pm.environment.set('project_id', jsonData.docs[0].id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Project by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/projects/{{project_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "projects", "{{project_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Create Project",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Project\",\n    \"description\": \"Created via Postman for testing\",\n    \"magicbornMode\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/projects",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "projects"]
+						}
+					}
+				},
+				{
+					"name": "Update Project",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Test Project\",\n    \"description\": \"Updated via Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/projects/{{project_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "projects", "{{project_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Content Editor - Acts",
+			"item": [
+				{
+					"name": "List Acts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/acts?where[project][equals]={{project_id}}&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "acts"],
+							"query": [
+								{
+									"key": "where[project][equals]",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.docs && jsonData.docs.length > 0) {",
+									"        pm.environment.set('act_id', jsonData.docs[0].id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Create Act",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Test Act\",\n    \"project\": \"{{project_id}}\",\n    \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/acts",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "acts"]
+						}
+					}
+				},
+				{
+					"name": "Update Act",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Test Act\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/acts/{{act_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "acts", "{{act_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Act",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/acts/{{act_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "acts", "{{act_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Content Editor - Chapters",
+			"item": [
+				{
+					"name": "List Chapters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/chapters?where[project][equals]={{project_id}}&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "chapters"],
+							"query": [
+								{
+									"key": "where[project][equals]",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Chapter",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Test Chapter\",\n    \"project\": \"{{project_id}}\",\n    \"act\": \"{{act_id}}\",\n    \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/chapters",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "chapters"]
+						}
+					}
+				},
+				{
+					"name": "Update Chapter",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Test Chapter\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/chapters/{{chapter_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "chapters", "{{chapter_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Chapter",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/chapters/{{chapter_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "chapters", "{{chapter_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Content Editor - Scenes",
+			"item": [
+				{
+					"name": "List Scenes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/scenes?where[project][equals]={{project_id}}&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "scenes"],
+							"query": [
+								{
+									"key": "where[project][equals]",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Scene",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Test Scene\",\n    \"summary\": \"A test scene for validation\",\n    \"project\": \"{{project_id}}\",\n    \"chapter\": \"{{chapter_id}}\",\n    \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/scenes",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "scenes"]
+						}
+					}
+				},
+				{
+					"name": "Update Scene",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Test Scene\",\n    \"summary\": \"Updated summary\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/scenes/{{scene_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "scenes", "{{scene_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Scene",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/scenes/{{scene_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "scenes", "{{scene_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Codex - Characters",
+			"item": [
+				{
+					"name": "List Characters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/characters?where[project][equals]={{project_id}}&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "characters"],
+							"query": [
+								{
+									"key": "where[project][equals]",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Character",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Character\",\n    \"description\": \"Created via Postman\",\n    \"project\": \"{{project_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/characters",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "characters"]
+						}
+					}
+				},
+				{
+					"name": "Update Character",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Test Character\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/characters/{{character_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "characters", "{{character_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Character",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/characters/{{character_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "characters", "{{character_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Codex - Spells (Magicborn)",
+			"item": [
+				{
+					"name": "List Spells",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/spells?where[project][equals]={{project_id}}&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "spells"],
+							"query": [
+								{
+									"key": "where[project][equals]",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Spell",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Spell\",\n    \"description\": \"A test spell\",\n    \"project\": \"{{project_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/spells",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "spells"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Codex - Runes (Magicborn)",
+			"item": [
+				{
+					"name": "List Runes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/runes?where[project][equals]={{project_id}}&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "runes"],
+							"query": [
+								{
+									"key": "where[project][equals]",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Rune",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"code\": \"TEST\",\n    \"concept\": \"Test Rune\",\n    \"description\": \"A test rune\",\n    \"project\": \"{{project_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/runes",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "runes"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Codex - Effects (Magicborn)",
+			"item": [
+				{
+					"name": "List Effects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/payload/effects?where[project][equals]={{project_id}}&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "effects"],
+							"query": [
+								{
+									"key": "where[project][equals]",
+									"value": "{{project_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Effect",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": \"test-effect\",\n    \"name\": \"Test Effect\",\n    \"description\": \"A test effect\",\n    \"category\": \"damage\",\n    \"isBuff\": false,\n    \"blueprint\": {\n        \"type\": \"test-effect\",\n        \"baseMagnitude\": 10,\n        \"baseDurationSec\": 5\n    },\n    \"project\": \"{{project_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/payload/effects",
+							"host": ["{{base_url}}"],
+							"path": ["api", "payload", "effects"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "AI Stack",
+			"item": [
+				{
+					"name": "Get Service Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ai-stack/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-stack", "status"]
+						}
+					}
+				},
+				{
+					"name": "LM Studio - List Models",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ai-stack/lmstudio/v1/models",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai-stack", "lmstudio", "v1", "models"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:4300",
+			"type": "string"
+		},
+		{
+			"key": "project_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+
+

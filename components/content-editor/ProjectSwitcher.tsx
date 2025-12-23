@@ -5,8 +5,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Folder, Plus, Loader2, Check } from "lucide-react";
+import { ChevronDown, Folder, Plus, Loader2, Check, BookOpen, GitBranch, Network } from "lucide-react";
 import { CreateProjectDialog } from "./CreateProjectDialog";
+import { ContentEditorView } from "@lib/content-editor/types";
 
 interface Project {
   id: string;
@@ -17,9 +18,23 @@ interface Project {
 
 interface ProjectSwitcherProps {
   projectId: string;
+  activeView?: ContentEditorView;
+  onViewChange?: (view: ContentEditorView) => void;
 }
 
-export function ProjectSwitcher({ projectId }: ProjectSwitcherProps) {
+const viewIcons = {
+  [ContentEditorView.Writer]: BookOpen,
+  [ContentEditorView.GameThread]: GitBranch,
+  [ContentEditorView.NarrativeThread]: Network,
+};
+
+const viewLabels: Record<ContentEditorView, string> = {
+  [ContentEditorView.Writer]: "Writer",
+  [ContentEditorView.GameThread]: "Game Thread",
+  [ContentEditorView.NarrativeThread]: "Narrative Thread",
+};
+
+export function ProjectSwitcher({ projectId, activeView, onViewChange }: ProjectSwitcherProps) {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
@@ -65,7 +80,7 @@ export function ProjectSwitcher({ projectId }: ProjectSwitcherProps) {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-deep border border-border rounded-lg hover:bg-deep/80 hover:border-ember/30 transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm text-text-primary hover:text-ember-glow transition-colors"
       >
         <Folder className="w-4 h-4 text-ember-glow" />
         <span className="font-medium text-text-primary">
@@ -142,6 +157,40 @@ export function ProjectSwitcher({ projectId }: ProjectSwitcherProps) {
                 Create New Project
               </button>
             </div>
+
+            {/* View Selection */}
+            {activeView && onViewChange && (
+              <>
+                <div className="border-t border-border p-2">
+                  <div className="text-xs text-text-muted uppercase tracking-wider px-2 py-1 mb-1">
+                    Views
+                  </div>
+                  {Object.values(ContentEditorView).map((view) => {
+                    const Icon = viewIcons[view];
+                    return (
+                      <button
+                        key={view}
+                        onClick={() => {
+                          onViewChange(view);
+                          setIsOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-colors ${
+                          activeView === view
+                            ? "bg-ember/20 text-ember-glow"
+                            : "hover:bg-deep text-text-primary"
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 flex-shrink-0" />
+                        <span className="font-medium">{viewLabels[view]}</span>
+                        {activeView === view && (
+                          <Check className="w-4 h-4 flex-shrink-0 ml-auto" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

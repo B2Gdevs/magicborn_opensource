@@ -107,6 +107,16 @@ export const Characters: CollectionConfig = {
         description: 'Rune familiarity data (only visible when Magicborn Mode is enabled)',
       },
     },
+    {
+      name: 'aiContextPrompt',
+      type: 'textarea',
+      label: 'Character AI Context',
+      admin: {
+        description: 'Context about this character that the AI should consider when generating content involving them. Include personality, background, relationships, and key traits.',
+        placeholder: 'Kael is a reserved mage with a deep connection to fire magic. He struggles with controlling his power and often acts impulsively...',
+      },
+      required: false,
+    },
   ],
 }
 

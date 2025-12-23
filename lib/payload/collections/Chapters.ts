@@ -39,6 +39,17 @@ export const Chapters: CollectionConfig = {
       name: 'act',
       type: 'relationship',
       relationTo: 'acts',
+      required: false, // Prologue/Epilogue don't need acts
+    },
+    {
+      name: 'type',
+      type: 'select',
+      options: [
+        { label: 'Chapter', value: 'chapter' },
+        { label: 'Prologue', value: 'prologue' },
+        { label: 'Epilogue', value: 'epilogue' },
+      ],
+      defaultValue: 'chapter',
       required: true,
     },
     {
@@ -47,10 +58,25 @@ export const Chapters: CollectionConfig = {
       required: true,
     },
     {
+      name: 'image',
+      type: 'upload',
+      relationTo: 'media',
+    },
+    {
       name: 'order',
       type: 'number',
       required: true,
       defaultValue: 0,
+    },
+    {
+      name: 'aiContextPrompt',
+      type: 'textarea',
+      label: 'Chapter Context Prompt',
+      admin: {
+        description: 'Context about this chapter that the AI should consider. This helps maintain narrative flow and character consistency.',
+        placeholder: 'This chapter introduces the main conflict and establishes the protagonist\'s motivations...',
+      },
+      required: false,
     },
   ],
 }

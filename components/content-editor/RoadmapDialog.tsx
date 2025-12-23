@@ -153,7 +153,62 @@ const roadmapData = {
       ],
     },
     {
-      title: "Phase 4: Advanced Features",
+      title: "Phase 4: Content Editor & Writing Tool",
+      priority: "High Priority",
+      sections: [
+        {
+          title: "BlockNote Integration",
+          goal: "Implement sophisticated block-based editor for pages",
+          items: [
+            { text: "Install BlockNote and Vercel AI SDK", completed: true },
+            { text: "Replace basic editor with BlockNote in PageEditor", completed: true },
+            { text: "Add page numbering system alongside titles", completed: true },
+            { text: "Implement BlockNote content persistence", completed: false },
+            { text: "Add BlockNote formatting toolbar customization", completed: false },
+            { text: "Support for images, code blocks, and advanced formatting", completed: false },
+          ],
+        },
+        {
+          title: "AI Integration with BlockNote",
+          goal: "Add AI-powered writing assistance using LM Studio",
+          items: [
+            { text: "Set up Vercel AI SDK with LM Studio backend", completed: false },
+            { text: "Create AI API route for text generation/completion", completed: false },
+            { text: "Implement AI suggestions within BlockNote editor", completed: false },
+            { text: "Add AI-powered content expansion (continue writing)", completed: false },
+            { text: "Implement AI-powered editing (rewrite, improve, summarize)", completed: false },
+            { text: "Add AI context awareness (character names, plot points)", completed: false },
+            { text: "Create AI prompt templates for common writing tasks", completed: false },
+          ],
+        },
+        {
+          title: "Detail Toolbar & Views",
+          goal: "Organize content editing with tabbed interface",
+          items: [
+            { text: "Create DetailToolbar component with tabs", completed: true },
+            { text: "Integrate toolbar into WriterView", completed: false },
+            { text: "Implement Detail tab (Act/Chapter forms, Page editor)", completed: false },
+            { text: "Prepare NarrativeThreadView for future Yarn integration", completed: true },
+            { text: "Prepare GameThreadView for future Yarn integration", completed: true },
+            { text: "Add view state persistence", completed: false },
+          ],
+        },
+        {
+          title: "Writing Features",
+          goal: "Enhance the writing experience",
+          items: [
+            { text: "Auto-save functionality", completed: false },
+            { text: "Word count and reading time estimates", completed: false },
+            { text: "Focus mode (distraction-free writing)", completed: false },
+            { text: "Export to various formats (PDF, DOCX, Markdown)", completed: false },
+            { text: "Version history and diff view", completed: false },
+            { text: "Collaborative editing support", completed: false },
+          ],
+        },
+      ],
+    },
+    {
+      title: "Phase 5: Advanced Features",
       priority: "Lower Priority",
       sections: [
         {

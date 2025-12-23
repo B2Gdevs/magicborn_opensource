@@ -187,3 +187,4 @@ Set `"stream": true` for streaming responses.
 - Our OpenAPI Spec: `http://localhost:4300/api/docs/openapi.json`
 - Tool Setup Guide: `public/developer/magicborn-assistant/TOOLS_SETUP.md`
 
+

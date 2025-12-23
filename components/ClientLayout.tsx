@@ -4,6 +4,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { QueryProvider } from "./providers/QueryProvider";
 import { usePathname } from "next/navigation";
 import SidebarNav from "@components/SidebarNav";
 import TopNav from "@components/TopNav";
@@ -23,18 +24,22 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   
   if (isFullscreenRoute) {
     return (
-      <TooltipProvider>
+      <QueryProvider>
+        <TooltipProvider>
           {children}
-      </TooltipProvider>
+        </TooltipProvider>
+      </QueryProvider>
     );
   }
   
   return (
-    <TooltipProvider>
+    <QueryProvider>
+      <TooltipProvider>
         <SidebarNav />
         <TopNav />
         {children}
-    </TooltipProvider>
+      </TooltipProvider>
+    </QueryProvider>
   );
 }
 

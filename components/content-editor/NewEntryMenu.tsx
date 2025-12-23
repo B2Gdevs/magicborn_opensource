@@ -4,7 +4,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, ChevronDown, User, MapPin, Package, BookOpen, Sparkles, Gem, Zap } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { User, MapPin, Package, BookOpen, Sparkles, Gem, Zap } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { CharacterForm, CharacterFormFooter } from "@/components/character/CharacterForm";
 import { CreatureForm, CreatureFormFooter } from "@/components/creature/CreatureForm";
@@ -98,12 +99,20 @@ const entryTypes: EntryConfig[] = [
 ];
 
 export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, triggerType, onTriggerHandled, editEntry, onEditClosed }: NewEntryMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const queryClient = useQueryClient();
   const [activeModal, setActiveModal] = useState<EntryType | null>(null);
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState<any>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Helper to invalidate React Query cache for a category
+  const invalidateCategory = (category: string) => {
+    queryClient.invalidateQueries({
+      queryKey: ["codexEntries", category, projectId],
+    });
+    onEntryCreated?.(category);
+  };
 
   const availableTypes = entryTypes.filter(t => !t.magicbornOnly || isMagicbornMode);
 
@@ -142,10 +151,6 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
     }
   }, [editEntry, onEditClosed]);
 
-  const handleSelect = (type: EntryType) => {
-    setIsOpen(false);
-    setActiveModal(type);
-  };
 
   const closeModal = () => {
     setActiveModal(null);
@@ -187,7 +192,21 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
 
       // Success - close modal and refresh
       closeModal();
-      onEntryCreated?.(activeModal);
+      // Map EntryType to CodexCategory for refresh
+      const entryTypeToCategory: Record<EntryType, string> = {
+        character: "characters",
+        creature: "creatures",
+        region: "regions",
+        object: "objects",
+        story: "stories",
+        spell: "spells",
+        rune: "runes",
+        effect: "effects",
+      };
+      const category = entryTypeToCategory[activeModal as EntryType];
+      if (category) {
+        invalidateCategory(category);
+      }
     } catch (error) {
       console.error("Delete error:", error);
       alert(`Failed to delete: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -314,7 +333,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} character`);
       }
       
-      onEntryCreated?.("characters");
+      invalidateCategory("characters");
       closeModal();
     } catch (error) {
       console.error("Failed to save character:", error);
@@ -387,7 +406,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} creature`);
       }
       
-      onEntryCreated?.("creatures");
+      invalidateCategory("creatures");
       closeModal();
     } catch (error) {
       console.error("Failed to save creature:", error);
@@ -439,7 +458,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         const err = await res.json().catch(() => ({}));
         throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} rune`);
       }
-      onEntryCreated?.("runes");
+      invalidateCategory("runes");
       closeModal();
     } catch (error) {
       console.error("Failed to save rune:", error);
@@ -468,7 +487,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         const err = await res.json().catch(() => ({}));
         throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} region`);
       }
-      onEntryCreated?.("regions");
+      invalidateCategory("regions");
       closeModal();
     } catch (error) {
       console.error("Failed to save region:", error);
@@ -514,7 +533,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         const err = await res.json().catch(() => ({}));
         throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} object`);
       }
-      onEntryCreated?.("objects");
+      invalidateCategory("objects");
       closeModal();
     } catch (error) {
       console.error("Failed to save object:", error);
@@ -557,7 +576,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         const err = await res.json().catch(() => ({}));
         throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} lore`);
       }
-      onEntryCreated?.("stories");
+      invalidateCategory("stories");
       closeModal();
     } catch (error) {
       console.error("Failed to save lore:", error);
@@ -611,7 +630,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         const err = await res.json().catch(() => ({}));
         throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} spell`);
       }
-      onEntryCreated?.("spells");
+      invalidateCategory("spells");
       closeModal();
     } catch (error) {
       console.error("Failed to save spell:", error);
@@ -658,7 +677,7 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         const err = await res.json().catch(() => ({}));
         throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} effect`);
       }
-      onEntryCreated?.("effects");
+      invalidateCategory("effects");
       closeModal();
     } catch (error) {
       console.error("Failed to save effect:", error);
@@ -670,36 +689,6 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
 
   return (
     <>
-      {/* Dropdown Button */}
-      <div className="relative">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-4 py-2 bg-ember/20 border border-ember/30 rounded-lg text-ember-glow font-semibold hover:bg-ember/30 transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          New Entry
-          <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-        </button>
-
-        {isOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-            <div className="absolute top-full left-0 right-0 mt-1 bg-shadow border border-border rounded-lg shadow-xl z-20 overflow-hidden">
-              {availableTypes.map((type) => (
-                <button
-                  key={type.id}
-                  onClick={() => handleSelect(type.id)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-ember/10 text-text-primary hover:text-ember-glow transition-colors"
-                >
-                  {type.icon}
-                  <span>{type.name}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
       {/* Character Modal */}
       <Modal
         isOpen={activeModal === "character"}

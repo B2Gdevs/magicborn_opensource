@@ -14,7 +14,7 @@ import type { EffectBlueprint } from "@core/effects";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
 import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
-import { Zap, User } from "lucide-react";
+import { Zap, User, Save, X } from "lucide-react";
 
 interface EffectFormProps {
   initialValues?: Partial<EffectDefinition>;
@@ -567,25 +567,27 @@ export function EffectFormFooter({
   };
 
   return (
-    <div className="flex gap-3">
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={saving}
-        className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
-      >
-        {saving ? "Saving..." : submitLabel || (isEdit ? "Update Effect" : "Create Effect")}
-      </button>
+    <div className="flex items-center justify-end gap-2">
       {onCancel && (
         <button
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold disabled:opacity-50"
+          className="px-3 py-1.5 border border-border/50 text-text-secondary hover:border-border hover:text-text-primary hover:bg-deep/50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
-          Cancel
+          <X className="w-4 h-4" />
+          <span className="text-xs font-medium">Cancel</span>
         </button>
       )}
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={saving}
+        className="px-3 py-1.5 bg-ember/90 hover:bg-ember border border-ember/50 text-void rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm hover:shadow-md"
+      >
+        <Save className="w-4 h-4" />
+        <span className="text-xs font-medium">{saving ? "Saving..." : submitLabel || (isEdit ? "Update" : "Create")}</span>
+      </button>
     </div>
   );
 }

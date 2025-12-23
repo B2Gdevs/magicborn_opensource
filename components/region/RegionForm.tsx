@@ -11,7 +11,7 @@ import { GridSelector } from "@components/ui/GridSelector";
 import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
-import { MapPin, User } from "lucide-react";
+import { MapPin, User, Save, X } from "lucide-react";
 
 // Client-safe constants
 const COLLECTIONS = {
@@ -310,15 +310,22 @@ export function RegionForm({
 
                     // Calculate occupied cells for regions with the same parent (or no parent if this is top-level)
                     const occupied = new Set<string>();
-                    const currentParentId = parentLocation || null;
+                    // Normalize current parent ID (handle both number and undefined)
+                    const currentParentId = typeof parentLocation === 'number' ? parentLocation : null;
                     const currentEditId = isEdit ? editEntryId : null;
 
                     data.docs?.forEach((doc: any) => {
                         // Skip current region being edited
                         if (currentEditId && String(doc.id) === String(currentEditId)) return;
 
-                        // Only check regions with the same parent
-                        const docParentId = doc.parentLocation?.id || doc.parentLocation || null;
+                        // Only check regions with the same parent (handle both number and object formats)
+                        const docParentId = typeof doc.parentLocation === 'object' && doc.parentLocation?.id
+                            ? doc.parentLocation.id
+                            : typeof doc.parentLocation === 'number'
+                            ? doc.parentLocation
+                            : null;
+                        
+                        // Compare normalized parent IDs
                         if (docParentId !== currentParentId) return;
 
                         // Add all cells for this region to occupied set
@@ -335,7 +342,8 @@ export function RegionForm({
                         }
                     });
 
-                    setOccupiedCells(occupied);
+                    // Always create a new Set to ensure React detects the change
+                    setOccupiedCells(new Set(occupied));
                 })
                 .catch(err => console.error("Failed to fetch parent regions:", err));
         }
@@ -673,6 +681,24 @@ export function RegionForm({
                             width={width}
                             height={height}
                             onSelectionChange={(newMinX, newMinY, newWidth, newHeight) => {
+                                // Validate that the new selection doesn't overlap with occupied cells
+                                const overlappingCells: string[] = [];
+                                for (let x = newMinX; x < newMinX + newWidth; x++) {
+                                    for (let y = newMinY; y < newMinY + newHeight; y++) {
+                                        const cellKey = `${x},${y}`;
+                                        if (occupiedCells.has(cellKey)) {
+                                            overlappingCells.push(`(${x}, ${y})`);
+                                        }
+                                    }
+                                }
+
+                                if (overlappingCells.length > 0) {
+                                    setGridValidationError(
+                                        `Cannot select occupied cells: ${overlappingCells.slice(0, 5).join(", ")}${overlappingCells.length > 5 ? "..." : ""}`
+                                    );
+                                    return; // Don't update selection if it overlaps
+                                }
+
                                 setMinX(newMinX);
                                 setMinY(newMinY);
                                 setWidth(newWidth);
@@ -687,9 +713,17 @@ export function RegionForm({
                         {gridValidationError && (
                             <p className="text-xs text-red-400 mt-2">{gridValidationError}</p>
                         )}
-                        <p className="text-xs text-text-muted mt-2">
-                            Red cells are occupied. Select only vacant cells.
-                        </p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-text-muted">
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-red-500/30 border border-red-500/70 rounded"></div>
+                                <span>Occupied by other regions</span>
+                            </div>
+                            {occupiedCells.size > 0 && (
+                                <span className="text-red-400">
+                                    {occupiedCells.size} cell{occupiedCells.size !== 1 ? 's' : ''} occupied
+                                </span>
+                            )}
+                        </div>
                     </section>
                 </form>
             </div>
@@ -720,25 +754,27 @@ export function RegionFormFooter({
     };
 
     return (
-        <div className="flex gap-3">
-            <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={saving}
-                className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
-            >
-                {saving ? "Saving..." : submitLabel || (isEdit ? "Update Region" : "Create Region")}
-            </button>
+        <div className="flex items-center justify-end gap-2">
             {onCancel && (
                 <button
                     type="button"
                     onClick={onCancel}
                     disabled={saving}
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold disabled:opacity-50"
+                    className="px-3 py-1.5 border border-border/50 text-text-secondary hover:border-border hover:text-text-primary hover:bg-deep/50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
-                    Cancel
+                    <X className="w-4 h-4" />
+                    <span className="text-xs font-medium">Cancel</span>
                 </button>
             )}
+            <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={saving}
+                className="px-3 py-1.5 bg-ember/90 hover:bg-ember border border-ember/50 text-void rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm hover:shadow-md"
+            >
+                <Save className="w-4 h-4" />
+                <span className="text-xs font-medium">{saving ? "Saving..." : submitLabel || (isEdit ? "Update" : "Create")}</span>
+            </button>
         </div>
     );
 }

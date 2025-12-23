@@ -125,8 +125,31 @@ export async function GET(
       const limit = parseInt(searchParams.get('limit') || '10')
       const page = parseInt(searchParams.get('page') || '1')
       
+      // Parse where clauses from query params (e.g., where[project][equals]=1)
+      const where: Record<string, any> = {}
+      searchParams.forEach((value, key) => {
+        if (key.startsWith('where[')) {
+          // Parse where[field][operator]=value
+          const match = key.match(/where\[([^\]]+)\]\[([^\]]+)\]/)
+          if (match) {
+            const [, field, operator] = match
+            if (!where[field]) {
+              where[field] = {}
+            }
+            // Try to parse as number if it looks like one
+            const numValue = /^\d+$/.test(value) ? parseInt(value, 10) : value
+            where[field][operator] = numValue
+          }
+        }
+      })
+      
+      // Parse sort
+      const sort = searchParams.get('sort') || undefined
+      
       const result = await payload.find({
         collection: collection as any,
+        ...(Object.keys(where).length > 0 && { where }),
+        ...(sort && { sort }),
         limit,
         page,
       })

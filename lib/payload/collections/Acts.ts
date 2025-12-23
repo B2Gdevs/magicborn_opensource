@@ -41,10 +41,25 @@ export const Acts: CollectionConfig = {
       required: true,
     },
     {
+      name: 'image',
+      type: 'upload',
+      relationTo: 'media',
+    },
+    {
       name: 'order',
       type: 'number',
       required: true,
       defaultValue: 0,
+    },
+    {
+      name: 'aiContextPrompt',
+      type: 'textarea',
+      label: 'Act Context Prompt',
+      admin: {
+        description: 'Context about this act that the AI should consider when generating content. This helps maintain narrative consistency within the act.',
+        placeholder: 'This act focuses on the discovery of ancient magic and the protagonist\'s first encounter with the elemental forces...',
+      },
+      required: false,
     },
   ],
 }

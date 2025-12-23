@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false, // BlockNote is not yet compatible with React 19 / Next 15 StrictMode
   webpack: (config, { isServer }) => {
     // Fix for Konva - exclude canvas from server-side bundle
     if (isServer) {
@@ -15,6 +15,10 @@ const nextConfig = {
       ...config.resolve.alias,
       canvas: false,
     };
+    
+    // Note: BlockNote has a known issue with TipTap 3.x Gapcursor export
+    // See: public/developer/content-editor/BLOCKNOTE_ISSUE.md
+    // The webpack alias approach doesn't fully work due to named export requirements
     
     // Exclude better-sqlite3 and Node.js built-ins from client bundle
     if (!isServer) {

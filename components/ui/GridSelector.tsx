@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 interface GridSelectorProps {
   minX: number;
@@ -49,13 +49,18 @@ export function GridSelector({
     return { inSelection, inHover, isOccupied };
   }, [minX, minY, width, height, selecting, startCell, hoverCell, occupiedCells]);
 
+
   const handleCellClick = (x: number, y: number) => {
     if (disabled) return;
+    const cellKey = `${x},${y}`;
+    if (occupiedCells.has(cellKey)) return; // Don't allow clicking occupied cells
     onSelectionChange(x, y, 1, 1);
   };
 
   const handleCellMouseDown = (x: number, y: number) => {
     if (disabled) return;
+    const cellKey = `${x},${y}`;
+    if (occupiedCells.has(cellKey)) return; // Don't allow starting selection on occupied cells
     setSelecting(true);
     setStartCell({ x, y });
     setHoverCell({ x, y });
@@ -63,6 +68,8 @@ export function GridSelector({
 
   const handleCellMouseEnter = (x: number, y: number) => {
     if (disabled || !selecting) return;
+    const cellKey = `${x},${y}`;
+    if (occupiedCells.has(cellKey)) return; // Don't allow extending selection over occupied cells
     setHoverCell({ x, y });
   };
 
@@ -76,7 +83,21 @@ export function GridSelector({
     const newWidth = newMaxX - newMinX + 1;
     const newHeight = newMaxY - newMinY + 1;
 
-    onSelectionChange(newMinX, newMinY, newWidth, newHeight);
+    // Validate that the selection doesn't include any occupied cells
+    const hasOccupiedCells = Array.from({ length: newWidth }).some((_, dx) => {
+      return Array.from({ length: newHeight }).some((_, dy) => {
+        const x = newMinX + dx;
+        const y = newMinY + dy;
+        const cellKey = `${x},${y}`;
+        return occupiedCells.has(cellKey);
+      });
+    });
+
+    // Only allow selection if no occupied cells are included
+    if (!hasOccupiedCells) {
+      onSelectionChange(newMinX, newMinY, newWidth, newHeight);
+    }
+    
     setSelecting(false);
     setStartCell(null);
     setHoverCell(null);
@@ -101,6 +122,12 @@ export function GridSelector({
           const y = Math.floor(index / gridSize);
           const { inSelection, inHover, isOccupied } = getCellState(x, y);
           
+          // Occupied cells should always show as occupied, even if in selection
+          // This ensures visual feedback is clear
+          const showAsOccupied = isOccupied;
+          const showAsSelected = !isOccupied && inSelection;
+          const showAsHover = !isOccupied && inHover && !inSelection;
+          
           return (
             <button
               key={`${x}-${y}`}
@@ -112,17 +139,17 @@ export function GridSelector({
               className={`
                 aspect-square min-w-[24px] min-h-[24px] border rounded
                 transition-all
-                ${isOccupied
-                  ? "bg-red-500/20 border-red-500/50 cursor-not-allowed"
-                  : inSelection
+                ${showAsOccupied
+                  ? "bg-red-500/40 border-red-500/80 cursor-not-allowed"
+                  : showAsSelected
                   ? "bg-ember/40 border-ember-glow"
-                  : inHover
+                  : showAsHover
                   ? "bg-ember/20 border-ember/50"
                   : "bg-deep/50 hover:bg-deep border-border/30"
                 }
-                ${disabled ? "cursor-not-allowed opacity-50" : isOccupied ? "" : "cursor-pointer"}
+                ${disabled ? "cursor-not-allowed opacity-50" : showAsOccupied ? "cursor-not-allowed" : "cursor-pointer"}
               `}
-              title={isOccupied ? `Cell (${x}, ${y}) - Occupied` : `Cell (${x}, ${y})`}
+              title={isOccupied ? `Cell (${x}, ${y}) - Occupied by another region` : `Cell (${x}, ${y})`}
             />
           );
         })}

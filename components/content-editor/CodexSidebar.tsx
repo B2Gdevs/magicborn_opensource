@@ -3,8 +3,9 @@
 
 "use client";
 
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, ReactNode, useMemo } from "react";
 import { useMagicbornMode } from "@lib/payload/hooks/useMagicbornMode";
+import { useCodexEntries, useInvalidateCodexEntries } from "@lib/hooks/useCodexEntries";
 import { 
   Search, 
   Plus, 
@@ -20,18 +21,21 @@ import {
   Gem,
   Zap,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   FolderOpen,
   ArrowLeft,
   Edit,
   Trash2,
   Copy,
+  Menu,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { NewEntryMenu } from "./NewEntryMenu";
 import { ContextMenu, ContextMenuItem } from "./ContextMenu";
 import { EntryActionsMenu } from "./EntryActionsMenu";
+import { NewEntryMenu } from "./NewEntryMenu";
 
 import { CodexCategory, EntryType, CATEGORY_TO_ENTRY_TYPE, CATEGORY_TO_COLLECTION } from "@lib/content-editor/constants";
 
@@ -52,8 +56,8 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   const { isMagicbornMode, loading: modeLoading } = useMagicbornMode(projectId);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<CodexCategory>>(new Set());
-  const [categoryEntries, setCategoryEntries] = useState<Record<CodexCategory, { id: string; name: string }[]>>({} as Record<CodexCategory, { id: string; name: string }[]>);
-  const [loadingCategories, setLoadingCategories] = useState<Set<CodexCategory>>(new Set());
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const invalidateCodexEntries = useInvalidateCodexEntries();
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -74,23 +78,12 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   } | null>(null);
 
   const refreshCategory = (categoryId: CodexCategory) => {
-    // Clear cache and loading state to force fresh fetch
-    setCategoryEntries(prev => {
-      const next = { ...prev };
-      delete next[categoryId];
-      return next;
-    });
-    setLoadingCategories(prev => {
-      const next = new Set(prev);
-      next.delete(categoryId);
-      return next;
-    });
+    // Invalidate React Query cache to force refetch
+    invalidateCodexEntries(categoryId, projectId);
     // Expand category if not already expanded so entries are visible
     if (!expandedCategories.has(categoryId)) {
       setExpandedCategories(prev => new Set(prev).add(categoryId));
     }
-    // Force fetch even if category isn't expanded
-    fetchCategoryEntries(categoryId, true);
   };
 
   // Core categories (always visible)
@@ -113,68 +106,59 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
 
   const allCategories = [...coreCategories, ...magicbornCategories];
 
-  // Fetch entries when a category is expanded
-  const fetchCategoryEntries = async (categoryId: CodexCategory, force = false) => {
-    // Skip if already loaded and not forcing, or if already loading and not forcing
-    if (!force && (categoryEntries[categoryId] || loadingCategories.has(categoryId))) {
-      return;
-    }
+  // Use React Query for all categories (hooks must be called unconditionally)
+  // Only fetch when category is expanded
+  const charactersQuery = useCodexEntries({
+    categoryId: CodexCategory.Characters,
+    projectId,
+    enabled: expandedCategories.has(CodexCategory.Characters),
+  });
+  const creaturesQuery = useCodexEntries({
+    categoryId: CodexCategory.Creatures,
+    projectId,
+    enabled: expandedCategories.has(CodexCategory.Creatures),
+  });
+  const regionsQuery = useCodexEntries({
+    categoryId: CodexCategory.Regions,
+    projectId,
+    enabled: expandedCategories.has(CodexCategory.Regions),
+  });
+  const objectsQuery = useCodexEntries({
+    categoryId: CodexCategory.Objects,
+    projectId,
+    enabled: expandedCategories.has(CodexCategory.Objects),
+  });
+  const storiesQuery = useCodexEntries({
+    categoryId: CodexCategory.Stories,
+    projectId,
+    enabled: expandedCategories.has(CodexCategory.Stories),
+  });
+  const spellsQuery = useCodexEntries({
+    categoryId: CodexCategory.Spells,
+    projectId,
+    enabled: expandedCategories.has(CodexCategory.Spells) && isMagicbornMode,
+  });
+  const runesQuery = useCodexEntries({
+    categoryId: CodexCategory.Runes,
+    projectId,
+    enabled: expandedCategories.has(CodexCategory.Runes) && isMagicbornMode,
+  });
+  const effectsQuery = useCodexEntries({
+    categoryId: CodexCategory.Effects,
+    projectId,
+    enabled: expandedCategories.has(CodexCategory.Effects) && isMagicbornMode,
+  });
 
-    setLoadingCategories(prev => new Set(prev).add(categoryId));
-
-    try {
-      const collection = CATEGORY_TO_COLLECTION[categoryId];
-      
-      if (collection) {
-        const response = await fetch(`/api/payload/${collection}?where[project][equals]=${projectId}&limit=50`);
-        
-        if (response.ok) {
-          const result = await response.json();
-          const entries = result.docs?.map((doc: any) => {
-            // Handle different name fields for different collections
-            let displayName: string;
-            if (categoryId === CodexCategory.Runes) {
-              displayName = doc.concept || doc.name || `Rune ${doc.code || doc.id}`;
-            } else if (categoryId === CodexCategory.Effects) {
-              displayName = doc.name || doc.effectType || `Effect ${doc.id}`;
-            } else {
-              displayName = doc.name || doc.title || `Entry ${doc.id}`;
-            }
-            return {
-              id: String(doc.id), // Payload numeric ID as string
-              name: displayName,
-            };
-          }) || [];
-          
-          setCategoryEntries(prev => ({
-            ...prev,
-            [categoryId]: entries,
-          }));
-        } else {
-          setCategoryEntries(prev => ({
-            ...prev,
-            [categoryId]: [],
-          }));
-        }
-      } else {
-        setCategoryEntries(prev => ({
-          ...prev,
-          [categoryId]: [],
-        }));
-      }
-    } catch (error) {
-      console.error(`Failed to fetch entries for ${categoryId}:`, error);
-      setCategoryEntries(prev => ({
-        ...prev,
-        [categoryId]: [],
-      }));
-    } finally {
-      setLoadingCategories(prev => {
-        const next = new Set(prev);
-        next.delete(categoryId);
-        return next;
-      });
-    }
+  // Map queries to category IDs
+  const categoryQueries: Record<CodexCategory, ReturnType<typeof useCodexEntries>> = {
+    [CodexCategory.Characters]: charactersQuery,
+    [CodexCategory.Creatures]: creaturesQuery,
+    [CodexCategory.Regions]: regionsQuery,
+    [CodexCategory.Objects]: objectsQuery,
+    [CodexCategory.Stories]: storiesQuery,
+    [CodexCategory.Spells]: spellsQuery,
+    [CodexCategory.Runes]: runesQuery,
+    [CodexCategory.Effects]: effectsQuery,
   };
 
   const toggleCategory = (categoryId: CodexCategory) => {
@@ -183,7 +167,6 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
       newExpanded.delete(categoryId);
     } else {
       newExpanded.add(categoryId);
-      fetchCategoryEntries(categoryId);
     }
     setExpandedCategories(newExpanded);
     onCategorySelect(categoryId);
@@ -210,7 +193,8 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
       await fetch(`/api/payload/${collection}/${entryId}`, {
         method: "DELETE",
       });
-      refreshCategory(categoryId);
+      // Invalidate React Query cache to refetch
+      invalidateCodexEntries(categoryId, projectId);
     } catch (error) {
       console.error("Failed to delete:", error);
     }
@@ -237,7 +221,8 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         body: JSON.stringify(copy),
       });
 
-      refreshCategory(categoryId);
+      // Invalidate React Query cache to refetch
+      invalidateCodexEntries(categoryId, projectId);
     } catch (error) {
       console.error("Failed to duplicate:", error);
     }
@@ -266,7 +251,8 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
           })
         )
       );
-      refreshCategory(categoryId);
+      // Invalidate React Query cache to refetch
+      invalidateCodexEntries(categoryId, projectId);
     } catch (error) {
       console.error("Failed to delete entries:", error);
       alert("Failed to delete some entries. Please try again.");
@@ -286,7 +272,11 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         {
           label: `New ${singularName}`,
           icon: <Plus className="w-4 h-4" />,
-          onClick: () => setTriggerNewEntry(CATEGORY_TO_ENTRY_TYPE[categoryId] || categoryId),
+          onClick: () => {
+            const entryType = CATEGORY_TO_ENTRY_TYPE[categoryId];
+            setTriggerNewEntry(entryType || categoryId);
+            setContextMenu(null);
+          },
         },
         ...(entries.length > 0 ? [
           { label: "", onClick: () => {}, divider: true },
@@ -308,6 +298,7 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         onClick: () => {
           if (entry) {
             setEditEntry({ categoryId, entryId: entry.id });
+            setContextMenu(null);
           }
         },
       },
@@ -327,103 +318,122 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   };
 
   const isExpanded = (categoryId: CodexCategory) => expandedCategories.has(categoryId);
-  const isLoading = (categoryId: CodexCategory) => loadingCategories.has(categoryId);
-  const getEntries = (categoryId: CodexCategory) => categoryEntries[categoryId] || [];
+  const isLoading = (categoryId: CodexCategory) => categoryQueries[categoryId]?.isLoading ?? false;
+  const getEntries = (categoryId: CodexCategory) => categoryQueries[categoryId]?.data ?? [];
 
   return (
-    <aside className="w-72 border-r border-border bg-shadow flex flex-col h-full">
-      {/* Logo and Back to App */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center justify-between mb-4">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative w-8 h-8">
-              <Image
-                src="/design/logos/magicborn_logo.png"
-                alt="Magicborn"
-                fill
-                className="object-contain"
-                sizes="32px"
+    <aside className={`${isCollapsed ? 'w-16' : 'w-56'} border-r border-border bg-shadow flex flex-col h-full transition-all duration-200`}>
+      {/* Header */}
+      <div className="p-2">
+        {!isCollapsed ? (
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <Link href="/" className="flex items-center gap-2 group flex-1 min-w-0">
+                <div className="relative w-6 h-6 flex-shrink-0">
+                  <Image
+                    src="/design/logos/magicborn_logo.png"
+                    alt="Magicborn"
+                    fill
+                    className="object-contain"
+                    sizes="24px"
+                  />
+                </div>
+                <span className="font-bold text-sm text-glow group-hover:text-ember-glow transition-colors truncate">
+                  Magicborn
+                </span>
+              </Link>
+              <button
+                onClick={() => setIsCollapsed(true)}
+                className="p-1 hover:bg-deep rounded transition-colors flex-shrink-0"
+                aria-label="Collapse sidebar"
+              >
+                <ChevronLeft className="w-4 h-4 text-text-muted" />
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-2 mb-2">
+              <FolderOpen className="w-4 h-4 text-text-muted flex-shrink-0" />
+              <h2 className="text-sm font-semibold text-glow">Codex</h2>
+            </div>
+            
+            {/* Minimal Search */}
+            <div className="relative">
+              <div className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 grid grid-cols-3 gap-0.5">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-0.5 h-0.5 bg-ember-glow rounded-sm"
+                  />
+                ))}
+              </div>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-7 pr-2 py-1.5 text-sm bg-deep border border-border rounded text-text-primary placeholder-text-muted focus:outline-none focus:border-ember-glow transition-colors"
               />
             </div>
-            <span className="font-bold text-glow group-hover:text-ember-glow transition-colors">
-              Magicborn
-            </span>
-          </Link>
-          <Link 
-            href="/" 
-            className="flex items-center gap-1 text-xs text-text-muted hover:text-ember-glow transition-colors"
-          >
-            <ArrowLeft className="w-3 h-3" />
-            Back to App
-          </Link>
-        </div>
-        
-        <h2 className="text-lg font-bold text-glow mb-4 flex items-center gap-2">
-          <FolderOpen className="w-5 h-5" />
-          Codex
-        </h2>
-        
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <input
-            type="text"
-            placeholder="Search all entries..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-deep border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-ember-glow"
-          />
-        </div>
-
-        {/* New Entry Menu */}
-        <NewEntryMenu
-          projectId={projectId}
-          isMagicbornMode={isMagicbornMode}
-          onEntryCreated={(category) => {
-            refreshCategory(category as CodexCategory);
-            setEditEntry(null);
-          }}
-          triggerType={triggerNewEntry}
-          onTriggerHandled={() => setTriggerNewEntry(null)}
-          editEntry={editEntry}
-          onEditClosed={() => setEditEntry(null)}
-        />
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={() => setIsCollapsed(false)}
+              className="p-1.5 hover:bg-deep rounded transition-colors"
+              aria-label="Expand sidebar"
+            >
+              <ChevronRight className="w-4 h-4 text-text-muted" />
+            </button>
+            <Link href="/" className="p-1.5 hover:bg-deep rounded transition-colors">
+              <div className="relative w-6 h-6">
+                <Image
+                  src="/design/logos/magicborn_logo.png"
+                  alt="Magicborn"
+                  fill
+                  className="object-contain"
+                  sizes="24px"
+                />
+              </div>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Categories */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-1">
+      <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
         {allCategories.map((category) => (
           <div key={category.id}>
             <button
               onClick={() => toggleCategory(category.id)}
               onContextMenu={(e) => handleContextMenu(e, "category", category.id)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-2 py-1.5 rounded transition-colors ${
                 selectedCategory === category.id
                   ? "bg-ember/20 border border-ember/30 text-ember-glow"
                   : "hover:bg-deep text-text-primary"
               }`}
+              title={isCollapsed ? category.name : undefined}
             >
               <div className="flex items-center gap-2">
                 {category.icon}
-                <span className="font-medium">{category.name}</span>
+                {!isCollapsed && <span className="font-medium text-sm">{category.name}</span>}
               </div>
-              {isExpanded(category.id) ? (
-                <ChevronDown className="w-4 h-4 text-text-muted" />
+              {!isCollapsed && (isExpanded(category.id) ? (
+                <ChevronDown className="w-3.5 h-3.5 text-text-muted flex-shrink-0" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-text-muted" />
-              )}
+                <ChevronRight className="w-3.5 h-3.5 text-text-muted flex-shrink-0" />
+              ))}
             </button>
-            {isExpanded(category.id) && (
-              <div className="ml-6 mt-1 space-y-1 border-l border-border pl-2">
+            {!isCollapsed && isExpanded(category.id) && (
+              <div className="ml-5 mt-0.5 space-y-0.5 border-l border-border pl-2">
                 {isLoading(category.id) ? (
-                  <div className="text-sm text-text-muted px-3 py-1 animate-pulse">
+                  <div className="text-xs text-text-muted px-2 py-0.5 animate-pulse">
                     Loading...
                   </div>
                 ) : getEntries(category.id).length > 0 ? (
                   getEntries(category.id).map((entry) => (
                     <div
                       key={entry.id}
-                      className="group flex items-center justify-between w-full text-sm text-text-secondary hover:text-ember-glow px-3 py-1 rounded hover:bg-deep/50"
+                      className="group flex items-center justify-between w-full text-xs text-text-secondary hover:text-ember-glow px-2 py-0.5 rounded hover:bg-deep/50"
                       onContextMenu={(e) => handleContextMenu(e, "entry", category.id, entry)}
                     >
                       <span className="truncate flex-1">{entry.name}</span>
@@ -437,7 +447,7 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
                     </div>
                   ))
                 ) : (
-                  <div className="text-sm text-text-muted px-3 py-1 italic">
+                  <div className="text-xs text-text-muted px-2 py-0.5 italic">
                     No entries yet
                   </div>
                 )}
@@ -448,13 +458,14 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
       </div>
 
       {/* Footer Links */}
-      <div className="p-4 border-t border-border space-y-1">
+      <div className="p-2 border-t border-border">
         <Link
           href={`/content-editor/${projectId}/settings`}
-          className="flex items-center gap-2 px-3 py-2 text-text-secondary hover:text-ember-glow hover:bg-deep rounded-lg transition-colors"
+          className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2'} px-2 py-1.5 text-text-secondary hover:text-ember-glow hover:bg-deep rounded transition-colors`}
+          title={isCollapsed ? "Settings" : undefined}
         >
           <Settings className="w-4 h-4" />
-          Settings
+          {!isCollapsed && <span className="text-sm">Settings</span>}
         </Link>
       </div>
 
@@ -467,6 +478,28 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
           items={getContextMenuItems()}
         />
       )}
+
+      {/* New Entry Menu */}
+      <NewEntryMenu
+        projectId={projectId}
+        isMagicbornMode={isMagicbornMode}
+        onEntryCreated={(category) => {
+          const categoryId = category.toLowerCase() as CodexCategory;
+          refreshCategory(categoryId);
+        }}
+        triggerType={triggerNewEntry}
+        onTriggerHandled={() => setTriggerNewEntry(null)}
+        editEntry={editEntry ? {
+          categoryId: editEntry.categoryId,
+          entryId: editEntry.entryId,
+        } : null}
+        onEditClosed={() => {
+          setEditEntry(null);
+          if (editEntry) {
+            refreshCategory(editEntry.categoryId);
+          }
+        }}
+      />
     </aside>
   );
 }

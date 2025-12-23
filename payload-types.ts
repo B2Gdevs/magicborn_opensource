@@ -74,6 +74,7 @@ export interface Config {
     acts: Act;
     chapters: Chapter;
     scenes: Scene;
+    pages: Page;
     characters: Character;
     lore: Lore;
     locations: Location;
@@ -99,6 +100,7 @@ export interface Config {
     acts: ActsSelect<false> | ActsSelect<true>;
     chapters: ChaptersSelect<false> | ChaptersSelect<true>;
     scenes: ScenesSelect<false> | ScenesSelect<true>;
+    pages: PagesSelect<false> | PagesSelect<true>;
     characters: CharactersSelect<false> | CharactersSelect<true>;
     lore: LoreSelect<false> | LoreSelect<true>;
     locations: LocationsSelect<false> | LocationsSelect<true>;
@@ -198,6 +200,18 @@ export interface Project {
    */
   magicbornMode?: boolean | null;
   defaultView?: ('grid' | 'matrix' | 'outline') | null;
+  /**
+   * Base system prompt that defines how the AI assistant behaves. This sets the tone, style, and role of the AI for this project.
+   */
+  aiSystemPrompt?: string | null;
+  /**
+   * The overarching story, world, and context for this project. This provides background that the AI uses when generating content.
+   */
+  aiProjectStory?: string | null;
+  /**
+   * Specific instructions on how the AI should behave, what style to use, and any constraints or preferences.
+   */
+  aiAssistantBehavior?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -241,7 +255,12 @@ export interface Act {
   id: number;
   project: number | Project;
   title: string;
+  image?: (number | null) | Media;
   order: number;
+  /**
+   * Context about this act that the AI should consider when generating content. This helps maintain narrative consistency within the act.
+   */
+  aiContextPrompt?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -253,9 +272,15 @@ export interface Act {
 export interface Chapter {
   id: number;
   project: number | Project;
-  act: number | Act;
+  act?: (number | null) | Act;
+  type: 'chapter' | 'prologue' | 'epilogue';
   title: string;
+  image?: (number | null) | Media;
   order: number;
+  /**
+   * Context about this chapter that the AI should consider. This helps maintain narrative flow and character consistency.
+   */
+  aiContextPrompt?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -306,6 +331,41 @@ export interface Scene {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages".
+ */
+export interface Page {
+  id: number;
+  project: number | Project;
+  chapter: number | Chapter;
+  title: string;
+  /**
+   * BlockNote editor content (JSON format)
+   */
+  content?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  image?: (number | null) | Media;
+  order: number;
+  /**
+   * The sequential number of the page within its chapter.
+   */
+  pageNumber?: number | null;
+  /**
+   * Specific context for this page that the AI should consider when generating or editing content. This helps maintain scene continuity.
+   */
+  aiContextPrompt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "characters".
  */
 export interface Character {
@@ -346,6 +406,10 @@ export interface Character {
     | number
     | boolean
     | null;
+  /**
+   * Context about this character that the AI should consider when generating content involving them. Include personality, background, relationships, and key traits.
+   */
+  aiContextPrompt?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -401,6 +465,10 @@ export interface Lore {
     metaTitle?: string | null;
     metaDescription?: string | null;
   };
+  /**
+   * Context about this lore entry that the AI should consider when generating content. Include key facts, historical significance, and connections to other elements.
+   */
+  aiContextPrompt?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -470,6 +538,10 @@ export interface Location {
    */
   landmarkIcon?: (number | null) | Media;
   relatedCharacters?: (number | Character)[] | null;
+  /**
+   * Context about this location that the AI should consider. Include atmosphere, history, notable features, and any special rules or characteristics.
+   */
+  aiContextPrompt?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -1020,6 +1092,10 @@ export interface PayloadLockedDocument {
         value: number | Scene;
       } | null)
     | ({
+        relationTo: 'pages';
+        value: number | Page;
+      } | null)
+    | ({
         relationTo: 'characters';
         value: number | Character;
       } | null)
@@ -1140,6 +1216,9 @@ export interface ProjectsSelect<T extends boolean = true> {
   owner?: T;
   magicbornMode?: T;
   defaultView?: T;
+  aiSystemPrompt?: T;
+  aiProjectStory?: T;
+  aiAssistantBehavior?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1180,7 +1259,9 @@ export interface MediaSelect<T extends boolean = true> {
 export interface ActsSelect<T extends boolean = true> {
   project?: T;
   title?: T;
+  image?: T;
   order?: T;
+  aiContextPrompt?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1192,8 +1273,11 @@ export interface ActsSelect<T extends boolean = true> {
 export interface ChaptersSelect<T extends boolean = true> {
   project?: T;
   act?: T;
+  type?: T;
   title?: T;
+  image?: T;
   order?: T;
+  aiContextPrompt?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1229,6 +1313,23 @@ export interface ScenesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages_select".
+ */
+export interface PagesSelect<T extends boolean = true> {
+  project?: T;
+  chapter?: T;
+  title?: T;
+  content?: T;
+  image?: T;
+  order?: T;
+  pageNumber?: T;
+  aiContextPrompt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "characters_select".
  */
 export interface CharactersSelect<T extends boolean = true> {
@@ -1240,6 +1341,7 @@ export interface CharactersSelect<T extends boolean = true> {
   landmarkIcon?: T;
   combatStats?: T;
   runeFamiliarity?: T;
+  aiContextPrompt?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1267,6 +1369,7 @@ export interface LoreSelect<T extends boolean = true> {
         metaTitle?: T;
         metaDescription?: T;
       };
+  aiContextPrompt?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1296,6 +1399,7 @@ export interface LocationsSelect<T extends boolean = true> {
       };
   landmarkIcon?: T;
   relatedCharacters?: T;
+  aiContextPrompt?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
