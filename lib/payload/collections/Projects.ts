@@ -3,9 +3,11 @@
 
 import type { CollectionConfig } from 'payload/types'
 import { isSuperuser, getAccessibleProjectIds } from '../access/helpers'
+import { Collections } from '../constants'
+import { HERO_CONTENT_STYLE_OPTIONS, HERO_CONTENT_COLOR_OPTIONS } from '../constants/homepage'
 
 export const Projects: CollectionConfig = {
-  slug: 'projects',
+  slug: Collections.Projects,
   admin: {
     useAsTitle: 'name',
   },
@@ -44,6 +46,7 @@ export const Projects: CollectionConfig = {
     delete: ({ req }) => isSuperuser({ req }), // Only superusers can delete projects
   },
   fields: [
+    // Basic Project Information
     {
       name: 'name',
       type: 'text',
@@ -55,11 +58,29 @@ export const Projects: CollectionConfig = {
       required: false,
     },
     {
+      name: 'logo',
+      type: 'upload',
+      relationTo: Collections.Media,
+      required: false,
+      admin: {
+        description: 'Project logo displayed in sidebar when this project is active',
+      },
+    },
+    {
+      name: 'displayTitle',
+      type: 'text',
+      required: false,
+      admin: {
+        description: 'Display title shown in sidebar when this project is active. If not set, uses project name.',
+      },
+    },
+    {
       name: 'owner',
       type: 'relationship',
-      relationTo: 'users',
+      relationTo: Collections.Users,
       required: false, // Optional for now - single superuser mode
     },
+    // Project Settings
     {
       name: 'magicbornMode',
       type: 'checkbox',
@@ -109,6 +130,118 @@ export const Projects: CollectionConfig = {
         placeholder: 'Write in a descriptive, immersive style. Focus on character development and world-building...',
       },
       required: false,
+    },
+    // Codex Configuration Overrides
+    {
+      name: 'entryTypeConfigs',
+      type: 'json',
+      label: 'Entry Type Display Names',
+      admin: {
+        description: 'Override display names for entry types (e.g., "Region" → "Location"). Leave empty to use defaults from code.',
+        components: {
+          Field: undefined, // Use default JSON editor
+        },
+      },
+      required: false,
+      // Structure: { [EntryType]: { displayName?: string } }
+      // Example: { "region": { "displayName": "Location" }, "character": { "displayName": "Hero" } }
+    },
+    // Homepage Configuration Overrides
+    {
+      name: 'homepageConfig',
+      type: 'group',
+      label: 'Homepage Settings',
+      admin: {
+        description: 'Override global homepage settings for this project. Leave empty to use global SiteConfig defaults.',
+      },
+      fields: [
+        // Hero section
+        {
+          type: 'group',
+          name: 'hero',
+          label: 'Hero Section',
+          fields: [
+            {
+              name: 'title',
+              type: 'text',
+              admin: {
+                description: 'Hero title (overrides global SiteConfig)',
+              },
+            },
+            {
+              name: 'subtitle',
+              type: 'textarea',
+              admin: {
+                description: 'Hero subtitle (overrides global SiteConfig)',
+              },
+            },
+            {
+              name: 'videos',
+              type: 'array',
+              label: 'Hero Videos',
+              admin: {
+                description: 'Hero background videos (plays in sequence). Overrides global SiteConfig.',
+              },
+              fields: [
+                {
+                  name: 'video',
+                  type: 'upload',
+                  relationTo: Collections.Media,
+                },
+                {
+                  name: 'url',
+                  type: 'text',
+                  admin: {
+                    description: 'Or enter video URL directly',
+                  },
+                },
+              ],
+            },
+            {
+              name: 'backgroundImage',
+              type: 'upload',
+              relationTo: Collections.Media,
+              admin: {
+                description: 'Fallback background image (overrides global SiteConfig)',
+              },
+            },
+          ],
+        },
+        // Hero content paragraphs
+        {
+          name: 'heroContent',
+          type: 'array',
+          label: 'Hero Content',
+          admin: {
+            description: 'Hero text paragraphs displayed on homepage. Overrides global SiteConfig.',
+          },
+          fields: [
+            {
+              name: 'text',
+              type: 'textarea',
+              required: true,
+            },
+            {
+              name: 'style',
+              type: 'select',
+              options: HERO_CONTENT_STYLE_OPTIONS,
+              defaultValue: 'normal',
+            },
+            {
+              name: 'highlightWords',
+              type: 'text',
+              admin: {
+                description: 'Comma-separated words to highlight in ember color',
+              },
+            },
+            {
+              name: 'color',
+              type: 'select',
+              options: HERO_CONTENT_COLOR_OPTIONS,
+            },
+          ],
+        },
+      ],
     },
   ],
 }

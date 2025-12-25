@@ -5,7 +5,6 @@
 
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { User, MapPin, Package, BookOpen, Sparkles, Gem, Zap } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { CharacterForm, CharacterFormFooter } from "@/components/character/CharacterForm";
 import { CreatureForm, CreatureFormFooter } from "@/components/creature/CreatureForm";
@@ -22,103 +21,65 @@ import type { RuneDef } from "@/lib/packages/runes";
 import type { EffectDefinition } from "@/lib/data/effects";
 import type { NamedSpellBlueprint } from "@/lib/data/namedSpells";
 import type { EffectInstance } from "@core/effects";
-// Using Payload API directly instead of old clients
-
-// Client-safe constants (inline to avoid webpack require issues)
-const COLLECTIONS = {
-  Characters: 'characters',
-  Locations: 'locations',
-  Lore: 'lore',
-  Spells: 'spells',
-  Runes: 'runes',
-  Effects: 'effects',
-} as const;
-
-const CHARACTER_FIELDS = {
-  Project: 'project',
-  Slug: 'slug',
-  Name: 'name',
-  Description: 'description',
-  Image: 'image',
-  CombatStats: 'combatStats',
-  RuneFamiliarity: 'runeFamiliarity',
-} as const;
+import {
+  EntryType,
+  CodexCategory,
+  CATEGORY_TO_ENTRY_TYPE,
+  CATEGORY_TO_COLLECTION,
+  ENTRY_TYPE_TO_CATEGORY,
+} from "@/lib/content-editor/constants";
+import { toast } from "@/lib/hooks/useToast";
+import {
+  getAllEntryTypes,
+  getEntryConfig,
+  getCollectionForEntryType,
+  getCategoryForEntryType,
+  CharacterFields,
+  getDisplayName,
+  useProjectConfigs,
+} from "@/lib/content-editor/entry-config";
+import { Collections } from "@/lib/payload/constants.client";
 
 interface NewEntryMenuProps {
   projectId: string;
   isMagicbornMode: boolean;
   onEntryCreated?: (category: string) => void;
-  triggerType?: string | null; // Programmatically trigger a specific entry type modal
+  triggerType?: string | null;
   onTriggerHandled?: () => void;
   editEntry?: { categoryId: string; entryId: string } | null;
   onEditClosed?: () => void;
 }
 
-// Map category IDs to entry types
-const categoryToEntryType: Record<string, EntryType> = {
-  characters: "character",
-  creatures: "creature",
-  regions: "region",
-  objects: "object",
-  stories: "story",
-  spells: "spell",
-  runes: "rune",
-  effects: "effect",
-};
-
-// Map category IDs to Payload collections
-const categoryToCollection: Record<string, string> = {
-  characters: COLLECTIONS.Characters,
-  creatures: "creatures", // TODO: Add to constants when collection is created
-  regions: COLLECTIONS.Locations,
-  objects: "objects", // TODO: Add to constants when collection is created
-  stories: COLLECTIONS.Lore,
-  spells: COLLECTIONS.Spells,
-  runes: COLLECTIONS.Runes,
-  effects: COLLECTIONS.Effects,
-};
-
-type EntryType = "character" | "creature" | "region" | "object" | "story" | "spell" | "rune" | "effect";
-
-interface EntryConfig {
-  id: EntryType;
-  name: string;
-  icon: React.ReactNode;
-  magicbornOnly?: boolean;
-}
-
-const entryTypes: EntryConfig[] = [
-  { id: "character", name: "Character", icon: <User className="w-4 h-4" /> },
-  { id: "creature", name: "Creature", icon: <User className="w-4 h-4" /> },
-  { id: "region", name: "Region", icon: <MapPin className="w-4 h-4" /> },
-  { id: "object", name: "Object/Item", icon: <Package className="w-4 h-4" /> },
-  { id: "story", name: "Book/Story", icon: <BookOpen className="w-4 h-4" /> },
-  { id: "spell", name: "Spell", icon: <Sparkles className="w-4 h-4" />, magicbornOnly: true },
-  { id: "rune", name: "Rune", icon: <Gem className="w-4 h-4" />, magicbornOnly: true },
-  { id: "effect", name: "Effect", icon: <Zap className="w-4 h-4" />, magicbornOnly: true },
-];
-
-export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, triggerType, onTriggerHandled, editEntry, onEditClosed }: NewEntryMenuProps) {
+export function NewEntryMenu({
+  projectId,
+  isMagicbornMode,
+  onEntryCreated,
+  triggerType,
+  onTriggerHandled,
+  editEntry,
+  onEditClosed,
+}: NewEntryMenuProps) {
   const queryClient = useQueryClient();
   const [activeModal, setActiveModal] = useState<EntryType | null>(null);
   const [saving, setSaving] = useState(false);
-  const [editData, setEditData] = useState<any>(null);
+  const [editData, setEditData] = useState<unknown>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const projectConfigs = useProjectConfigs(projectId);
+
+  const availableTypes = getAllEntryTypes(isMagicbornMode);
 
   // Helper to invalidate React Query cache for a category
-  const invalidateCategory = (category: string) => {
+  const invalidateCategory = (category: CodexCategory) => {
     queryClient.invalidateQueries({
       queryKey: ["codexEntries", category, projectId],
     });
     onEntryCreated?.(category);
   };
 
-  const availableTypes = entryTypes.filter(t => !t.magicbornOnly || isMagicbornMode);
-
   // Handle programmatic trigger from context menu
   useEffect(() => {
-    if (triggerType && availableTypes.some(t => t.id === triggerType)) {
+    if (triggerType && availableTypes.some((t) => t.id === triggerType)) {
       setActiveModal(triggerType as EntryType);
       onTriggerHandled?.();
     }
@@ -127,30 +88,28 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
   // Handle edit entry
   useEffect(() => {
     if (editEntry) {
-      const entryType = categoryToEntryType[editEntry.categoryId];
-      const collection = categoryToCollection[editEntry.categoryId];
-      
+      const entryType = CATEGORY_TO_ENTRY_TYPE[editEntry.categoryId as CodexCategory];
+      const collection = CATEGORY_TO_COLLECTION[editEntry.categoryId as CodexCategory];
+
       if (entryType && collection) {
         setLoadingEdit(true);
         fetch(`/api/payload/${collection}/${editEntry.entryId}`)
-          .then(res => res.json())
-          .then(data => {
+          .then((res) => res.json())
+          .then((data) => {
             setEditData(data);
             setActiveModal(entryType);
           })
-          .catch(err => {
+          .catch((err) => {
             console.error("Failed to load entry:", err);
-            alert("Failed to load entry for editing");
+            toast.error("Failed to load entry for editing");
             onEditClosed?.();
           })
           .finally(() => setLoadingEdit(false));
       }
     } else {
-      // Clear edit data when editEntry is cleared
       setEditData(null);
     }
   }, [editEntry, onEditClosed]);
-
 
   const closeModal = () => {
     setActiveModal(null);
@@ -160,22 +119,13 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
     onEditClosed?.();
   };
 
-  // Delete handler - works for all entity types
+  // Generic delete handler
   const handleDelete = async () => {
-    if (!editData?.id || !activeModal) return;
+    if (!editData || !activeModal || typeof editData !== "object" || !("id" in editData)) return;
 
-    const collection = categoryToCollection[editEntry?.categoryId || ""] || 
-      (activeModal === "character" ? COLLECTIONS.Characters :
-       activeModal === "rune" ? COLLECTIONS.Runes :
-       activeModal === "spell" ? COLLECTIONS.Spells :
-       activeModal === "effect" ? COLLECTIONS.Effects :
-       activeModal === "region" ? COLLECTIONS.Locations :
-       activeModal === "story" ? COLLECTIONS.Lore :
-       activeModal === "object" ? "objects" :
-       activeModal === "creature" ? "creatures" : null);
-
+    const collection = getCollectionForEntryType(activeModal);
     if (!collection) {
-      alert("Unable to determine collection for deletion");
+      toast.error("Unable to determine collection for deletion");
       return;
     }
 
@@ -190,61 +140,72 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         throw new Error(error.error || "Failed to delete");
       }
 
-      // Success - close modal and refresh
       closeModal();
-      // Map EntryType to CodexCategory for refresh
-      const entryTypeToCategory: Record<EntryType, string> = {
-        character: "characters",
-        creature: "creatures",
-        region: "regions",
-        object: "objects",
-        story: "stories",
-        spell: "spells",
-        rune: "runes",
-        effect: "effects",
-      };
-      const category = entryTypeToCategory[activeModal as EntryType];
-      if (category) {
-        invalidateCategory(category);
-      }
+      const category = getCategoryForEntryType(activeModal);
+      invalidateCategory(category);
     } catch (error) {
       console.error("Delete error:", error);
-      alert(`Failed to delete: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to delete: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Get delete label based on entity type
-  const getDeleteLabel = (): string => {
-    if (!editData) return "this item";
-    const name = editData.name || editData.concept || editData.title || "this item";
-    return name;
-  };
+  // Generic save handler
+  const createSaveHandler = <T,>(
+    entryType: EntryType,
+    transformData: (data: T) => Record<string, unknown>
+  ) => {
+    return async (data: T) => {
+      if (saving) return;
+      setSaving(true);
+      try {
+        const isEdit = !!editData && !!editEntry;
+        const collection = getCollectionForEntryType(entryType);
+        const url = isEdit
+          ? `/api/payload/${collection}/${(editData as { id: number | string }).id}`
+          : `/api/payload/${collection}`;
 
-  // Helper to transform Payload character to CharacterDefinition
-  const payloadToRune = (payload: any): Partial<RuneDef> => {
-    return {
-      code: payload.code,
-      concept: payload.concept,
-      powerFactor: payload.powerFactor,
-      controlFactor: payload.controlFactor,
-      instabilityBase: payload.instabilityBase,
-      tags: payload.tags || [],
-      manaCost: payload.manaCost,
-      damage: payload.damage,
-      ccInstant: payload.ccInstant,
-      pen: payload.pen,
-      effects: payload.effects,
-      overchargeEffects: payload.overchargeEffects,
-      dotAffinity: payload.dotAffinity,
-      imageId: payload.image?.id || (typeof payload.image === 'number' ? payload.image : undefined),
+        const payloadData = {
+          ...transformData(data),
+          project: parseInt(projectId),
+        };
+
+        const res = await fetch(url, {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payloadData),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(
+            err.errors?.[0]?.message ||
+              err.error ||
+              err.message ||
+              `Failed to ${isEdit ? "update" : "create"} ${entryType}`
+          );
+        }
+
+        const category = getCategoryForEntryType(entryType);
+        invalidateCategory(category);
+        closeModal();
+      } catch (error) {
+        console.error(`Failed to save ${entryType}:`, error);
+        toast.error(
+          `Failed to save ${entryType}: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      } finally {
+        setSaving(false);
+      }
     };
   };
 
-  const payloadToCharacter = (payload: any): Partial<CharacterDefinition> => {
-    // Unmarshal combatStats JSON with proper typing
-    const combatStats = (payload.combatStats || {}) as {
+  // Transformers: Payload -> Form Data
+  const payloadToCharacter = (payload: unknown): Partial<CharacterDefinition> => {
+    if (typeof payload !== "object" || !payload) return {};
+    const p = payload as Record<string, unknown>;
+    const combatStats = ((p.combatStats as Record<string, unknown>) || {}) as {
       hp?: number;
       maxHp?: number;
       mana?: number;
@@ -262,11 +223,11 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
         appliedAt?: number;
       }>;
     };
-    
+
     return {
-      id: payload.slug || payload.id?.toString() || "", // Use slug as ID
-      name: payload.name || "",
-      description: payload.description || "",
+      id: (p.slug as string) || (p.id?.toString() || ""),
+      name: (p.name as string) || "",
+      description: (p.description as string) || "",
       hp: combatStats.hp ?? 0,
       maxHp: combatStats.maxHp ?? 0,
       mana: combatStats.mana ?? 0,
@@ -276,81 +237,54 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       elementAffinity: combatStats.elementAffinity,
       controlBonus: combatStats.controlBonus,
       costEfficiency: combatStats.costEfficiency,
-      // Effects stored in Payload - ensure proper typing with defaults
-      effects: (combatStats.effects || []).map((eff: any): EffectInstance => ({
-        type: eff.type,
-        magnitude: eff.magnitude ?? 0,
-        durationSec: eff.durationSec ?? 0,
-        self: eff.self ?? false, // Default to false if not specified
-      })),
-      imageId: typeof payload.image === 'object' ? payload.image?.id : payload.image, // Payload Media ID
-      storyIds: [], // Stories managed separately
+      effects: (combatStats.effects || []).map(
+        (eff): EffectInstance => ({
+          type: eff.type as any, // Payload stores as string, will be validated by form
+          magnitude: eff.magnitude ?? 0,
+          durationSec: eff.durationSec ?? 0,
+          self: (eff as { self?: boolean }).self ?? false,
+        })
+      ),
+      imageId:
+        typeof p.image === "object" && p.image && "id" in p.image
+          ? (p.image.id as number)
+          : typeof p.image === "number"
+            ? p.image
+            : undefined,
+      storyIds: [],
     };
   };
 
-  // Character handlers - use Payload API
-  const handleCreateCharacter = async (character: CharacterDefinition) => {
-    if (saving) return; // Prevent duplicate submissions
-    setSaving(true);
-    try {
-      const isEdit = !!editData && !!editEntry;
-      
-      // Transform CharacterDefinition to Payload format
-      const payloadData = {
-        [CHARACTER_FIELDS.Slug]: character.id.trim().toLowerCase(), // Store custom ID in slug field
-        [CHARACTER_FIELDS.Name]: character.name.trim(),
-        [CHARACTER_FIELDS.Description]: character.description.trim(),
-        [CHARACTER_FIELDS.Project]: parseInt(projectId),
-        [CHARACTER_FIELDS.CombatStats]: {
-          hp: character.hp,
-          maxHp: character.maxHp,
-          mana: character.mana,
-          maxMana: character.maxMana,
-          affinity: character.affinity,
-          ...(character.elementXp && { elementXp: character.elementXp }),
-          ...(character.elementAffinity && { elementAffinity: character.elementAffinity }),
-          ...(character.controlBonus !== undefined && { controlBonus: character.controlBonus }),
-          ...(character.costEfficiency !== undefined && { costEfficiency: character.costEfficiency }),
-          // Store effects in Payload (properly typed JSON)
-          ...(character.effects && character.effects.length > 0 && { effects: character.effects }),
-        },
-        // Include image media ID if provided
-        ...(character.imageId ? { [CHARACTER_FIELDS.Image]: character.imageId } : {}),
+  const payloadToCreature = (payload: unknown): CreatureDefinition => {
+    if (typeof payload !== "object" || !payload) {
+      return {
+        id: "",
+        name: "",
+        description: "",
+        hp: 100,
+        maxHp: 100,
+        mana: 50,
+        maxMana: 50,
+        affinity: {},
+        effects: [],
+        storyIds: [],
       };
-
-      const url = isEdit 
-        ? `/api/payload/${COLLECTIONS.Characters}/${editData.id}`
-        : `/api/payload/${COLLECTIONS.Characters}`;
-      
-      const res = await fetch(url, {
-        method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadData),
-      });
-      
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} character`);
-      }
-      
-      invalidateCategory("characters");
-      closeModal();
-    } catch (error) {
-      console.error("Failed to save character:", error);
-      alert(`Failed to save character: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setSaving(false);
     }
-  };
+    const p = payload as Record<string, unknown>;
+    const combatStats = ((p.combatStats as Record<string, unknown>) || {}) as {
+      hp?: number;
+      maxHp?: number;
+      mana?: number;
+      maxMana?: number;
+      affinity?: Record<string, number>;
+      elementXp?: Record<string, number>;
+      elementAffinity?: Record<string, number>;
+    };
 
-  // Transform Payload creature data to CreatureDefinition
-  const payloadToCreature = (payload: any): CreatureDefinition => {
-    const combatStats = payload.combatStats || {};
-    
     return {
-      id: payload.slug || payload.id?.toString() || "", // Use slug as ID
-      name: payload.name || "",
-      description: payload.description || "",
+      id: (p.slug as string) || (p.id?.toString() || ""),
+      name: (p.name as string) || "",
+      description: (p.description as string) || "",
       hp: combatStats.hp ?? 100,
       maxHp: combatStats.maxHp ?? 100,
       mana: combatStats.mana ?? 50,
@@ -358,620 +292,490 @@ export function NewEntryMenu({ projectId, isMagicbornMode, onEntryCreated, trigg
       affinity: combatStats.affinity || {},
       elementXp: combatStats.elementXp,
       elementAffinity: combatStats.elementAffinity,
-      effects: [], // Effects are runtime state
-      storyIds: [], // Stories managed separately
-      imageId: typeof payload.image === 'object' ? payload.image?.id : payload.image,
-      landmarkIconId: typeof payload.landmarkIcon === 'object' ? payload.landmarkIcon?.id : payload.landmarkIcon,
+      effects: [],
+      storyIds: [],
+      imageId:
+        typeof p.image === "object" && p.image && "id" in p.image
+          ? (p.image.id as number)
+          : typeof p.image === "number"
+            ? p.image
+            : undefined,
+      landmarkIconId:
+        typeof p.landmarkIcon === "object" && p.landmarkIcon && "id" in p.landmarkIcon
+          ? (p.landmarkIcon.id as number)
+          : typeof p.landmarkIcon === "number"
+            ? p.landmarkIcon
+            : undefined,
     };
   };
 
-  // Creature handlers - use Payload API
-  const handleCreateCreature = async (creature: CreatureDefinition) => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const isEdit = !!editData && !!editEntry;
-      
-      // Transform CreatureDefinition to Payload format
-      const payloadData = {
-        slug: creature.id.trim().toLowerCase(),
-        name: creature.name.trim(),
-        description: creature.description.trim(),
-        project: parseInt(projectId),
-        combatStats: {
-          hp: creature.hp,
-          maxHp: creature.maxHp,
-          mana: creature.mana,
-          maxMana: creature.maxMana,
-          affinity: creature.affinity,
-          ...(creature.elementXp && { elementXp: creature.elementXp }),
-          ...(creature.elementAffinity && { elementAffinity: creature.elementAffinity }),
-        },
-        ...(creature.imageId ? { image: creature.imageId } : {}),
-        ...(creature.landmarkIconId ? { landmarkIcon: creature.landmarkIconId } : {}),
-      };
-
-      const url = isEdit 
-        ? `/api/payload/creatures/${editData.id}`
-        : "/api/payload/creatures";
-      
-      const res = await fetch(url, {
-        method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadData),
-      });
-      
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} creature`);
-      }
-      
-      invalidateCategory("creatures");
-      closeModal();
-    } catch (error) {
-      console.error("Failed to save creature:", error);
-      alert(`Failed to save creature: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setSaving(false);
-    }
+  const payloadToRune = (payload: unknown): Partial<RuneDef> => {
+    if (typeof payload !== "object" || !payload) return {};
+    const p = payload as Record<string, unknown>;
+    // Use type assertions since Payload stores these as JSON and forms will validate
+    return {
+      code: p.code as any,
+      concept: p.concept as string,
+      powerFactor: p.powerFactor as number,
+      controlFactor: p.controlFactor as number,
+      instabilityBase: p.instabilityBase as number,
+      tags: (p.tags as any) || [],
+      manaCost: p.manaCost as number,
+      damage: p.damage as any,
+      ccInstant: p.ccInstant as any,
+      pen: p.pen as any,
+      effects: p.effects as any,
+      overchargeEffects: p.overchargeEffects as any,
+      dotAffinity: p.dotAffinity as any,
+      imageId:
+        typeof p.image === "object" && p.image && "id" in p.image
+          ? (p.image.id as number)
+          : typeof p.image === "number"
+            ? p.image
+            : undefined,
+    };
   };
 
-  // Rune handlers - use Payload API
-  const handleCreateRune = async (rune: RuneDef) => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const isEdit = !!editData && !!editEntry;
-      const url = isEdit 
-        ? `/api/payload/runes/${editData.id}`
-        : "/api/payload/runes";
-      
-      // Transform rune data for Payload
-      const payloadData: any = {
-        project: parseInt(projectId),
-        code: rune.code,
-        concept: rune.concept,
-        powerFactor: rune.powerFactor,
-        controlFactor: rune.controlFactor,
-        instabilityBase: rune.instabilityBase,
-        tags: rune.tags,
-        manaCost: rune.manaCost,
-        damage: rune.damage || null,
-        ccInstant: rune.ccInstant || null,
-        pen: rune.pen || null,
-        effects: rune.effects || null,
-        overchargeEffects: rune.overchargeEffects || null,
-        dotAffinity: rune.dotAffinity || null,
-      };
-      
-      // Include image if provided
-      if (rune.imageId) {
-        payloadData.image = rune.imageId;
+  // Handlers
+  const handleCreateCharacter = createSaveHandler<CharacterDefinition>(
+    EntryType.Character,
+    (character) => ({
+      // Only include slug if provided (for new entries, server generates it)
+      ...(character.id && character.id.trim() ? { [CharacterFields.Slug]: character.id.trim().toLowerCase() } : {}),
+      [CharacterFields.Name]: character.name.trim(),
+      [CharacterFields.Description]: (character.description || "").trim(),
+      [CharacterFields.CombatStats]: {
+        hp: character.hp,
+        maxHp: character.maxHp,
+        mana: character.mana,
+        maxMana: character.maxMana,
+        affinity: character.affinity,
+        ...(character.elementXp && { elementXp: character.elementXp }),
+        ...(character.elementAffinity && { elementAffinity: character.elementAffinity }),
+        ...(character.controlBonus !== undefined && { controlBonus: character.controlBonus }),
+        ...(character.costEfficiency !== undefined && { costEfficiency: character.costEfficiency }),
+        ...(character.effects && character.effects.length > 0 && { effects: character.effects }),
+      },
+      ...(character.imageId ? { [CharacterFields.Image]: character.imageId } : {}),
+    })
+  );
+
+  const handleCreateCreature = createSaveHandler<CreatureDefinition>(
+    EntryType.Creature,
+    (creature) => ({
+      // Only include slug if provided (for new entries, server generates it)
+      ...(creature.id && creature.id.trim() ? { slug: creature.id.trim().toLowerCase() } : {}),
+      name: creature.name.trim(),
+      description: (creature.description || "").trim(),
+      combatStats: {
+        hp: creature.hp,
+        maxHp: creature.maxHp,
+        mana: creature.mana,
+        maxMana: creature.maxMana,
+        affinity: creature.affinity,
+        ...(creature.elementXp && { elementXp: creature.elementXp }),
+        ...(creature.elementAffinity && { elementAffinity: creature.elementAffinity }),
+      },
+      ...(creature.imageId ? { image: creature.imageId } : {}),
+      ...(creature.landmarkIconId ? { landmarkIcon: creature.landmarkIconId } : {}),
+    })
+  );
+
+  const handleCreateRune = createSaveHandler<RuneDef>(EntryType.Rune, (rune) => ({
+    code: rune.code,
+    concept: rune.concept,
+    powerFactor: rune.powerFactor,
+    controlFactor: rune.controlFactor,
+    instabilityBase: rune.instabilityBase,
+    tags: rune.tags,
+    manaCost: rune.manaCost,
+    damage: rune.damage || null,
+    ccInstant: rune.ccInstant || null,
+    pen: rune.pen || null,
+    effects: rune.effects || null,
+    overchargeEffects: rune.overchargeEffects || null,
+    dotAffinity: rune.dotAffinity || null,
+    ...(rune.imageId ? { image: rune.imageId } : {}),
+  }));
+
+  const handleCreateRegion = createSaveHandler<RegionFormData>(
+    EntryType.Region,
+    (data) => {
+      const payload: Record<string, unknown> = { ...data } as Record<string, unknown>;
+      // Only include slug if provided (for new entries, server generates it)
+      if (!payload.slug || (typeof payload.slug === 'string' && !payload.slug.trim())) {
+        delete payload.slug;
       }
-      
-      const res = await fetch(url, {
-        method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadData),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} rune`);
-      }
-      invalidateCategory("runes");
-      closeModal();
-    } catch (error) {
-      console.error("Failed to save rune:", error);
-      alert(`Failed to save rune: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setSaving(false);
+      return payload;
     }
+  );
+
+  const handleCreateObject = createSaveHandler<ObjectFormData>(EntryType.Object, (data) => ({
+    name: data.name,
+    // Only include slug if provided (for new entries, server generates it)
+    ...(data.slug && data.slug.trim() ? { slug: data.slug } : {}),
+    description: data.description,
+    type: data.type,
+    rarity: data.rarity,
+    weight: data.weight,
+    value: data.value,
+    ...(data.image ? { image: data.image } : {}),
+  }));
+
+  const handleCreateLore = createSaveHandler<LoreFormData>(EntryType.Story, (data) => ({
+    title: data.title,
+    content: data.content,
+    category: data.category || "history",
+    excerpt: data.content?.substring(0, 200),
+    // Only include slug if provided (for new entries, server generates it)
+    ...(data.slug && data.slug.trim() ? { slug: data.slug } : {}),
+    ...(data.featuredImage ? { featuredImage: data.featuredImage } : {}),
+  }));
+
+  const handleCreateSpell = createSaveHandler<NamedSpellBlueprint>(EntryType.Spell, (spell) => ({
+    // Only include spellId if provided (for new entries, server generates it)
+    ...(spell.id && spell.id.trim() ? { spellId: spell.id } : {}),
+    name: spell.name,
+    description: spell.description,
+    tags: spell.tags,
+    requiredRunes: spell.requiredRunes,
+    allowedExtraRunes: spell.allowedExtraRunes,
+    minDamageFocus: spell.minDamageFocus,
+    minTotalPower: spell.minTotalPower,
+    requiresNamedSourceId: spell.requiresNamedSourceId,
+    minRuneFamiliarity: spell.minRuneFamiliarity,
+    minTotalFamiliarityScore: spell.minTotalFamiliarityScore,
+    requiredFlags: spell.requiredFlags,
+    effects: spell.effects,
+    hidden: spell.hidden,
+    hint: spell.hint,
+    ...(spell.imageId ? { image: spell.imageId } : {}),
+  }));
+
+  const handleCreateEffect = createSaveHandler<EffectDefinition & { image?: number }>(
+    EntryType.Effect,
+    (effect) => ({
+      effectType: effect.id,
+      name: effect.name,
+      description: effect.description,
+      category: effect.category,
+      isBuff: effect.isBuff,
+      iconKey: effect.iconKey,
+      maxStacks: effect.maxStacks,
+      blueprint: effect.blueprint,
+      ...(effect.imageId ? { image: effect.imageId } : {}),
+    })
+  );
+
+  // Get display name for edit modal (with project override support)
+  const getEditTitle = (entryType: EntryType, data: unknown): string => {
+    if (typeof data !== "object" || !data) return getDisplayName(entryType, projectConfigs);
+    const d = data as Record<string, unknown>;
+    const name = (d.name as string) || (d.concept as string) || (d.title as string);
+    return name || getDisplayName(entryType, projectConfigs);
   };
 
-  // Region handlers
-  const handleCreateRegion = async (data: RegionFormData) => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const isEdit = !!editData && !!editEntry;
-      const url = isEdit 
-        ? `/api/payload/locations/${editData.id}`
-        : "/api/payload/locations";
-      
-      const res = await fetch(url, {
-        method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, project: parseInt(projectId) }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} region`);
-      }
-      invalidateCategory("regions");
-      closeModal();
-    } catch (error) {
-      console.error("Failed to save region:", error);
-      alert(`Failed to save region: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Render modal for a specific entry type
+  const renderModal = (entryType: EntryType) => {
+    const config = getEntryConfig(entryType);
+    const displayName = getDisplayName(entryType, projectConfigs);
+    const isOpen = activeModal === entryType;
+    const hasEditData = !!editData;
+    const title = hasEditData
+      ? `Edit ${getEditTitle(entryType, editData)}`
+      : `Create New ${displayName}`;
 
-  // Object handlers
-  const handleCreateObject = async (data: ObjectFormData) => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const isEdit = !!editData && !!editEntry;
-      const url = isEdit 
-        ? `/api/payload/objects/${editData.id}`
-        : "/api/payload/objects";
-      
-      // Transform object data for Payload (include image media ID and slug)
-      const payloadData: any = {
-        name: data.name,
-        slug: data.slug,
-        description: data.description,
-        type: data.type,
-        rarity: data.rarity,
-        weight: data.weight,
-        value: data.value,
-        project: parseInt(projectId),
-      };
-      
-      // Include image if provided
-      if (data.image) {
-        payloadData.image = data.image;
-      }
-      
-      const res = await fetch(url, {
-        method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadData),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} object`);
-      }
-      invalidateCategory("objects");
-      closeModal();
-    } catch (error) {
-      console.error("Failed to save object:", error);
-      alert(`Failed to save object: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setSaving(false);
-    }
-  };
+    const deleteLabel =
+      hasEditData && typeof editData === "object" && editData
+        ? getEditTitle(entryType, editData)
+        : undefined;
 
-  // Lore handlers
-  const handleCreateLore = async (data: LoreFormData) => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const isEdit = !!editData && !!editEntry;
-      const url = isEdit 
-        ? `/api/payload/lore/${editData.id}`
-        : "/api/payload/lore";
-      
-      // Transform lore data for Payload (include featuredImage media ID)
-      const payloadData: any = {
-        title: data.title,
-        content: data.content,
-        category: data.category || 'history', // Use category from form
-        excerpt: data.content?.substring(0, 200), // Auto-generate excerpt
-        project: parseInt(projectId),
-      };
-      
-      // Include featuredImage if provided
-      if (data.featuredImage) {
-        payloadData.featuredImage = data.featuredImage;
+    // Form submission helper
+    const submitForm = () => {
+      const form = document.querySelector("form") as
+        | (HTMLFormElement & { validateAndSubmit?: () => void | Promise<void>; submitForm?: () => void })
+        | null;
+      if (form?.validateAndSubmit) {
+        form.validateAndSubmit();
+      } else if (form?.submitForm) {
+        form.submitForm();
+      } else {
+        form?.requestSubmit();
       }
-      
-      const res = await fetch(url, {
-        method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadData),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} lore`);
-      }
-      invalidateCategory("stories");
-      closeModal();
-    } catch (error) {
-      console.error("Failed to save lore:", error);
-      alert(`Failed to save lore: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setSaving(false);
-    }
-  };
+    };
 
-  // Spell handlers
-  const handleCreateSpell = async (spell: NamedSpellBlueprint) => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const isEdit = !!editData && !!editEntry;
-      const url = isEdit 
-        ? `/api/payload/spells/${editData.id}`
-        : "/api/payload/spells";
-      
-      // Transform spell data for Payload (include image media ID)
-      const payloadData: any = {
-        spellId: spell.id,
-        name: spell.name,
-        description: spell.description,
-        tags: spell.tags,
-        requiredRunes: spell.requiredRunes,
-        allowedExtraRunes: spell.allowedExtraRunes,
-        minDamageFocus: spell.minDamageFocus,
-        minTotalPower: spell.minTotalPower,
-        requiresNamedSourceId: spell.requiresNamedSourceId,
-        minRuneFamiliarity: spell.minRuneFamiliarity,
-        minTotalFamiliarityScore: spell.minTotalFamiliarityScore,
-        requiredFlags: spell.requiredFlags,
-        effects: spell.effects,
-        hidden: spell.hidden,
-        hint: spell.hint,
-        project: parseInt(projectId),
-      };
-      
-      // Include image if provided
-      if (spell.imageId) {
-        payloadData.image = spell.imageId;
-      }
-      
-      const res = await fetch(url, {
-        method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadData),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} spell`);
-      }
-      invalidateCategory("spells");
-      closeModal();
-    } catch (error) {
-      console.error("Failed to save spell:", error);
-      alert(`Failed to save spell: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setSaving(false);
-    }
-  };
+    // Modal props
+    const modalProps = {
+      isOpen,
+      onClose: closeModal,
+      title,
+      onDelete: hasEditData ? handleDelete : undefined,
+      deleteLabel,
+      isDeleting,
+    };
 
-  // Effect handlers
-  const handleCreateEffect = async (effect: EffectDefinition & { image?: number }) => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const isEdit = !!editData && !!editEntry;
-      const url = isEdit 
-        ? `/api/payload/effects/${editData.id}`
-        : "/api/payload/effects";
-      
-      // Transform effect data for Payload (include image media ID)
-      const payloadData: any = {
-        effectType: effect.id,
-        name: effect.name,
-        description: effect.description,
-        category: effect.category,
-        isBuff: effect.isBuff,
-        iconKey: effect.iconKey,
-        maxStacks: effect.maxStacks,
-        blueprint: effect.blueprint,
-        project: parseInt(projectId),
-      };
-      
-      // Include image if provided
-      if (effect.imageId) {
-        payloadData.image = effect.imageId;
-      }
-      
-      const res = await fetch(url, {
-        method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadData),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.errors?.[0]?.message || err.error || err.message || `Failed to ${isEdit ? "update" : "create"} effect`);
-      }
-      invalidateCategory("effects");
-      closeModal();
-    } catch (error) {
-      console.error("Failed to save effect:", error);
-      alert(`Failed to save effect: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setSaving(false);
+    // Render based on entry type
+    switch (entryType) {
+      case EntryType.Character:
+        return (
+          <Modal
+            {...modalProps}
+            footer={
+              <CharacterFormFooter
+                isEdit={hasEditData}
+                saving={saving}
+                onCancel={closeModal}
+                onSubmit={() => {}}
+              />
+            }
+          >
+            {loadingEdit ? (
+              <div className="p-6 text-center text-text-muted">Loading...</div>
+            ) : (
+              <CharacterForm
+                initialValues={hasEditData ? payloadToCharacter(editData) : undefined}
+                isEdit={hasEditData}
+                onSubmit={handleCreateCharacter}
+                onCancel={closeModal}
+                saving={saving}
+                projectId={projectId}
+                editEntryId={
+                  hasEditData && typeof editData === "object" && "id" in editData
+                    ? typeof editData.id === "number"
+                      ? editData.id
+                      : typeof editData.id === "string"
+                        ? parseInt(editData.id, 10) || undefined
+                        : undefined
+                    : undefined
+                }
+              />
+            )}
+          </Modal>
+        );
+
+      case EntryType.Creature:
+        return (
+          <Modal
+            {...modalProps}
+            footer={
+              <CreatureFormFooter
+                isEdit={hasEditData}
+                saving={saving}
+                onCancel={closeModal}
+                onSubmit={submitForm}
+              />
+            }
+          >
+            {loadingEdit ? (
+              <div className="p-8 text-center text-text-muted">Loading...</div>
+            ) : (
+              <CreatureForm
+                initialValues={hasEditData ? payloadToCreature(editData) : undefined}
+                isEdit={hasEditData}
+                onSubmit={handleCreateCreature}
+                onCancel={closeModal}
+                saving={saving}
+                projectId={projectId}
+                editEntryId={
+                  hasEditData && typeof editData === "object" && "id" in editData
+                    ? typeof editData.id === "number"
+                      ? editData.id
+                      : typeof editData.id === "string"
+                        ? parseInt(editData.id, 10) || undefined
+                        : undefined
+                    : undefined
+                }
+              />
+            )}
+          </Modal>
+        );
+
+      case EntryType.Rune:
+        return (
+          <Modal
+            {...modalProps}
+            footer={
+              <RuneFormFooter
+                isEdit={hasEditData}
+                saving={saving}
+                onCancel={closeModal}
+                onSubmit={submitForm}
+              />
+            }
+          >
+            {loadingEdit ? (
+              <div className="p-6 text-center text-text-muted">Loading...</div>
+            ) : (
+              <RuneForm
+                initialValues={hasEditData ? payloadToRune(editData) : undefined}
+                isEdit={hasEditData}
+                onSubmit={handleCreateRune}
+                onCancel={closeModal}
+                saving={saving}
+                projectId={projectId}
+                editEntryId={
+                  hasEditData && typeof editData === "object" && "id" in editData
+                    ? typeof editData.id === "number"
+                      ? editData.id
+                      : typeof editData.id === "string"
+                        ? parseInt(editData.id, 10) || undefined
+                        : undefined
+                    : undefined
+                }
+              />
+            )}
+          </Modal>
+        );
+
+      case EntryType.Region:
+        return (
+          <Modal
+            {...modalProps}
+            footer={
+              <RegionFormFooter
+                isEdit={hasEditData}
+                saving={saving}
+                onCancel={closeModal}
+                onSubmit={submitForm}
+              />
+            }
+          >
+            {loadingEdit ? (
+              <div className="p-6 text-center text-text-muted">Loading...</div>
+            ) : (
+              <RegionForm
+                initialValues={(hasEditData ? editData : undefined) as RegionFormData | undefined}
+                isEdit={hasEditData}
+                onSubmit={handleCreateRegion}
+                onCancel={closeModal}
+                saving={saving}
+              />
+            )}
+          </Modal>
+        );
+
+      case EntryType.Object:
+        return (
+          <Modal
+            {...modalProps}
+            footer={
+              <ObjectFormFooter
+                isEdit={hasEditData}
+                saving={saving}
+                onCancel={closeModal}
+                onSubmit={submitForm}
+              />
+            }
+          >
+            {loadingEdit ? (
+              <div className="p-6 text-center text-text-muted">Loading...</div>
+            ) : (
+              <ObjectForm
+                initialValues={(hasEditData ? editData : undefined) as ObjectFormData | undefined}
+                isEdit={hasEditData}
+                onSubmit={handleCreateObject}
+                onCancel={closeModal}
+                saving={saving}
+                projectId={projectId}
+                editEntryId={
+                  hasEditData && typeof editData === "object" && "id" in editData
+                    ? typeof editData.id === "number"
+                      ? editData.id
+                      : typeof editData.id === "string"
+                        ? parseInt(editData.id, 10) || undefined
+                        : undefined
+                    : undefined
+                }
+              />
+            )}
+          </Modal>
+        );
+
+      case EntryType.Story:
+        return (
+          <Modal
+            {...modalProps}
+            footer={
+              <LoreFormFooter
+                isEdit={hasEditData}
+                saving={saving}
+                onCancel={closeModal}
+                onSubmit={submitForm}
+              />
+            }
+          >
+            {loadingEdit ? (
+              <div className="p-6 text-center text-text-muted">Loading...</div>
+            ) : (
+              <LoreForm
+                initialValues={(hasEditData ? editData : undefined) as LoreFormData | undefined}
+                isEdit={hasEditData}
+                onSubmit={handleCreateLore}
+                onCancel={closeModal}
+                saving={saving}
+              />
+            )}
+          </Modal>
+        );
+
+      case EntryType.Spell:
+        return (
+          <Modal
+            {...modalProps}
+            footer={
+              <SpellFormFooter
+                isEdit={hasEditData}
+                saving={saving}
+                onCancel={closeModal}
+                onSubmit={submitForm}
+              />
+            }
+          >
+            <SpellForm
+              initialValues={(hasEditData ? editData : undefined) as NamedSpellBlueprint | undefined}
+              isEdit={hasEditData}
+              onSubmit={handleCreateSpell}
+              onCancel={closeModal}
+              saving={saving}
+            />
+          </Modal>
+        );
+
+      case EntryType.Effect:
+        return (
+          <Modal
+            {...modalProps}
+            footer={
+              <EffectFormFooter
+                isEdit={hasEditData}
+                saving={saving}
+                onCancel={closeModal}
+                onSubmit={submitForm}
+              />
+            }
+          >
+            <EffectForm
+              initialValues={
+                (hasEditData ? editData : undefined) as (EffectDefinition & { image?: number }) | undefined
+              }
+              isEdit={hasEditData}
+              onSubmit={handleCreateEffect}
+              onCancel={closeModal}
+              saving={saving}
+            />
+          </Modal>
+        );
+
+      default:
+        return null;
     }
   };
 
   return (
     <>
-      {/* Character Modal */}
-      <Modal
-        isOpen={activeModal === "character"}
-        onClose={closeModal}
-        title={editData ? `Edit ${editData.name || "Character"}` : "Create New Character"}
-        onDelete={editData ? handleDelete : undefined}
-        deleteLabel={editData ? editData.name || "character" : undefined}
-        isDeleting={isDeleting}
-        footer={
-          <CharacterFormFooter
-            isEdit={!!editData}
-            saving={saving}
-            onCancel={closeModal}
-            onSubmit={() => {
-              // Footer will handle submission via validateAndSubmit
-            }}
-          />
-        }
-      >
-        {loadingEdit ? (
-          <div className="p-6 text-center text-text-muted">Loading...</div>
-        ) : (
-          <CharacterForm
-            initialValues={editData ? payloadToCharacter(editData) : undefined}
-            isEdit={!!editData}
-            onSubmit={handleCreateCharacter}
-            onCancel={closeModal}
-            saving={saving}
-            projectId={projectId}
-            editEntryId={editData?.id}
-          />
-        )}
-      </Modal>
-
-      {/* Creature Modal */}
-      <Modal
-        isOpen={activeModal === "creature"}
-        onClose={closeModal}
-        title={editData ? `Edit ${editData.name || "Creature"}` : "Create New Creature"}
-        onDelete={editData ? handleDelete : undefined}
-        deleteLabel={editData ? editData.name || "creature" : undefined}
-        isDeleting={isDeleting}
-        footer={
-          <CreatureFormFooter
-            isEdit={!!editData}
-            saving={saving}
-            onCancel={closeModal}
-            onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement;
-              form?.requestSubmit();
-            }}
-          />
-        }
-      >
-        {loadingEdit ? (
-          <div className="p-8 text-center text-text-muted">Loading...</div>
-        ) : (
-          <CreatureForm
-            initialValues={editData ? payloadToCreature(editData) : undefined}
-            isEdit={!!editData}
-            onSubmit={handleCreateCreature}
-            onCancel={closeModal}
-            saving={saving}
-            projectId={projectId}
-            editEntryId={editData?.id}
-          />
-        )}
-      </Modal>
-
-      {/* Rune Modal */}
-      <Modal
-        isOpen={activeModal === "rune"}
-        onClose={closeModal}
-        title={editData ? `Edit ${editData.concept || "Rune"}` : "Create New Rune"}
-        onDelete={editData ? handleDelete : undefined}
-        deleteLabel={editData ? editData.concept || "rune" : undefined}
-        isDeleting={isDeleting}
-        footer={
-          <RuneFormFooter
-            isEdit={!!editData}
-            saving={saving}
-            onCancel={closeModal}
-            onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
-              if (form?.validateAndSubmit) {
-                form.validateAndSubmit();
-              } else {
-                form?.requestSubmit();
-              }
-            }}
-          />
-        }
-      >
-        {loadingEdit ? (
-          <div className="p-6 text-center text-text-muted">Loading...</div>
-        ) : (
-          <RuneForm
-            initialValues={editData ? payloadToRune(editData) : undefined}
-            isEdit={!!editData}
-            onSubmit={handleCreateRune}
-            onCancel={closeModal}
-            saving={saving}
-            projectId={projectId}
-            editEntryId={editData?.id}
-          />
-        )}
-      </Modal>
-
-      {/* Region Modal */}
-      <Modal
-        isOpen={activeModal === "region"}
-        onClose={closeModal}
-        title={editData ? `Edit ${editData.name || "Region"}` : "Create New Region"}
-        onDelete={editData ? handleDelete : undefined}
-        deleteLabel={editData ? editData.name || "region" : undefined}
-        isDeleting={isDeleting}
-        footer={
-          <RegionFormFooter
-            isEdit={!!editData}
-            saving={saving}
-            onCancel={closeModal}
-            onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { submitForm?: () => void };
-              form?.submitForm?.() || form?.requestSubmit();
-            }}
-          />
-        }
-      >
-        {loadingEdit ? (
-          <div className="p-6 text-center text-text-muted">Loading...</div>
-        ) : (
-          <RegionForm
-            initialValues={editData || undefined}
-            isEdit={!!editData}
-            onSubmit={handleCreateRegion}
-            onCancel={closeModal}
-            saving={saving}
-          />
-        )}
-      </Modal>
-
-      {/* Object Modal */}
-      <Modal
-        isOpen={activeModal === "object"}
-        onClose={closeModal}
-        title={editData ? `Edit ${editData.name || "Item"}` : "Create New Object/Item"}
-        onDelete={editData ? handleDelete : undefined}
-        deleteLabel={editData ? editData.name || "item" : undefined}
-        isDeleting={isDeleting}
-        footer={
-          <ObjectFormFooter
-            isEdit={!!editData}
-            saving={saving}
-            onCancel={closeModal}
-            onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => void };
-              if (form?.validateAndSubmit) {
-                form.validateAndSubmit();
-              } else {
-                form?.requestSubmit();
-              }
-            }}
-          />
-        }
-      >
-        {loadingEdit ? (
-          <div className="p-6 text-center text-text-muted">Loading...</div>
-        ) : (
-          <ObjectForm
-            initialValues={editData || undefined}
-            isEdit={!!editData}
-            onSubmit={handleCreateObject}
-            onCancel={closeModal}
-            saving={saving}
-            projectId={projectId}
-            editEntryId={editData?.id}
-          />
-        )}
-      </Modal>
-
-      {/* Lore Modal */}
-      <Modal
-        isOpen={activeModal === "story"}
-        onClose={closeModal}
-        title={editData ? `Edit ${editData.title || "Lore Entry"}` : "Create New Lore Entry"}
-        onDelete={editData ? handleDelete : undefined}
-        deleteLabel={editData ? editData.title || "lore entry" : undefined}
-        isDeleting={isDeleting}
-        footer={
-          <LoreFormFooter
-            isEdit={!!editData}
-            saving={saving}
-            onCancel={closeModal}
-            onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
-              if (form?.validateAndSubmit) {
-                form.validateAndSubmit();
-              } else {
-                form?.requestSubmit();
-              }
-            }}
-          />
-        }
-      >
-        {loadingEdit ? (
-          <div className="p-6 text-center text-text-muted">Loading...</div>
-        ) : (
-          <LoreForm
-            initialValues={editData || undefined}
-            isEdit={!!editData}
-            onSubmit={handleCreateLore}
-            onCancel={closeModal}
-            saving={saving}
-          />
-        )}
-      </Modal>
-
-      {/* Spell Modal */}
-      <Modal
-        isOpen={activeModal === "spell"}
-        onClose={closeModal}
-        title={editData ? `Edit ${editData.name || "Spell"}` : "Create New Spell"}
-        onDelete={editData ? handleDelete : undefined}
-        deleteLabel={editData ? editData.name || "spell" : undefined}
-        isDeleting={isDeleting}
-        footer={
-          <SpellFormFooter
-            isEdit={!!editData}
-            saving={saving}
-            onCancel={closeModal}
-            onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
-              if (form?.validateAndSubmit) {
-                form.validateAndSubmit();
-              } else {
-                form?.requestSubmit();
-              }
-            }}
-          />
-        }
-      >
-        <SpellForm
-          initialValues={editData || undefined}
-          isEdit={!!editData}
-          onSubmit={handleCreateSpell}
-          onCancel={closeModal}
-          saving={saving}
-        />
-      </Modal>
-
-      {/* Effect Modal */}
-      <Modal
-        isOpen={activeModal === "effect"}
-        onClose={closeModal}
-        title={editData ? `Edit ${editData.name || "Effect"}` : "Create New Effect"}
-        onDelete={editData ? handleDelete : undefined}
-        deleteLabel={editData ? editData.name || "effect" : undefined}
-        isDeleting={isDeleting}
-        footer={
-          <EffectFormFooter
-            isEdit={!!editData}
-            saving={saving}
-            onCancel={closeModal}
-            onSubmit={() => {
-              const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
-              if (form?.validateAndSubmit) {
-                form.validateAndSubmit();
-              } else {
-                form?.requestSubmit();
-              }
-            }}
-          />
-        }
-      >
-        <EffectForm
-          initialValues={editData || undefined}
-          isEdit={!!editData}
-          onSubmit={handleCreateEffect}
-          onCancel={closeModal}
-          saving={saving}
-        />
-      </Modal>
+      {Object.values(EntryType).map((entryType) => (
+        <div key={entryType}>{renderModal(entryType)}</div>
+      ))}
     </>
   );
 }
-

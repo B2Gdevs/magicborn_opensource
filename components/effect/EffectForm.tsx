@@ -13,8 +13,13 @@ import { EffectType } from "@core/enums";
 import type { EffectBlueprint } from "@core/effects";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
 import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
+import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
 import { Zap, User, Save, X } from "lucide-react";
+import { nameToId } from "@lib/utils/id-generation";
+import { checkIdUniqueness } from "@lib/validation/id-validation";
+import { EntryType } from "@lib/content-editor/constants";
+import { toast } from "@/lib/hooks/useToast";
 
 interface EffectFormProps {
   initialValues?: Partial<EffectDefinition>;
@@ -47,76 +52,13 @@ const effectSchema = z.object({
 
 type EffectFormDataInput = z.infer<typeof effectSchema>;
 
-// Helper to convert name to ID (e.g., "Ember Ray" -> "ember_ray")
-function nameToId(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
-// Check ID uniqueness
-async function checkIdUniqueness(
+// Wrapper for checkIdUniqueness with EntryType.Effect
+async function checkEffectIdUniqueness(
   id: string,
   projectId?: string,
   excludeId?: number
 ): Promise<{ isUnique: boolean; error?: string }> {
-  if (!id.trim()) {
-    return { isUnique: true };
-  }
-
-  const normalizedId = id.trim().toLowerCase();
-
-  try {
-    const queryParts: string[] = [];
-    queryParts.push(`where[effectType][equals]=${encodeURIComponent(normalizedId)}`);
-    
-    if (projectId) {
-      const projectIdNum = typeof projectId === 'string' ? parseInt(projectId, 10) : projectId;
-      if (!isNaN(projectIdNum)) {
-        queryParts.push(`where[project][equals]=${projectIdNum}`);
-      }
-    }
-    
-    if (excludeId) {
-      queryParts.push(`where[id][not_equals]=${excludeId}`);
-    }
-    
-    queryParts.push('limit=1');
-    
-    const queryString = queryParts.join('&');
-    const url = `/api/payload/effects?${queryString}`;
-    
-    const res = await fetch(url);
-    
-    if (!res.ok) {
-      return { isUnique: true };
-    }
-    
-    const data = await res.json();
-    const docs = data.docs || data.results || (Array.isArray(data) ? data : []);
-    
-    if (!Array.isArray(docs) || docs.length === 0) {
-      return { isUnique: true };
-    }
-    
-    const matchingDoc = docs.find((doc: any) => {
-      const docEffectType = doc.effectType?.toLowerCase()?.trim();
-      return docEffectType === normalizedId;
-    });
-    
-    if (matchingDoc) {
-      return { 
-        isUnique: false, 
-        error: `An effect with ID "${id}" already exists${projectId ? ' in this project' : ''}. Please choose a different ID.` 
-      };
-    }
-    
-    return { isUnique: true };
-  } catch (error) {
-    console.error("Error checking ID uniqueness:", error);
-    return { isUnique: true };
-  }
+  return checkIdUniqueness(EntryType.Effect, id, projectId, excludeId);
 }
 
 const allCategories = Object.values(EffectCategory);
@@ -189,7 +131,7 @@ export function EffectForm({
     isEdit,
     projectId,
     editEntryId,
-    checkIdUniqueness,
+    checkIdUniqueness: checkEffectIdUniqueness,
     setError,
     clearErrors,
   });
@@ -245,13 +187,7 @@ export function EffectForm({
     }
   }, [landmarkIconMediaId, isEdit]);
 
-  // Auto-generate ID from name
-  useEffect(() => {
-    if (!isEdit && name && !id) {
-      const generatedId = nameToId(name);
-      setValue("id", generatedId);
-    }
-  }, [name, isEdit, id, setValue]);
+  // ID is now server-generated, no auto-generation needed
 
   const onSubmitForm = async (data: EffectFormDataInput) => {
     // Upload pending images before submitting
@@ -271,13 +207,20 @@ export function EffectForm({
         }
       }
     } catch (error) {
-      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
       return;
     }
 
-    // Check ID validation one more time before submitting
-    if (!isEdit && idValidation && !idValidation.isUnique) {
-      alert(idValidation.error || "ID validation failed. Please choose a different ID.");
+    // For edit mode, ID (EffectType) should already be set
+    if (isEdit && !data.id) {
+      toast.error("Effect Type is required for editing");
+      return;
+    }
+    
+    // For new entries, EffectType is required (it's an enum, not auto-generated)
+    // Only check uniqueness if validation was performed
+    if (!isEdit && data.id && data.id.trim() && idValidation && !idValidation.isUnique) {
+      toast.error(idValidation.error || "Effect Type validation failed. Please choose a different type.");
       return;
     }
 
@@ -341,31 +284,23 @@ export function EffectForm({
 
   const sections = getFormSections();
 
+  // Convert sections to SidebarNavItem format
+  const navItems: SidebarNavItem[] = sections.map((section) => ({
+    id: section.id,
+    label: section.label,
+    icon: section.icon,
+  }));
+
   return (
     <div className="flex h-full">
       {/* Sidebar Navigation */}
-      <aside className="w-64 border-r border-border bg-shadow flex-shrink-0">
-        <nav className="p-4 space-y-1 sticky top-0">
-          {sections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                  isActive
-                    ? "bg-deep text-ember-glow"
-                    : "text-text-muted hover:text-text-primary hover:bg-deep/50"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{section.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </aside>
+      <SidebarNav
+        items={navItems}
+        activeId={activeSection}
+        onItemClick={(id) => setActiveSection(id as FormSection)}
+        width="md"
+        sticky={true}
+      />
 
       {/* Form Content */}
       <div ref={formContentRef} className="flex-1 overflow-y-auto">
@@ -386,7 +321,6 @@ export function EffectForm({
             }}
             nameValue={name}
             namePlaceholder="e.g., Burn"
-            autoGenerateIdFromName={true}
             descriptionValue={watch("description") || ""}
             descriptionPlaceholder="Takes periodic fire damage over time."
             imageMediaId={imageMediaId}

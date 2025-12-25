@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, Info, FileText, Tag, Download, MoreVertical, Image as ImageIcon, X, Upload, Search, Check, Plus, File } from "lucide-react";
+import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
 import { SaveStatus } from "@lib/content-editor/types";
 import { toTitleCase } from "@lib/utils/titleCase";
 
@@ -25,7 +26,7 @@ interface ChapterDetailViewProps {
 const chapterSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Title is required"),
-  description: z.string().optional().default(""),
+  description: z.string().default(""),
   imageMediaId: z.number().optional(),
 });
 
@@ -86,7 +87,7 @@ export function ChapterDetailView({
   const isSavingRef = useRef(false);
   const hasUnsavedChangesRef = useRef(false);
 
-  const form = useForm<ChapterFormData>({
+  const form = useForm({
     resolver: zodResolver(chapterSchema),
     defaultValues: {
       id: "",
@@ -392,34 +393,28 @@ export function ChapterDetailView({
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Side Navigation - minimal, transparent */}
-        <aside 
-          className="w-28 flex-shrink-0"
+        <div
+          className="flex-shrink-0"
           onMouseEnter={() => setIsNavHovered(true)}
           onMouseLeave={() => setIsNavHovered(false)}
         >
-          <nav className={`p-2 transition-opacity duration-200 ${isNavHovered ? 'opacity-100' : 'opacity-20'}`}>
-            <div className="space-y-0.5">
-              {sections.map((section) => {
-                const Icon = section.icon;
-                const isActive = activeSection === section.id;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded transition-colors text-xs ${
-                      isActive
-                        ? "bg-ember/10 text-ember-glow"
-                        : "text-text-muted hover:text-text-primary hover:bg-deep/30"
-                    }`}
-                  >
-                    <Icon className="w-3 h-3" />
-                    <span>{section.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-        </aside>
+          <div className={`transition-opacity duration-200 ${isNavHovered ? 'opacity-100' : 'opacity-20'}`}>
+            <SidebarNav
+              items={sections.map((section) => ({
+                id: section.id,
+                label: section.label,
+                icon: section.icon as any, // Lucide icons are compatible
+              }))}
+              activeId={activeSection}
+              onItemClick={(id: string) => setActiveSection(id)}
+              width="xs"
+              size="sm"
+              sticky={false}
+              activeClassName="bg-ember/10 text-ember-glow"
+              inactiveClassName="text-text-muted hover:text-text-primary hover:bg-deep/30"
+            />
+          </div>
+        </div>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">
@@ -605,32 +600,19 @@ export function ChapterDetailView({
             {/* Body (internal nav + scrollable panel) */}
             <div className="flex flex-1 min-h-0">
               {/* Internal Nav */}
-              <aside className="w-36 border-r border-border bg-shadow/40 flex-shrink-0">
-                <div className="p-3 space-y-1">
-                  <button
-                    onClick={() => setMediaModalTab("image")}
-                    className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-colors ${
-                      mediaModalTab === "image"
-                        ? "bg-ember/10 text-ember-glow"
-                        : "text-text-muted hover:text-text-primary hover:bg-deep/30"
-                    }`}
-                  >
-                    <ImageIcon className="w-3.5 h-3.5" />
-                    Image
-                  </button>
-                  <button
-                    onClick={() => setMediaModalTab("library")}
-                    className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-colors ${
-                      mediaModalTab === "library"
-                        ? "bg-ember/10 text-ember-glow"
-                        : "text-text-muted hover:text-text-primary hover:bg-deep/30"
-                    }`}
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                    Library
-                  </button>
-                </div>
-              </aside>
+              <SidebarNav
+                items={[
+                  { id: "image", label: "Image", icon: ImageIcon },
+                  { id: "library", label: "Library", icon: Search },
+                ]}
+                activeId={mediaModalTab}
+                onItemClick={(id) => setMediaModalTab(id as "image" | "library")}
+                width="sm"
+                sticky={false}
+                size="sm"
+                activeClassName="bg-ember/10 text-ember-glow"
+                inactiveClassName="text-text-muted hover:text-text-primary hover:bg-deep/30"
+              />
 
               {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto">

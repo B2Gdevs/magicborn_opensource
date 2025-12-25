@@ -19,14 +19,47 @@ export default function ContentEditorIndexPage() {
   useEffect(() => {
     async function checkProjects() {
       try {
-        const response = await fetch("/api/payload/projects?limit=1");
+        // First, check for active project in SiteConfig
+        const siteConfigResponse = await fetch("/api/payload/globals/site-config");
+        let activeProjectId: string | null = null;
+        
+        if (siteConfigResponse.ok) {
+          const siteConfig = await siteConfigResponse.json();
+          if (siteConfig?.activeProject) {
+            activeProjectId = typeof siteConfig.activeProject === 'object' 
+              ? String(siteConfig.activeProject.id)
+              : String(siteConfig.activeProject);
+          }
+        }
+
+        // Fetch all projects
+        const response = await fetch("/api/payload/projects?limit=50&sort=-updatedAt");
         
         if (response.ok) {
           const result = await response.json();
           if (result.docs && result.docs.length > 0) {
-            // Has projects, redirect to first one
-            router.push(`/content-editor/${result.docs[0].id}`);
-            return;
+            let projectToUse = null;
+            
+            // If there's an active project, use it
+            if (activeProjectId) {
+              projectToUse = result.docs.find((p: any) => String(p.id) === activeProjectId);
+            }
+            
+            // If no active project found or not set, use most recently updated
+            if (!projectToUse) {
+              // Sort by updatedAt descending (most recent first)
+              const sorted = [...result.docs].sort((a: any, b: any) => {
+                const aDate = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                const bDate = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+                return bDate - aDate;
+              });
+              projectToUse = sorted[0] || result.docs[0];
+            }
+            
+            if (projectToUse) {
+              router.push(`/content-editor/${projectToUse.id}`);
+              return;
+            }
           }
         }
         

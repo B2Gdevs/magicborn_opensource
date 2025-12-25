@@ -5,6 +5,8 @@
 
 import { useState, useRef, useCallback } from "react";
 import Image from "next/image";
+import { toast } from "@/lib/hooks/useToast";
+import { isValidImageFile } from "@/lib/utils/image-validation";
 
 interface ImageUploadProps {
   currentImagePath?: string;
@@ -34,9 +36,10 @@ export function ImageUpload({
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
   const uploadFile = useCallback(async (file: File) => {
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      alert("Please select an image file");
+    // Validate file type using magic numbers (file signature)
+    const isValid = await isValidImageFile(file);
+    if (!isValid) {
+      toast.warning("Please select a valid image file (PNG, JPEG, GIF, WebP, BMP, or SVG)");
       return;
     }
 
@@ -80,7 +83,7 @@ export function ImageUpload({
       onImageUploaded(data.path);
     } catch (error) {
       console.error("Error uploading image:", error);
-      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
       setPreview(null);
     } finally {
       setUploading(false);

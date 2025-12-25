@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import { useActiveProject } from "@lib/hooks/useActiveProject";
+import { toast } from "@/lib/hooks/useToast";
 import {
   Home,
   BookOpen,
@@ -50,6 +52,7 @@ import {
 } from "lucide-react";
 import { SiDiscord, SiGithub, SiX, SiYoutube, SiTwitch, SiInstagram, SiTiktok, SiLinkedin, SiReddit, SiPatreon } from "react-icons/si";
 import { SidebarEditor } from "./sidebar/SidebarEditor";
+import { CheckCircle2 } from "lucide-react";
 
 // Icon mapping
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -113,8 +116,7 @@ const DEFAULT_CONFIG: SidebarConfig = {
     { label: 'Lore', href: '/lore', icon: 'Scroll', enabled: true },
     { label: 'Style Guide', href: '/style-guide', icon: 'Palette', enabled: true },
     { label: 'Content Editor', href: '/content-editor', icon: 'Settings', enabled: true },
-    { label: 'Developer Docs', href: '/docs/developer', icon: 'Code', enabled: true, requiresAuth: true },
-    { label: 'API Docs', href: '/docs/api', icon: 'Terminal', enabled: true, requiresAuth: true },
+    { label: 'API Docs', href: '/api/docs', icon: 'Terminal', enabled: true, requiresAuth: true },
     { label: 'Payload Admin', href: '/admin', icon: 'Database', enabled: true, requiresAuth: true },
     { label: 'DB Studio', href: 'https://local.drizzle.studio', icon: 'Server', enabled: true, requiresAuth: true, external: true },
   ],
@@ -130,6 +132,9 @@ export default function SidebarNav() {
   const [isEditing, setIsEditing] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [showEditButton, setShowEditButton] = useState(false);
+  const activeProject = useActiveProject();
+  const [showActiveConfirm, setShowActiveConfirm] = useState(false);
+  const [settingActive, setSettingActive] = useState(false);
 
   // Check auth status
   const checkAuth = useCallback(async () => {
@@ -199,6 +204,36 @@ export default function SidebarNav() {
   }) || [];
   const socialLinks = config.socialLinks?.filter(link => link.enabled) || [];
 
+  const handleSetInactive = async () => {
+    setSettingActive(true);
+    try {
+      const siteConfigRes = await fetch("/api/payload/globals/site-config");
+      const siteConfig = await siteConfigRes.json();
+      
+      const response = await fetch("/api/payload/globals/site-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...siteConfig,
+          activeProject: null,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Project is no longer live");
+        window.location.reload();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.error || "Failed to set inactive");
+      }
+    } catch (error) {
+      console.error("Failed to set inactive:", error);
+      toast.error("Failed to set inactive");
+    } finally {
+      setSettingActive(false);
+    }
+  };
+
   return (
     <>
       <aside 
@@ -206,7 +241,44 @@ export default function SidebarNav() {
         onMouseEnter={() => setShowEditButton(true)}
         onMouseLeave={() => setShowEditButton(false)}
       >
-        <div className="flex flex-col h-full p-6">
+        <div className="flex flex-col h-full p-6 relative">
+          {/* Active Project Overlay - Top Right */}
+          {activeProject && (
+            <div className="absolute top-2 right-2 z-50 bg-black/40 backdrop-blur-sm border border-border/30 rounded-lg p-2 shadow-lg">
+              <div className="flex items-center gap-2 mb-2">
+                {activeProject.logo && (
+                  <div className="relative w-5 h-5 flex-shrink-0">
+                    <Image
+                      src={
+                        typeof activeProject.logo === 'object' 
+                          ? (activeProject.logo.url || (activeProject.logo.filename ? `/media/${activeProject.logo.filename}` : '/design/logos/magicborn_logo.png'))
+                          : '/design/logos/magicborn_logo.png'
+                      }
+                      alt={activeProject.displayTitle || activeProject.name || "Project"}
+                      fill
+                      className="object-contain"
+                      sizes="20px"
+                    />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-text-primary truncate">
+                    {activeProject.displayTitle || activeProject.name}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleSetInactive}
+                disabled={settingActive}
+                className="w-full flex items-center justify-center gap-1.5 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-xs text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                title="This project is live on the homepage. Click to make inactive."
+              >
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-[0_0_4px_rgba(34,197,94,0.8)]" />
+                <span>Live</span>
+              </button>
+            </div>
+          )}
+
           {/* Edit Button */}
           {canEdit && showEditButton && !isEditing && (
             <button
@@ -265,6 +337,7 @@ export default function SidebarNav() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  style={{ boxSizing: "content-box" }}
                   className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-3 ${
                     isActive
                       ? "text-white bg-ember/20 border border-ember/30"

@@ -4,7 +4,7 @@
 import type { CollectionConfig } from 'payload'
 import { Collections, ObjectType, OBJECT_TYPE_OPTIONS, ItemRarity, ITEM_RARITY_OPTIONS } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadAccess } from '../access/roles'
-import { autoGenerateSlugHook } from '../utils/slugGeneration'
+// Removed autoGenerateSlugHook import - IDs are now server-generated
 
 export const Objects: CollectionConfig = {
   slug: Collections.Objects,
@@ -22,11 +22,7 @@ export const Objects: CollectionConfig = {
     update: isEditorOrAbove,
     delete: isSuperuser,
   },
-  hooks: {
-    beforeChange: [
-      autoGenerateSlugHook('slug', 'name'),
-    ],
-  },
+  // Removed auto-generation hook - IDs are now server-generated
   fields: [
     {
       name: 'project',
@@ -38,8 +34,9 @@ export const Objects: CollectionConfig = {
       name: 'slug',
       type: 'text',
       unique: true,
+      required: false,
       admin: {
-        description: 'Auto-generated unique identifier (e.g., "ember-crystal"). Generated from name if not provided.',
+        description: 'Optional URL-friendly identifier. Leave empty for server-generated ID.',
       },
     },
     {

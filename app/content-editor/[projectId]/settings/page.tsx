@@ -5,7 +5,9 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Save, Sparkles, Trash2, Settings, Gamepad2, Cpu, AlertTriangle, TestTube } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Sparkles, Trash2, Settings, Gamepad2, Cpu, AlertTriangle, TestTube, BookOpen, Home } from "lucide-react";
+import { CodexSettingsEditor } from "@/components/settings/CodexSettingsEditor";
+import { HomepageSettingsEditor } from "@/components/settings/HomepageSettingsEditor";
 import Link from "next/link";
 import AIStackStatus from "@/components/ai-stack/AIStackStatus";
 import LMStudioAPIDocs from "@/components/ai-stack/LMStudioAPIDocs";
@@ -20,7 +22,7 @@ interface Project {
   defaultView?: string;
 }
 
-type SettingsSection = "general" | "game-systems" | "ai-stack" | "developer" | "danger";
+type SettingsSection = "general" | "codex" | "homepage" | "game-systems" | "ai-stack" | "developer" | "danger";
 
 export default function ProjectSettingsPage() {
   const params = useParams();
@@ -95,8 +97,13 @@ export default function ProjectSettingsPage() {
     }
   };
 
+  // Navigation items with icons - these are UI navigation icons (not content icons)
+  // Use lucide-react directly for navigation/settings, not entry-config
+  // Default to Settings icon if icon is missing for graceful fallback
   const navigationItems = [
     { id: "general" as SettingsSection, label: "General", icon: Settings },
+    { id: "codex" as SettingsSection, label: "Codex Settings", icon: BookOpen },
+    { id: "homepage" as SettingsSection, label: "Homepage Settings", icon: Home },
     { id: "game-systems" as SettingsSection, label: "Game Systems", icon: Gamepad2 },
     { id: "ai-stack" as SettingsSection, label: "AI Stack", icon: Cpu },
     { id: "developer" as SettingsSection, label: "Developer Tests", icon: TestTube },
@@ -158,6 +165,29 @@ export default function ProjectSettingsPage() {
               </div>
             </div>
           </div>
+        );
+
+      case "codex":
+        return (
+          <CodexSettingsEditor
+            projectId={projectId}
+            magicbornMode={magicbornMode}
+            onSave={() => {
+              // Refresh project data to show updated display names
+              window.location.reload();
+            }}
+          />
+        );
+
+      case "homepage":
+        return (
+          <HomepageSettingsEditor
+            projectId={projectId}
+            onSave={() => {
+              // Refresh to show updated homepage content
+              window.location.reload();
+            }}
+          />
         );
 
       case "game-systems":
@@ -285,7 +315,7 @@ export default function ProjectSettingsPage() {
       {/* Main Content */}
       <div className="flex h-[calc(100vh-73px)]">
         {/* Sidebar Navigation */}
-        <aside className="w-64 border-r border-border bg-shadow">
+        <aside className="w-64 bg-shadow">
           <nav className="p-4 space-y-1">
             {navigationItems.map((item) => {
               const Icon = item.icon;

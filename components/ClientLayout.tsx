@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import SidebarNav from "@components/SidebarNav";
 import TopNav from "@components/TopNav";
 import { TooltipProvider } from "@/components/ui/TooltipProvider";
+import { Toaster } from "@/components/ui/Toaster";
 
 interface ClientLayoutProps {
   children: ReactNode;
@@ -27,6 +28,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
       <QueryProvider>
         <TooltipProvider>
           {children}
+          <Toaster />
         </TooltipProvider>
       </QueryProvider>
     );
@@ -38,6 +40,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
         <SidebarNav />
         <TopNav />
         {children}
+        <Toaster />
       </TooltipProvider>
     </QueryProvider>
   );

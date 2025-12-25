@@ -87,7 +87,7 @@ interface IdInputProps {
   placeholder?: string;
   label?: string;
   disabled?: boolean;
-  autoGenerateFrom?: string; // If provided, will auto-generate ID from this value
+  // autoGenerateFrom removed - IDs are now server-generated
   className?: string;
   projectId?: string; // For filtering validation by project
   excludeId?: number; // For edit mode - exclude current entry from validation
@@ -109,7 +109,6 @@ export function IdInput({
   placeholder = "e.g., my-id",
   label = "ID",
   disabled = false,
-  autoGenerateFrom,
   className = "",
   projectId,
   excludeId,
@@ -121,13 +120,7 @@ export function IdInput({
   const [validatingId, setValidatingId] = useState(false);
   const [lastValidatedId, setLastValidatedId] = useState<string | null>(null);
 
-  // Auto-generate ID from name if provided
-  useEffect(() => {
-    if (!isEdit && autoGenerateFrom?.trim() && !value) {
-      const generatedId = nameToId(autoGenerateFrom);
-      onChange(generatedId);
-    }
-  }, [autoGenerateFrom, isEdit, value, onChange]);
+  // ID is now server-generated, no auto-generation needed
 
   // Validate ID uniqueness against Payload
   useEffect(() => {

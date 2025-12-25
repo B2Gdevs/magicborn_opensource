@@ -3,10 +3,9 @@
 
 "use client";
 
-import { useRef, useState, useEffect } from "react";
 import { UseFormRegister, UseFormSetValue, UseFormWatch, FieldErrors } from "react-hook-form";
-import { Hash, User, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
-import { MediaUpload, type MediaUploadRef } from "./MediaUpload";
+import { Hash, User, FileText } from "lucide-react";
+import { StandardMediaUpload } from "./StandardMediaUpload";
 
 interface BasicInfoSectionProps {
   // Form registration
@@ -26,7 +25,6 @@ interface BasicInfoSectionProps {
   // Name field
   nameValue: string;
   namePlaceholder?: string;
-  autoGenerateIdFromName?: boolean;
   
   // Description field
   descriptionValue: string;
@@ -36,13 +34,11 @@ interface BasicInfoSectionProps {
   imageMediaId?: number;
   imageUrl?: string;
   onImageUploaded?: (mediaId: number | undefined) => void;
-  imageUploadRef?: React.RefObject<MediaUploadRef | null>;
   
   // Landmark icon upload (optional - for map icons, etc.)
   landmarkIconMediaId?: number;
   landmarkIconUrl?: string;
   onLandmarkIconUploaded?: (mediaId: number | undefined) => void;
-  landmarkIconUploadRef?: React.RefObject<MediaUploadRef | null>;
   showLandmarkIcon?: boolean; // Whether to show landmark icon field
   
   // State
@@ -64,42 +60,20 @@ export function BasicInfoSection({
   onIdChange,
   nameValue,
   namePlaceholder = "e.g., Kael",
-  autoGenerateIdFromName = true,
   descriptionValue,
   descriptionPlaceholder = "A brief description...",
   imageMediaId,
   imageUrl,
   onImageUploaded,
-  imageUploadRef: externalImageUploadRef,
   landmarkIconMediaId,
   landmarkIconUrl,
   onLandmarkIconUploaded,
-  landmarkIconUploadRef: externalLandmarkIconUploadRef,
   showLandmarkIcon = false,
   saving = false,
   projectId,
   editEntryId,
 }: BasicInfoSectionProps) {
-  const internalImageUploadRef = useRef<MediaUploadRef>(null);
-  const internalLandmarkIconUploadRef = useRef<MediaUploadRef>(null);
-  const imageUploadRefToUse = externalImageUploadRef || internalImageUploadRef;
-  const landmarkIconUploadRefToUse = externalLandmarkIconUploadRef || internalLandmarkIconUploadRef;
-  const name = watch("name");
   const id = watch("id");
-
-  // Auto-generate ID from name if enabled
-  useEffect(() => {
-    if (autoGenerateIdFromName && !isEdit && name && !id) {
-      const generatedId = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "");
-      if (generatedId) {
-        setValue("id", generatedId);
-        onIdChange?.(generatedId);
-      }
-    }
-  }, [name, id, isEdit, autoGenerateIdFromName, setValue, onIdChange]);
 
   return (
     <>
@@ -116,100 +90,7 @@ export function BasicInfoSection({
           <div className="space-y-4">
             {/* Main Image */}
             <div>
-              <MediaUpload
-                ref={imageUploadRefToUse as React.RefObject<MediaUploadRef>}
-                currentMediaId={imageMediaId}
-                currentMediaUrl={imageUrl}
-                onMediaUploaded={(mediaId) => {
-                  setValue("imageMediaId", mediaId);
-                  onImageUploaded?.(mediaId);
-                }}
-                label="Main Image"
-                disabled={saving}
-                compact={false}
-              />
-            </div>
-            
-            {/* Landmark Icon - if enabled */}
-            {showLandmarkIcon && (
-              <div>
-                <MediaUpload
-                  ref={landmarkIconUploadRefToUse as React.RefObject<MediaUploadRef>}
-                  currentMediaId={landmarkIconMediaId}
-                  currentMediaUrl={landmarkIconUrl}
-                  onMediaUploaded={(mediaId) => {
-                    setValue("landmarkIconMediaId", mediaId);
-                    onLandmarkIconUploaded?.(mediaId);
-                  }}
-                  label="Landmark Icon"
-                  disabled={saving}
-                  compact={true}
-                />
-                <p className="text-xs text-text-muted mt-1">
-                  Icon displayed on the map for this entity (optional)
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Right column: ID and Name fields */}
-          <div className="space-y-3">
-            {/* ID Input */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
-                <Hash className="w-4 h-4" />
-                <span>ID</span>
-                <span className="text-ember">*</span>
-              </label>
-              {isEdit ? (
-                <input
-                  type="text"
-                  value={idValue}
-                  disabled
-                  className="w-full px-3 py-2 bg-deep/50 border border-border rounded text-text-muted cursor-not-allowed"
-                />
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    {...register("id")}
-                    className={`w-full px-3 py-2 bg-deep border rounded text-text-primary ${
-                      errors.id ? "border-red-500" : idValidation?.isUnique === false ? "border-red-500" : idValidation?.isUnique ? "border-green-500" : "border-border"
-                    }`}
-                    placeholder={idPlaceholder}
-                    disabled={saving || validatingId}
-                  />
-                  {validatingId && (
-                    <p className="text-xs text-yellow-500 mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      Checking availability...
-                    </p>
-                  )}
-                  {idValidation && !validatingId && (
-                    <p className={`text-xs mt-1 flex items-center gap-1 ${
-                      idValidation.isUnique ? "text-green-500" : "text-red-500"
-                    }`}>
-                      {idValidation.isUnique ? (
-                        <>
-                          <CheckCircle2 className="w-3 h-3" />
-                          ID is available
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle className="w-3 h-3" />
-                          {idValidation.error || "ID already exists"}
-                        </>
-                      )}
-                    </p>
-                  )}
-                  {errors.id && (
-                    <p className="text-xs text-red-500 mt-1">{errors.id.message as string}</p>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Name Input */}
+                          {/* Name Input - First */}
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
                 <User className="w-4 h-4" />
@@ -227,6 +108,60 @@ export function BasicInfoSection({
               />
               {errors.name && (
                 <p className="text-xs text-red-500 mt-1">{errors.name.message as string}</p>
+              )}
+            </div>
+              <StandardMediaUpload
+                currentMediaId={imageMediaId}
+                currentMediaUrl={imageUrl}
+                onMediaSelected={(mediaId) => {
+                  setValue("imageMediaId", mediaId);
+                  onImageUploaded?.(mediaId);
+                }}
+                label="Main Image"
+                disabled={saving}
+                size="full"
+              />
+            </div>
+            
+            {/* Landmark Icon - if enabled */}
+            {showLandmarkIcon && (
+              <div>
+                <StandardMediaUpload
+                  currentMediaId={landmarkIconMediaId}
+                  currentMediaUrl={landmarkIconUrl}
+                  onMediaSelected={(mediaId) => {
+                    setValue("landmarkIconMediaId", mediaId);
+                    onLandmarkIconUploaded?.(mediaId);
+                  }}
+                  label="Landmark Icon"
+                  disabled={saving}
+                  size="full"
+                />
+                <p className="text-xs text-text-muted mt-1">
+                  Icon displayed on the map for this entity (optional)
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Right column: Name, ID, and Description fields */}
+          <div className="space-y-3">
+
+
+            {/* ID Display - Subtle, no input box */}
+            <div>
+              <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
+                <Hash className="w-3 h-3" />
+                <span>ID</span>
+              </div>
+              {isEdit && idValue ? (
+                <div className="text-sm text-text-muted font-mono px-1">
+                  {idValue}
+                </div>
+              ) : (
+                <div className="text-sm text-text-muted/50 italic px-1">
+                  Auto-generated when saved
+                </div>
               )}
             </div>
 

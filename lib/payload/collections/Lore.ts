@@ -4,7 +4,7 @@
 import type { CollectionConfig } from 'payload'
 import { Collections, LORE_CATEGORY_OPTIONS } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadWithFlag } from '../access/roles'
-import { autoGenerateSlugHook } from '../utils/slugGeneration'
+// Removed autoGenerateSlugHook import - IDs are now server-generated
 
 export const Lore: CollectionConfig = {
   slug: Collections.Lore,
@@ -22,11 +22,7 @@ export const Lore: CollectionConfig = {
     update: isEditorOrAbove,
     delete: isSuperuser,
   },
-  hooks: {
-    beforeChange: [
-      autoGenerateSlugHook('slug', 'title'),
-    ],
-  },
+  // Removed auto-generation hook - IDs are now server-generated
   fields: [
     {
       name: 'project',
@@ -43,8 +39,9 @@ export const Lore: CollectionConfig = {
       name: 'slug',
       type: 'text',
       unique: true,
+      required: false,
       admin: {
-        description: 'Auto-generated URL-friendly identifier. Generated from title if not provided.',
+        description: 'Optional URL-friendly identifier. Leave empty for server-generated ID.',
       },
     },
     {

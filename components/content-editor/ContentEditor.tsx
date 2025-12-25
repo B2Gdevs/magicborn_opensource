@@ -133,35 +133,35 @@ export function ContentEditor({ projectId }: ContentEditorProps) {
   };
 
   return (
-    <div className="flex h-full bg-void">
-      {/* Left Sidebar - Codex (Content Editor's own sidebar, not the main app sidebar) */}
-      <CodexSidebar
+    <div className="flex flex-col h-full bg-void">
+      {/* Content Editor Navigation - Full Width */}
+      <ContentNavigation
+        activeView={activeView}
+        onViewChange={setActiveView}
         projectId={projectId}
-        selectedCategory={selectedCategory}
-        onCategorySelect={setSelectedCategory}
+        saveStatus={saveStatus}
+        lastSaved={lastSaved}
+        selectedAct={selectedAct}
+        selectedChapter={selectedChapter}
+        selectedPage={selectedPage}
+        onActSelect={setSelectedAct}
+        onChapterSelect={setSelectedChapter}
+        onPageSelect={setSelectedPage}
+        onCreateAct={handleCreateAct}
+        onCreateChapter={handleCreateChapter}
+        onCreatePage={handleCreatePage}
+        activeDetailTab={activeDetailTab}
+        onDetailTabChange={setActiveDetailTab}
+        currentPageTitle={currentPageTitle}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Content Editor Navigation */}
-        <ContentNavigation
-          activeView={activeView}
-          onViewChange={setActiveView}
+      {/* Main Content Area with Sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Codex (below top nav) */}
+        <CodexSidebar
           projectId={projectId}
-          saveStatus={saveStatus}
-          lastSaved={lastSaved}
-          selectedAct={selectedAct}
-          selectedChapter={selectedChapter}
-          selectedPage={selectedPage}
-          onActSelect={setSelectedAct}
-          onChapterSelect={setSelectedChapter}
-          onPageSelect={setSelectedPage}
-          onCreateAct={handleCreateAct}
-          onCreateChapter={handleCreateChapter}
-          onCreatePage={handleCreatePage}
-          activeDetailTab={activeDetailTab}
-          onDetailTabChange={setActiveDetailTab}
-          currentPageTitle={currentPageTitle}
+          selectedCategory={selectedCategory}
+          onCategorySelect={setSelectedCategory}
         />
 
         {/* Main Content - Views */}

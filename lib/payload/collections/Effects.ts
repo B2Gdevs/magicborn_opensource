@@ -6,7 +6,7 @@ import { EffectType } from '@core/enums'
 import { EffectCategory } from '@/lib/data/effects'
 import { Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadAccess } from '../access/roles'
-import { autoGenerateSlugHook } from '../utils/slugGeneration'
+// Removed autoGenerateSlugHook import - IDs are now server-generated
 
 // Generate options from existing enums
 const EFFECT_TYPE_OPTIONS = Object.values(EffectType).map((type) => ({
@@ -35,18 +35,15 @@ export const Effects: CollectionConfig = {
     update: isEditorOrAbove,
     delete: isSuperuser,
   },
-  hooks: {
-    beforeChange: [
-      autoGenerateSlugHook('slug', 'name'),
-    ],
-  },
+  // Removed auto-generation hook - IDs are now server-generated
   fields: [
     {
       name: 'slug',
       type: 'text',
       unique: true,
+      required: false,
       admin: {
-        description: 'Auto-generated unique identifier. Generated from name if not provided.',
+        description: 'Optional URL-friendly identifier. Leave empty for server-generated ID.',
       },
     },
     {

@@ -4,7 +4,7 @@
 import type { CollectionConfig } from 'payload'
 import { Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadWithFlag } from '../access/roles'
-import { autoGenerateSlugHook } from '../utils/slugGeneration'
+// Removed autoGenerateSlugHook import - IDs are now server-generated
 
 export const Locations: CollectionConfig = {
   slug: Collections.Locations,
@@ -22,11 +22,7 @@ export const Locations: CollectionConfig = {
     update: isEditorOrAbove,
     delete: isSuperuser,
   },
-  hooks: {
-    beforeChange: [
-      autoGenerateSlugHook('slug', 'name'),
-    ],
-  },
+  // Removed auto-generation hook - IDs are now server-generated
   fields: [
     {
       name: 'project',
@@ -43,8 +39,9 @@ export const Locations: CollectionConfig = {
       name: 'slug',
       type: 'text',
       unique: true,
+      required: false,
       admin: {
-        description: 'Auto-generated unique identifier. Generated from name if not provided.',
+        description: 'Optional URL-friendly identifier. Leave empty for server-generated ID.',
       },
     },
     {

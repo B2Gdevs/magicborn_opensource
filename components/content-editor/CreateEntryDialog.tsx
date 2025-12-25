@@ -3,8 +3,10 @@
 
 "use client";
 
-import { useState } from "react";
-import { X, Loader2, User, MapPin, Package, BookOpen, Sparkles, Gem, Zap } from "lucide-react";
+import { useState, useMemo } from "react";
+import { X, Loader2 } from "lucide-react";
+import { CodexCategory, CATEGORY_TO_ENTRY_TYPE } from "@lib/content-editor/constants";
+import { getEntryConfig, getCollectionForEntryType, useEntryDisplayName } from "@lib/content-editor/entry-config";
 
 interface CreateEntryDialogProps {
   isOpen: boolean;
@@ -14,26 +16,31 @@ interface CreateEntryDialogProps {
   onSuccess?: () => void;
 }
 
-const categoryConfig: Record<string, { name: string; icon: React.ReactNode; collection: string }> = {
-  characters: { name: "Character", icon: <User className="w-5 h-5" />, collection: "characters" },
-  regions: { name: "Region", icon: <MapPin className="w-5 h-5" />, collection: "regions" },
-  objects: { name: "Object/Item", icon: <Package className="w-5 h-5" />, collection: "objects" },
-  stories: { name: "Book/Story", icon: <BookOpen className="w-5 h-5" />, collection: "stories" },
-  spells: { name: "Spell", icon: <Sparkles className="w-5 h-5" />, collection: "spells" },
-  runes: { name: "Rune", icon: <Gem className="w-5 h-5" />, collection: "runes" },
-  effects: { name: "Effect", icon: <Zap className="w-5 h-5" />, collection: "effects" },
-};
-
 export function CreateEntryDialog({ isOpen, onClose, projectId, category, onSuccess }: CreateEntryDialogProps) {
-  const [selectedCategory, setSelectedCategory] = useState(category || "characters");
+  const [selectedCategory, setSelectedCategory] = useState<CodexCategory>(
+    (category as CodexCategory) || CodexCategory.Characters
+  );
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  // Get entry type
+  const entryType = CATEGORY_TO_ENTRY_TYPE[selectedCategory];
+  
+  // Get display name with project override support
+  const displayName = useEntryDisplayName(entryType, projectId);
+  
+  // Get config from entry-config (single source of truth)
+  const config = useMemo(() => {
+    const entryConfig = getEntryConfig(entryType);
+    return {
+      icon: entryConfig.icon,
+      collection: getCollectionForEntryType(entryType),
+    };
+  }, [entryType]);
 
-  const config = categoryConfig[selectedCategory] || categoryConfig.characters;
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,8 +100,8 @@ export function CreateEntryDialog({ isOpen, onClose, projectId, category, onSucc
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h2 className="text-lg font-bold text-glow flex items-center gap-2">
-              {config.icon}
-              New {config.name}
+              <span className="w-5 h-5">{config.icon}</span>
+              New {displayName}
             </h2>
             <button onClick={handleClose} className="p-1 text-text-muted hover:text-text-primary transition-colors">
               <X className="w-5 h-5" />
@@ -117,7 +124,7 @@ export function CreateEntryDialog({ isOpen, onClose, projectId, category, onSucc
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder={`Enter ${config.name.toLowerCase()} name...`}
+                placeholder={`Enter ${displayName.toLowerCase()} name...`}
                 className="w-full px-3 py-2 bg-deep border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-ember-glow"
                 autoFocus
               />

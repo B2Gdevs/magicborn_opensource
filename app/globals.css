@@ -26,9 +26,19 @@ nextjs-portal > * {
   pointer-events: auto;
 }
 
+/* Hide scrollbars but keep scrolling functional */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 :root {
   /* Magicborn: Mordred's Legacy - Dark Shadowy Theme */
-  --color-void: #000000;
+  --color-void: #00000000;
   --color-shadow: #0a0a0a;
   --color-deep: #1a1a1a;
   --color-abyss: #050505;
@@ -89,6 +99,17 @@ nextjs-portal > * {
 
   .story-content em {
     @apply italic text-text-glow;
+  }
+
+  /* Form field focus glow - subtle ember glow on bottom border only */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-bottom-color: var(--color-ember-glow);
+    border-bottom-width: 2px;
+    box-shadow: 0 1px 0 0 rgba(139, 69, 19, 0.15);
+    transition: border-bottom-color 0.2s ease, box-shadow 0.2s ease;
   }
 }
 
@@ -311,6 +332,27 @@ nextjs-portal > * {
   .animate-fade-in-delay-4 {
     animation: fade-in 1s ease-out 0.8s forwards;
     opacity: 0;
+  }
+
+  /* Skeleton shimmer animation - very subtle */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-shadow) 0%,
+      var(--color-deep) 50%,
+      var(--color-shadow) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
   }
 
   /* Documentation content styling */
@@ -1143,4 +1185,70 @@ nextjs-portal > * {
   .formkit-form[data-uid="b23a7ba91f"] .formkit-fields {
     max-width: 380px;
   }
+}
+
+/* Toast styling - shadcn card style with color-coded top borders */
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+[data-sonner-toast] {
+  background-color: var(--color-shadow) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.5),
+    0 2px 4px -1px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  animation: slideInFromLeft 0.3s ease-out !important;
+}
+
+[data-sonner-toast][data-swiping="true"] {
+  transform: translateX(var(--sonner-swipe-x, 0)) !important;
+}
+
+[data-sonner-toast][data-removed="true"] {
+  animation: slideOutToLeft 0.2s ease-in forwards !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  border-top: 2px solid rgb(34, 197, 94) !important; /* green-500 */
+}
+
+[data-sonner-toast][data-type="error"] {
+  border-top: 2px solid rgb(239, 68, 68) !important; /* red-500 */
+}
+
+[data-sonner-toast][data-type="warning"] {
+  border-top: 2px solid rgb(245, 158, 11) !important; /* amber-500 */
+}
+
+[data-sonner-toast][data-type="info"] {
+  border-top: 2px solid rgb(59, 130, 246) !important; /* blue-500 */
+}
+
+[data-sonner-toast] [data-title] {
+  color: var(--color-text-secondary) !important;
+}
+
+[data-sonner-toast] [data-description] {
+  color: var(--color-text-muted) !important;
 }

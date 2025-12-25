@@ -4,7 +4,7 @@
 import type { CollectionConfig } from 'payload/types'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 import { Collections } from '../constants'
-import { autoGenerateSlugHook } from '../utils/slugGeneration'
+// Removed autoGenerateSlugHook import - IDs are now server-generated
 
 export const Creatures: CollectionConfig = {
   slug: Collections.Creatures,
@@ -38,11 +38,7 @@ export const Creatures: CollectionConfig = {
       return await buildProjectWhereClause({ req })
     },
   },
-  hooks: {
-    beforeChange: [
-      autoGenerateSlugHook('slug', 'name'),
-    ],
-  },
+  // Removed auto-generation hook - IDs are now server-generated
   fields: [
     {
       name: 'project',
@@ -54,8 +50,9 @@ export const Creatures: CollectionConfig = {
       name: 'slug',
       type: 'text',
       unique: true,
+      required: false,
       admin: {
-        description: 'Auto-generated unique identifier (e.g., "shadow-beast"). Generated from name if not provided.',
+        description: 'Optional URL-friendly identifier. Leave empty for server-generated ID.',
       },
     },
     {

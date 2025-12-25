@@ -26,6 +26,8 @@ export const Collections = {
   Effects: 'effects',
   Spells: 'spells',
   Runes: 'runes',
+  Creatures: 'creatures',
+  Objects: 'objects',
 } as const
 
 // ============================================

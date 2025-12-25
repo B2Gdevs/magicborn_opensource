@@ -47,6 +47,7 @@ interface SiteConfig {
 
 interface HomepageEditorProps {
   siteConfig: SiteConfig | null;
+  activeProjectId?: number | string | null;
   onClose: () => void;
 }
 
@@ -59,13 +60,16 @@ const COLOR_OPTIONS = [
   { label: 'Mystic', value: 'purple-400' },
 ];
 
-export function HomepageEditor({ siteConfig, onClose }: HomepageEditorProps) {
+export function HomepageEditor({ siteConfig, activeProjectId, onClose }: HomepageEditorProps) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const isEditingProject = !!activeProjectId;
 
   // Form state
   const [siteName, setSiteName] = useState(siteConfig?.siteName || "Magicborn");
   const [tagline, setTagline] = useState(siteConfig?.tagline || "Mordred's Legacy");
+  const [heroTitle, setHeroTitle] = useState(siteConfig?.hero?.title || "");
+  const [heroSubtitle, setHeroSubtitle] = useState(siteConfig?.hero?.subtitle || "");
   const [heroContent, setHeroContent] = useState<HeroContentItem[]>(
     siteConfig?.heroContent || [
       { text: 'In the shadows where magic flows like blood, the Magicborn serve. Oppressed. Silenced. Forced into war.', style: 'italic', highlightWords: 'Magicborn' },
@@ -93,30 +97,71 @@ export function HomepageEditor({ siteConfig, onClose }: HomepageEditorProps) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch("/api/payload/globals/site-config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          siteName,
-          tagline,
-          hero: {
-            videos: videos.filter(v => v.url),
-          },
-          heroContent,
-          features: {
-            showWaitlistButton: showWaitlist,
-            waitlistUrl,
-            waitlistEmbedCode,
-          },
-        }),
-      });
+      // If activeProject is set, save to project's homepageConfig instead of SiteConfig
+      if (activeProjectId) {
+        const projectId = typeof activeProjectId === 'object' ? activeProjectId.id : activeProjectId;
+        
+        // Build homepageConfig (only hero and heroContent, not siteName/tagline/features)
+        const homepageConfig: any = {};
+        
+        // Hero section
+        const heroFields: any = {};
+        if (heroTitle) heroFields.title = heroTitle;
+        if (heroSubtitle) heroFields.subtitle = heroSubtitle;
+        if (videos.filter(v => v.url).length > 0) {
+          heroFields.videos = videos.filter(v => v.url);
+        }
+        if (Object.keys(heroFields).length > 0) {
+          homepageConfig.hero = heroFields;
+        }
+        
+        // Hero content
+        if (heroContent.length > 0) {
+          homepageConfig.heroContent = heroContent;
+        }
 
-      if (response.ok) {
-        setSaved(true);
-        setTimeout(() => {
-          setSaved(false);
-          window.location.reload();
-        }, 1500);
+        const response = await fetch(`/api/payload/projects/${projectId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            homepageConfig: Object.keys(homepageConfig).length > 0 ? homepageConfig : null,
+          }),
+        });
+
+        if (response.ok) {
+          setSaved(true);
+          setTimeout(() => {
+            setSaved(false);
+            window.location.reload();
+          }, 1500);
+        }
+      } else {
+        // No active project - save to SiteConfig as before
+        const response = await fetch("/api/payload/globals/site-config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            siteName,
+            tagline,
+            hero: {
+              videos: videos.filter(v => v.url),
+            },
+            heroContent,
+            features: {
+              showWaitlistButton: showWaitlist,
+              waitlistUrl,
+              waitlistEmbedCode,
+            },
+          }),
+        });
+
+        if (response.ok) {
+          setSaved(true);
+          setTimeout(() => {
+            setSaved(false);
+            window.location.reload();
+          }, 1500);
+        }
       }
     } catch (error) {
       console.error("Failed to save:", error);
@@ -296,36 +341,73 @@ export function HomepageEditor({ siteConfig, onClose }: HomepageEditorProps) {
 
         {/* Form */}
         <div className="flex-1 overflow-auto p-6 space-y-6">
-          {/* Basic Info */}
-          <section>
-            <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider">
-              Basic Info
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-text-secondary mb-1">
-                  Site Name
-                </label>
-                <input
-                  type="text"
-                  value={siteName}
-                  onChange={(e) => setSiteName(e.target.value)}
-                  className="w-full px-4 py-2 bg-deep border border-border rounded-lg text-text-primary focus:outline-none focus:border-ember-glow"
-                />
+          {/* Basic Info - Only show when editing SiteConfig, not project */}
+          {!isEditingProject && (
+            <section>
+              <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider">
+                Basic Info
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">
+                    Site Name
+                  </label>
+                  <input
+                    type="text"
+                    value={siteName}
+                    onChange={(e) => setSiteName(e.target.value)}
+                    className="w-full px-4 py-2 bg-deep border border-border rounded-lg text-text-primary focus:outline-none focus:border-ember-glow"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">
+                    Tagline
+                  </label>
+                  <input
+                    type="text"
+                    value={tagline}
+                    onChange={(e) => setTagline(e.target.value)}
+                    className="w-full px-4 py-2 bg-deep border border-border rounded-lg text-text-primary focus:outline-none focus:border-ember-glow"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm text-text-secondary mb-1">
-                  Tagline
-                </label>
-                <input
-                  type="text"
-                  value={tagline}
-                  onChange={(e) => setTagline(e.target.value)}
-                  className="w-full px-4 py-2 bg-deep border border-border rounded-lg text-text-primary focus:outline-none focus:border-ember-glow"
-                />
+            </section>
+          )}
+
+          {/* Hero Section - Show for both SiteConfig and project */}
+          {isEditingProject && (
+            <section>
+              <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider">
+                Hero Section
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">
+                    Hero Title
+                  </label>
+                  <input
+                    type="text"
+                    value={heroTitle}
+                    onChange={(e) => setHeroTitle(e.target.value)}
+                    placeholder="Leave empty to use SiteConfig default"
+                    className="w-full px-4 py-2 bg-deep border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-ember-glow"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">
+                    Hero Subtitle
+                  </label>
+                  <textarea
+                    value={heroSubtitle}
+                    onChange={(e) => setHeroSubtitle(e.target.value)}
+                    placeholder="Leave empty to use SiteConfig default"
+                    rows={3}
+                    className="w-full px-4 py-2 bg-deep border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-ember-glow resize-none"
+                  />
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* Hero Content */}
           <section>
@@ -522,7 +604,8 @@ export function HomepageEditor({ siteConfig, onClose }: HomepageEditorProps) {
             </div>
           </section>
 
-          {/* Features */}
+          {/* Features - Only show when editing SiteConfig, not project */}
+          {!isEditingProject && (
           <section>
             <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider">
               Features
@@ -579,6 +662,7 @@ export function HomepageEditor({ siteConfig, onClose }: HomepageEditorProps) {
               )}
             </div>
           </section>
+          )}
         </div>
       </div>
     </div>

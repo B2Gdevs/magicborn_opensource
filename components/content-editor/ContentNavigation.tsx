@@ -1,14 +1,15 @@
 // components/content-editor/ContentNavigation.tsx
-// Top navigation bar with view options
+// Top navigation bar with transparent style and hover popups
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ProjectSwitcher } from "./ProjectSwitcher";
+import { ProjectHeader } from "./ProjectHeader";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { RoadmapDialog } from "./RoadmapDialog";
 import { SaveStatusIndicator } from "./SaveStatusIndicator";
-import { BreadcrumbNavigation } from "./BreadcrumbNavigation";
+import { ActChapterPageSelector } from "./ActChapterPageSelector";
 import { DetailTab, DetailToolbar } from "./DetailToolbar";
 import { 
   History,
@@ -58,99 +59,81 @@ export function ContentNavigation({
 }: ContentNavigationProps) {
   const [showVersions, setShowVersions] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
+  const centerNavRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="border-b border-border bg-shadow flex-shrink-0 flex flex-col">
-      {/* Top Row - Everything on one line */}
-      {activeView === ContentEditorView.Writer && 
-       onActSelect && 
-       onChapterSelect && 
-       onPageSelect ? (
-        <div className="flex items-center justify-between px-4 py-1.5 gap-4">
-          {/* Left: ProjectSwitcher + SaveStatusIndicator */}
-          <div className="flex items-center gap-1">
-            <ProjectSwitcher 
-              projectId={projectId} 
-              activeView={activeView}
-              onViewChange={onViewChange}
-            />
-            <SaveStatusIndicator status={saveStatus} lastSaved={lastSaved} />
-          </div>
-          
-          {/* Center: Breadcrumbs */}
-          <div className="flex-1">
-            <BreadcrumbNavigation
-              projectId={projectId}
-              selectedAct={selectedAct || undefined}
-              selectedChapter={selectedChapter || undefined}
-              selectedPage={selectedPage || undefined}
-              onActSelect={onActSelect}
-              onChapterSelect={onChapterSelect}
-              onPageSelect={onPageSelect}
-              onCreateAct={onCreateAct}
-              onCreateChapter={onCreateChapter}
-              onCreatePage={onCreatePage}
-              activeTab={activeDetailTab}
-              onTabChange={onDetailTabChange}
-              showButtons={false}
-              currentPageTitle={currentPageTitle}
-            />
-          </div>
-          
-          {/* Right: Tab Group + Divider + Roadmap/Versions */}
-          <div className="flex items-center gap-2">
-            {(selectedAct || selectedChapter || selectedPage) && activeDetailTab !== undefined && onDetailTabChange && (
-              <>
-                <div className="flex items-center gap-0 bg-deep/30 rounded-lg p-0.5 border border-border">
-                  <DetailToolbar activeTab={activeDetailTab} onTabChange={onDetailTabChange} />
-                </div>
-                <div className="w-px h-6 bg-border" />
-              </>
-            )}
-            <button
-              onClick={() => setShowRoadmap(true)}
-              className="p-1.5 text-text-secondary hover:text-ember-glow transition-colors rounded hover:bg-deep/50"
-              title="Roadmap"
-            >
-              <Map className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowVersions(true)}
-              className="p-1.5 text-text-secondary hover:text-ember-glow transition-colors rounded hover:bg-deep/50"
-              title="Versions"
-            >
-              <History className="w-4 h-4" />
-            </button>
-          </div>
+    <div className="relative flex-shrink-0">
+      {/* Transparent navbar background */}
+      <div className="absolute inset-0 bg-void/80 backdrop-blur-sm" />
+      
+      {/* Navbar content */}
+      <div className="relative flex items-center justify-between px-6 py-3 gap-6">
+        {/* Left Column: Project Header + ProjectSwitcher + SaveStatus */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <ProjectHeader projectId={projectId} />
+          <div className="w-px h-6 bg-border/30" />
+          <ProjectSwitcher 
+            projectId={projectId} 
+            activeView={activeView}
+            onViewChange={onViewChange}
+          />
+          <SaveStatusIndicator status={saveStatus} lastSaved={lastSaved} />
         </div>
-      ) : (
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <ProjectSwitcher 
-              projectId={projectId} 
-              activeView={activeView}
-              onViewChange={onViewChange}
-            />
-            <SaveStatusIndicator status={saveStatus} lastSaved={lastSaved} />
+        
+        {/* Center Column: Act, Chapter, Page (only for Writer view) */}
+        {activeView === ContentEditorView.Writer && 
+         onActSelect && 
+         onChapterSelect && 
+         onPageSelect && (
+          <div ref={centerNavRef} className="flex-1 flex items-center justify-center">
+            <div className="flex items-center gap-1 bg-deep/30 rounded-lg p-1 border border-border/30">
+              <ActChapterPageSelector
+                projectId={projectId}
+                selectedAct={selectedAct || undefined}
+                selectedChapter={selectedChapter || undefined}
+                selectedPage={selectedPage || undefined}
+                onActSelect={onActSelect}
+                onChapterSelect={onChapterSelect}
+                onPageSelect={onPageSelect}
+                onCreateAct={onCreateAct}
+                onCreateChapter={onCreateChapter}
+                onCreatePage={onCreatePage}
+                currentPageTitle={currentPageTitle}
+                centerNavRef={centerNavRef}
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowRoadmap(true)}
-              className="p-2 text-text-secondary hover:text-ember-glow transition-colors rounded hover:bg-deep/50"
-              title="Roadmap"
-            >
-              <Map className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowVersions(true)}
-              className="p-2 text-text-secondary hover:text-ember-glow transition-colors rounded hover:bg-deep/50"
-              title="Versions"
-            >
-              <History className="w-4 h-4" />
-            </button>
-          </div>
+        )}
+        
+        {/* Right Column: Detail Tabs + Roadmap + Versions */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {activeView === ContentEditorView.Writer &&
+           (selectedAct || selectedChapter || selectedPage) && 
+           activeDetailTab !== undefined && 
+           onDetailTabChange && (
+            <>
+              <div className="flex items-center gap-0 bg-deep/30 rounded-lg p-0.5 border border-border/30">
+                <DetailToolbar activeTab={activeDetailTab} onTabChange={onDetailTabChange} />
+              </div>
+              <div className="w-px h-6 bg-border/30" />
+            </>
+          )}
+          <button
+            onClick={() => setShowRoadmap(true)}
+            className="flex items-center justify-center w-10 h-10 rounded-lg text-text-secondary hover:text-white hover:bg-white/5 transition-all"
+            title="Roadmap"
+          >
+            <Map className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setShowVersions(true)}
+            className="flex items-center justify-center w-10 h-10 rounded-lg text-text-secondary hover:text-white hover:bg-white/5 transition-all"
+            title="Versions"
+          >
+            <History className="w-5 h-5" />
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Roadmap Dialog */}
       {showRoadmap && (

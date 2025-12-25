@@ -4,7 +4,7 @@
 import type { CollectionConfig } from 'payload/types'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 import { Collections, CharacterFields } from '../constants'
-import { autoGenerateSlugHook } from '../utils/slugGeneration'
+// Removed autoGenerateSlugHook import - IDs are now server-generated
 
 export const Characters: CollectionConfig = {
   slug: Collections.Characters,
@@ -38,11 +38,7 @@ export const Characters: CollectionConfig = {
       return await buildProjectWhereClause({ req })
     },
   },
-  hooks: {
-    beforeChange: [
-      autoGenerateSlugHook(CharacterFields.Slug, CharacterFields.Name),
-    ],
-  },
+  // Removed auto-generation hook - IDs are now server-generated
   fields: [
     {
       name: CharacterFields.Project,
@@ -54,11 +50,12 @@ export const Characters: CollectionConfig = {
       name: CharacterFields.Slug,
       type: 'text',
       unique: true,
+      required: false,
       admin: {
-        description: 'Auto-generated unique identifier (e.g., "kael", "morgana"). Generated from name if not provided.',
+        description: 'Optional URL-friendly identifier. Leave empty for server-generated ID.',
       },
       validate: (value: string) => {
-        // Only validate format if provided, but allow empty (will be auto-generated)
+        // Only validate format if provided, but allow empty (will be server-generated)
         if (value && value.trim() && !/^[a-z0-9_-]+$/.test(value)) {
           return 'Slug must contain only lowercase letters, numbers, underscores, and hyphens'
         }

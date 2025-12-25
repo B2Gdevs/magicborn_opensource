@@ -15,15 +15,19 @@ import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { CombatStatsEditor } from "@components/ui/CombatStatsEditor";
 import { RuneFamiliarityEditor } from "@components/ui/RuneFamiliarityEditor";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
+import { SidebarNav, type SidebarNavItem, type SidebarNavGroup } from "@components/ui/SidebarNav";
 import { useMagicbornMode } from "@/lib/payload/hooks/useMagicbornMode";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
+import { nameToId } from "@lib/utils/id-generation";
+import { checkIdUniqueness } from "@lib/validation/id-validation";
+import { EntryType } from "@lib/content-editor/constants";
+import { toast } from "@/lib/hooks/useToast";
 import { 
   User, 
   FileText, 
   Heart, 
   Zap, 
   Sparkles,
-  ChevronDown,
   ChevronRight,
   Save,
   X
@@ -45,8 +49,9 @@ interface CharacterFormProps {
 }
 
 // Validation schema - extended to include all form fields
+// ID is optional for new entries (server generates), required for edit mode
 const characterSchema = z.object({
-  id: z.string().min(1, "ID is required").regex(/^[a-z0-9_]+$/, "ID must be lowercase letters, numbers, and underscores only"),
+  id: z.string().optional().or(z.literal("")), // Optional - server generates for new entries
   name: z.string().min(1, "Name is required"),
   description: z.string().optional().default(""),
   hp: z.number().min(0, "HP must be 0 or greater"),
@@ -64,106 +69,13 @@ const characterSchema = z.object({
 
 type CharacterFormData = z.infer<typeof characterSchema>;
 
-// Helper to convert name to ID
-function nameToId(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
-// Check ID uniqueness - fixed version with better error handling
-async function checkIdUniqueness(
+// Wrapper for checkIdUniqueness with EntryType.Character
+async function checkCharacterIdUniqueness(
   id: string,
   projectId?: string,
   excludeId?: number
 ): Promise<{ isUnique: boolean; error?: string }> {
-  if (!id.trim()) {
-    return { isUnique: true };
-  }
-
-  // Normalize ID to lowercase
-  const normalizedId = id.trim().toLowerCase();
-
-  try {
-    // Build query - Payload CMS uses nested where clauses
-    // Format: where[slug][equals]=value&where[project][equals]=projectId
-    const queryParts: string[] = [];
-    queryParts.push(`where[slug][equals]=${encodeURIComponent(normalizedId)}`);
-    
-    // Always filter by project if provided (convert to number if it's a string)
-    if (projectId) {
-      const projectIdNum = typeof projectId === 'string' ? parseInt(projectId, 10) : projectId;
-      if (!isNaN(projectIdNum)) {
-        queryParts.push(`where[project][equals]=${projectIdNum}`);
-      }
-    }
-    
-    // Exclude current entry in edit mode
-    if (excludeId) {
-      queryParts.push(`where[id][not_equals]=${excludeId}`);
-    }
-    
-    queryParts.push('limit=1');
-    
-    const queryString = queryParts.join('&');
-    const url = `/api/payload/characters?${queryString}`;
-    
-    const res = await fetch(url);
-    
-    if (!res.ok) {
-      // If error (like 404, 500, etc), log but assume unique (don't block user)
-      const errorText = await res.text().catch(() => '');
-      console.warn(`ID validation API error (${res.status}) for ID "${normalizedId}":`, errorText);
-      return { isUnique: true };
-    }
-    
-    const data = await res.json();
-    
-    // Check response structure - Payload returns { docs: [...], totalDocs: number, ... }
-    const docs = data.docs || data.results || (Array.isArray(data) ? data : []);
-    
-    // If no docs returned, ID is unique
-    if (!Array.isArray(docs) || docs.length === 0) {
-      return { isUnique: true };
-    }
-    
-    // If we got results, verify the slug matches exactly (case-insensitive)
-    // Since we're already filtering by slug in the query, any result is a conflict
-    // But we double-check to be safe
-    const matchingDoc = docs.find((doc: any) => {
-      const docSlug = doc.slug?.toLowerCase()?.trim();
-      return docSlug === normalizedId;
-    });
-    
-    if (matchingDoc) {
-      // If we filtered by project, the result should already be in the same project
-      // But verify to be safe
-      if (projectId) {
-        const projectIdNum = typeof projectId === 'string' ? parseInt(projectId, 10) : projectId;
-        const docProjectId = typeof matchingDoc.project === 'object' 
-          ? matchingDoc.project?.id || matchingDoc.project 
-          : matchingDoc.project;
-        
-        // If project IDs don't match, it's unique for this project (shouldn't happen with query filter)
-        if (docProjectId && docProjectId !== projectIdNum && docProjectId !== projectId) {
-          return { isUnique: true };
-        }
-      }
-      
-      // Found a matching character
-      return { 
-        isUnique: false, 
-        error: `A character with ID "${id}" already exists${projectId ? ' in this project' : ''}. Please choose a different ID.` 
-      };
-    }
-    
-    return { isUnique: true };
-  } catch (error) {
-    console.error("Error checking ID uniqueness:", error);
-    // On error, assume unique (don't block user)
-    return { isUnique: true };
-  }
+  return checkIdUniqueness(EntryType.Character, id, projectId, excludeId);
 }
 
 // Get form sections based on Magicborn mode
@@ -217,7 +129,6 @@ export function CharacterForm({
   const [landmarkIconUrl, setLandmarkIconUrl] = useState<string | undefined>(undefined);
   const imageUploadRef = useRef<MediaUploadRef | null>(null);
   const landmarkIconUploadRef = useRef<MediaUploadRef | null>(null);
-  const [magicbornExpanded, setMagicbornExpanded] = useState(true);
   
   // Check if project is in Magicborn mode
   const { isMagicbornMode, loading: magicbornLoading } = useMagicbornMode(projectId || "");
@@ -244,15 +155,15 @@ export function CharacterForm({
 
   const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors, isValid } } = form;
   const name = watch("name");
-  const id = watch("id");
+  const id = watch("id") || ""; // Default to empty string for new entries
 
-  // Use reusable ID validation hook
+  // Use reusable ID validation hook (only validate if ID is provided)
   const { idValidation, validatingId } = useIdValidation({
-    id,
+    id: id || "", // Pass empty string if undefined
     isEdit,
     projectId,
     editEntryId,
-    checkIdUniqueness,
+    checkIdUniqueness: checkCharacterIdUniqueness,
     setError,
     clearErrors,
   });
@@ -309,13 +220,7 @@ export function CharacterForm({
     }
   }, [landmarkIconMediaId, isEdit]);
 
-  // Auto-generate ID from name
-  useEffect(() => {
-    if (!isEdit && name && !id) {
-      const generatedId = nameToId(name);
-      setValue("id", generatedId);
-    }
-  }, [name, isEdit, id, setValue]);
+  // ID is now server-generated, no auto-generation needed
 
 
   const onSubmitForm = async (data: any) => {
@@ -336,18 +241,37 @@ export function CharacterForm({
         }
       }
     } catch (error) {
-      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
       return;
     }
 
-    // Check ID validation one more time before submitting
-    if (!isEdit && idValidation && !idValidation.isUnique) {
-      alert(idValidation.error || "ID validation failed. Please choose a different ID.");
+    // For new entries, ID is server-generated, so skip client-side validation
+    // For edit mode, ID should already be set
+    if (isEdit && !data.id) {
+      toast.error("ID is required for editing");
+      return;
+    }
+    
+    // Skip ID uniqueness check for new entries (server generates ID)
+    // Only check if user manually provided an ID
+    if (!isEdit && data.id && data.id.trim() && idValidation && !idValidation.isUnique) {
+      toast.error(idValidation.error || "ID validation failed. Please choose a different ID.");
+      return;
+    }
+
+    // For new entries, use a temporary placeholder ID (server will generate the real one)
+    // For edit mode, ID must be provided
+    const tempId = isEdit 
+      ? (data.id && data.id.trim() ? data.id.trim().toLowerCase() : "")
+      : (data.id && data.id.trim() ? data.id.trim().toLowerCase() : `temp-${Date.now()}`);
+    
+    if (isEdit && !tempId) {
+      toast.error("ID is required for editing");
       return;
     }
 
     const character: CharacterDefinition = {
-      id: data.id.trim().toLowerCase(),
+      id: tempId, // Temporary ID for new entries, real ID for edit mode
       name: data.name.trim(),
       description: data.description.trim(),
       mana: data.mana,
@@ -377,71 +301,42 @@ export function CharacterForm({
 
   const { main: mainSections, magicborn: magicbornSections } = getFormSections(isMagicbornMode);
 
+  // Convert to SidebarNav format
+  const mainNavItems: SidebarNavItem[] = mainSections.map((section) => ({
+    id: section.id,
+    label: section.label,
+    icon: section.icon,
+  }));
+
+  const navItems: (SidebarNavItem | SidebarNavGroup)[] = [
+    ...mainNavItems,
+    ...(isMagicbornMode && magicbornSections.length > 0
+      ? [
+          {
+            id: "magicborn",
+            label: "Magicborn",
+            items: magicbornSections.map((section) => ({
+              id: section.id,
+              label: section.label,
+              icon: section.icon,
+            })),
+            defaultExpanded: true,
+            collapsible: true,
+          } as SidebarNavGroup,
+        ]
+      : []),
+  ];
+
   return (
     <div className="flex h-full">
       {/* Sidebar Navigation */}
-      <aside className="w-64 border-r border-border bg-shadow flex-shrink-0">
-        <nav className="p-4 space-y-1 sticky top-0">
-          {/* Main Sections */}
-          {mainSections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                  isActive
-                    ? "bg-deep text-ember-glow"
-                    : "text-text-muted hover:text-text-primary hover:bg-deep/50"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{section.label}</span>
-              </button>
-            );
-          })}
-
-          {/* Magicborn Mode Subsection */}
-          {isMagicbornMode && magicbornSections.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-border">
-              <button
-                onClick={() => setMagicbornExpanded(!magicbornExpanded)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-deep/50 transition-colors"
-              >
-                {magicbornExpanded ? (
-                  <ChevronDown className="w-4 h-4" />
-                ) : (
-                  <ChevronRight className="w-4 h-4" />
-                )}
-                <span className="text-xs font-semibold uppercase tracking-wide">Magicborn</span>
-              </button>
-              {magicbornExpanded && (
-                <div className="mt-1 space-y-1 pl-6">
-                  {magicbornSections.map((section) => {
-                    const Icon = section.icon;
-                    const isActive = activeSection === section.id;
-                    return (
-                      <button
-                        key={section.id}
-                        onClick={() => setActiveSection(section.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                          isActive
-                            ? "bg-deep text-ember-glow"
-                            : "text-text-muted hover:text-text-primary hover:bg-deep/50"
-                        }`}
-                      >
-                        <Icon className="w-4 h-4" />
-                        <span className="text-sm font-medium">{section.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </nav>
-      </aside>
+      <SidebarNav
+        items={navItems}
+        activeId={activeSection}
+        onItemClick={(id) => setActiveSection(id as FormSection)}
+        width="md"
+        sticky={true}
+      />
 
       {/* Form Content */}
       <div className="flex-1 overflow-y-auto">
@@ -452,7 +347,7 @@ export function CharacterForm({
             watch={watch}
             setValue={setValue}
             errors={errors}
-            idValue={id}
+            idValue={id || ""}
             idPlaceholder="e.g., kael"
             isEdit={isEdit}
             idValidation={idValidation}
@@ -462,7 +357,6 @@ export function CharacterForm({
             }}
             nameValue={name}
             namePlaceholder="e.g., Kael"
-            autoGenerateIdFromName={true}
             descriptionValue={watch("description") || ""}
             descriptionPlaceholder="Character description..."
             imageMediaId={imageMediaId}
@@ -474,7 +368,6 @@ export function CharacterForm({
                 setImageUrl(undefined);
               }
             }}
-            imageUploadRef={imageUploadRef}
             landmarkIconMediaId={landmarkIconMediaId}
             landmarkIconUrl={landmarkIconUrl}
             onLandmarkIconUploaded={(mediaId) => {
@@ -484,7 +377,6 @@ export function CharacterForm({
                 setLandmarkIconUrl(undefined);
               }
             }}
-            landmarkIconUploadRef={landmarkIconUploadRef}
             showLandmarkIcon={true}
             saving={saving}
             projectId={projectId}

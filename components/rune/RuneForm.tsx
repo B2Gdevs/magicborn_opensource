@@ -16,8 +16,12 @@ import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { TagSelector } from "@components/ui/TagSelector";
 import { MultiSelectDropdown } from "@components/ui/MultiSelectDropdown";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
+import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
 import { Sparkles, User } from "lucide-react";
+import { checkIdUniqueness } from "@lib/validation/id-validation";
+import { EntryType } from "@lib/content-editor/constants";
+import { toast } from "@/lib/hooks/useToast";
 
 interface RuneFormProps {
   initialValues?: Partial<RuneDef>;
@@ -33,7 +37,7 @@ interface RuneFormProps {
 
 // Validation schema
 const runeSchema = z.object({
-  id: z.string().min(1, "ID is required").regex(/^[a-z0-9_]+$/, "ID must be lowercase letters, numbers, and underscores only"),
+  id: z.string().optional().or(z.literal("")), // Optional - server generates for new entries (code is the actual ID for runes)
   name: z.string().min(1, "Name is required"), // Maps to "concept" for runes
   code: z.string().length(1, "Code must be a single letter").regex(/^[A-Z]$/, "Code must be an uppercase letter A-Z"),
   description: z.string().optional().default(""),
@@ -72,68 +76,14 @@ const getFormSections = (): Array<{ id: FormSection; label: string; icon: typeof
   ];
 };
 
-// Check ID uniqueness
-async function checkIdUniqueness(
+// Wrapper for checkIdUniqueness with EntryType.Rune
+// Note: Runes use 'code' field, not 'slug', handled by shared utility
+async function checkRuneIdUniqueness(
   id: string,
   projectId?: string,
   excludeId?: number
 ): Promise<{ isUnique: boolean; error?: string }> {
-  if (!id.trim()) {
-    return { isUnique: true };
-  }
-
-  const normalizedId = id.trim().toLowerCase();
-
-  try {
-    const queryParts: string[] = [];
-    queryParts.push(`where[slug][equals]=${encodeURIComponent(normalizedId)}`);
-    
-    if (projectId) {
-      const projectIdNum = typeof projectId === 'string' ? parseInt(projectId, 10) : projectId;
-      if (!isNaN(projectIdNum)) {
-        queryParts.push(`where[project][equals]=${projectIdNum}`);
-      }
-    }
-    
-    if (excludeId) {
-      queryParts.push(`where[id][not_equals]=${excludeId}`);
-    }
-    
-    queryParts.push('limit=1');
-    
-    const queryString = queryParts.join('&');
-    const url = `/api/payload/runes?${queryString}`;
-    
-    const res = await fetch(url);
-    
-    if (!res.ok) {
-      return { isUnique: true };
-    }
-    
-    const data = await res.json();
-    const docs = data.docs || data.results || (Array.isArray(data) ? data : []);
-    
-    if (!Array.isArray(docs) || docs.length === 0) {
-      return { isUnique: true };
-    }
-    
-    const matchingDoc = docs.find((doc: any) => {
-      const docSlug = doc.slug?.toLowerCase()?.trim();
-      return docSlug === normalizedId;
-    });
-    
-    if (matchingDoc) {
-      return { 
-        isUnique: false, 
-        error: `A rune with ID "${id}" already exists${projectId ? ' in this project' : ''}. Please choose a different ID.` 
-      };
-    }
-    
-    return { isUnique: true };
-  } catch (error) {
-    console.error("Error checking ID uniqueness:", error);
-    return { isUnique: true };
-  }
+  return checkIdUniqueness(EntryType.Rune, id, projectId, excludeId);
 }
 
 export function RuneForm({
@@ -180,9 +130,8 @@ export function RuneForm({
 
   const availableCodes = allRuneCodes.filter(c => !existingRunes.some(r => r.code === c) || (isEdit && initialValues.code === c));
 
-  // Initialize ID from code or generate from concept/name
-  const conceptOrName = (initialValues as any).concept || (initialValues as any).name || "";
-  const initialId = initialValues.id || (initialValues.code ? initialValues.code.toLowerCase() : (conceptOrName ? conceptOrName.toLowerCase().replace(/[^a-z0-9]+/g, "_") : ""));
+  // Initialize ID from existing value (server generates for new entries)
+  const initialId = initialValues.id || "";
 
   const form = useForm({
     resolver: zodResolver(runeSchema),
@@ -208,17 +157,17 @@ export function RuneForm({
   });
 
   const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = form;
-  const id = watch("id");
+  const id = watch("id") || ""; // Default to empty string for new entries
   const name = watch("name"); // Name maps to concept for runes
   const code = watch("code");
 
-  // Use reusable ID validation hook
+  // Use reusable ID validation hook (only validate if ID is provided)
   const { idValidation, validatingId } = useIdValidation({
-    id,
+    id: id || "", // Pass empty string if undefined
     isEdit,
     projectId,
     editEntryId,
-    checkIdUniqueness,
+    checkIdUniqueness: checkRuneIdUniqueness,
     setError,
     clearErrors,
   });
@@ -254,13 +203,7 @@ export function RuneForm({
     }
   }, [landmarkIconMediaId, isEdit]);
 
-  // Auto-generate ID from name if not provided
-  useEffect(() => {
-    if (!isEdit && name && !id) {
-      const generatedId = name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-      setValue("id", generatedId);
-    }
-  }, [name, isEdit, id, setValue]);
+  // ID is now server-generated, no auto-generation needed
 
   const handleAddDamage = () => {
     if (damageType && damageValue > 0) {
@@ -352,18 +295,39 @@ export function RuneForm({
         }
       }
     } catch (error) {
-      alert(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
       return;
     }
 
-    // Check ID validation one more time before submitting
-    if (!isEdit && idValidation && !idValidation.isUnique) {
-      alert(idValidation.error || "ID validation failed. Please choose a different ID.");
+    // For new entries, ID is server-generated, so skip client-side validation
+    // For edit mode, ID should already be set
+    // Note: For runes, the actual ID is the 'code' field (single letter A-Z)
+    if (isEdit && !data.id) {
+      toast.error("ID is required for editing");
+      return;
+    }
+    
+    // Skip ID uniqueness check for new entries (server generates ID)
+    // Only check if user manually provided an ID
+    if (!isEdit && data.id && data.id.trim() && idValidation && !idValidation.isUnique) {
+      toast.error(idValidation.error || "ID validation failed. Please choose a different ID.");
+      return;
+    }
+
+    // For new entries, use a temporary placeholder ID (server will generate the real one)
+    // For edit mode, ID must be provided
+    // Note: For runes, 'code' is the actual unique identifier
+    const tempId = isEdit 
+      ? (data.id && data.id.trim() ? data.id.trim().toLowerCase() : "")
+      : (data.id && data.id.trim() ? data.id.trim().toLowerCase() : `temp-${Date.now()}`);
+    
+    if (isEdit && !tempId) {
+      toast.error("ID is required for editing");
       return;
     }
 
     const rune: RuneDef = {
-      id: data.id.trim().toLowerCase(), // Use ID from form
+      id: tempId, // Temporary ID for new entries, real ID for edit mode
       name: data.name.trim(), // Map name to concept for BaseEntity
       code: data.code as RuneCode,
       concept: data.name.trim(), // Map name back to concept
@@ -423,31 +387,22 @@ export function RuneForm({
 
   const sections = getFormSections();
 
+  const navItems: SidebarNavItem[] = sections.map((section) => ({
+    id: section.id,
+    label: section.label,
+    icon: section.icon,
+  }));
+
   return (
     <div className="flex h-full">
       {/* Sidebar Navigation */}
-      <aside className="w-64 border-r border-border bg-shadow flex-shrink-0">
-        <nav className="p-4 space-y-1 sticky top-0">
-          {sections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                  isActive
-                    ? "bg-deep text-ember-glow"
-                    : "text-text-muted hover:text-text-primary hover:bg-deep/50"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{section.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </aside>
+      <SidebarNav
+        items={navItems}
+        activeId={activeSection}
+        onItemClick={(id: string) => setActiveSection(id as FormSection)}
+        width="md"
+        sticky={true}
+      />
 
       {/* Form Content */}
       <div ref={formContentRef} className="flex-1 overflow-y-auto">
@@ -458,7 +413,7 @@ export function RuneForm({
             watch={watch}
             setValue={setValue}
             errors={errors}
-            idValue={id}
+            idValue={id || ""}
             idPlaceholder="e.g., fire"
             isEdit={isEdit}
             idValidation={idValidation}
@@ -468,7 +423,6 @@ export function RuneForm({
             }}
             nameValue={name}
             namePlaceholder="e.g., Fire"
-            autoGenerateIdFromName={true}
             descriptionValue={watch("description") || ""}
             descriptionPlaceholder="Description of the rune..."
             imageMediaId={imageMediaId}

@@ -5,7 +5,7 @@ import type { CollectionConfig } from 'payload'
 import { DamageType, RuneTag, CrowdControlTag } from '@core/enums'
 import { Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadAccess } from '../access/roles'
-import { autoGenerateSlugHook } from '../utils/slugGeneration'
+// Removed autoGenerateSlugHook import - IDs are now server-generated
 
 // Generate options from existing enums
 const DAMAGE_TYPE_OPTIONS = Object.values(DamageType).map((type) => ({
@@ -39,11 +39,7 @@ export const Runes: CollectionConfig = {
     update: isEditorOrAbove,
     delete: isSuperuser,
   },
-  hooks: {
-    beforeChange: [
-      autoGenerateSlugHook('slug', 'concept'),
-    ],
-  },
+  // Removed auto-generation hook - IDs are now server-generated
   fields: [
     {
       name: 'project',
@@ -55,8 +51,9 @@ export const Runes: CollectionConfig = {
       name: 'slug',
       type: 'text',
       unique: true,
+      required: false,
       admin: {
-        description: 'Auto-generated unique identifier. Generated from concept if not provided.',
+        description: 'Optional URL-friendly identifier. Leave empty for server-generated ID.',
       },
     },
     {

@@ -194,6 +194,14 @@ export interface Project {
   id: number;
   name: string;
   description?: string | null;
+  /**
+   * Project logo displayed in sidebar when this project is active
+   */
+  logo?: (number | null) | Media;
+  /**
+   * Display title shown in sidebar when this project is active. If not set, uses project name.
+   */
+  displayTitle?: string | null;
   owner?: (number | null) | User;
   /**
    * When enabled, Spells, Runes, Effects, and Combat Stats become available.
@@ -212,21 +220,68 @@ export interface Project {
    * Specific instructions on how the AI should behave, what style to use, and any constraints or preferences.
    */
   aiAssistantBehavior?: string | null;
+  /**
+   * Override display names for entry types (e.g., "Region" → "Location"). Leave empty to use defaults from code.
+   */
+  entryTypeConfigs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Override global homepage settings for this project. Leave empty to use global SiteConfig defaults.
+   */
+  homepageConfig?: {
+    hero?: {
+      /**
+       * Hero title (overrides global SiteConfig)
+       */
+      title?: string | null;
+      /**
+       * Hero subtitle (overrides global SiteConfig)
+       */
+      subtitle?: string | null;
+      /**
+       * Hero background videos (plays in sequence). Overrides global SiteConfig.
+       */
+      videos?:
+        | {
+            video?: (number | null) | Media;
+            /**
+             * Or enter video URL directly
+             */
+            url?: string | null;
+            id?: string | null;
+          }[]
+        | null;
+      /**
+       * Fallback background image (overrides global SiteConfig)
+       */
+      backgroundImage?: (number | null) | Media;
+    };
+    /**
+     * Hero text paragraphs displayed on homepage. Overrides global SiteConfig.
+     */
+    heroContent?:
+      | {
+          text: string;
+          style?: ('normal' | 'italic' | 'bold') | null;
+          /**
+           * Comma-separated words to highlight in ember color
+           */
+          highlightWords?: string | null;
+          color?: ('' | 'ember-glow' | 'amber-400' | 'red-500' | 'cyan-400' | 'purple-400') | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "projectMembers".
- */
-export interface ProjectMember {
-  id: number;
-  project: number | Project;
-  user: number | User;
-  role: 'owner' | 'admin' | 'editor' | 'viewer';
-  updatedAt: string;
-  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -246,6 +301,18 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projectMembers".
+ */
+export interface ProjectMember {
+  id: number;
+  project: number | Project;
+  user: number | User;
+  role: 'owner' | 'admin' | 'editor' | 'viewer';
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -372,7 +439,7 @@ export interface Character {
   id: number;
   project: number | Project;
   /**
-   * Auto-generated unique identifier (e.g., "kael", "morgana"). Generated from name if not provided.
+   * Optional URL-friendly identifier. Leave empty for server-generated ID.
    */
   slug?: string | null;
   name: string;
@@ -423,7 +490,7 @@ export interface Lore {
   project: number | Project;
   title: string;
   /**
-   * Auto-generated URL-friendly identifier. Generated from title if not provided.
+   * Optional URL-friendly identifier. Leave empty for server-generated ID.
    */
   slug?: string | null;
   category: 'history' | 'magic-system' | 'culture' | 'geography' | 'religion' | 'faction';
@@ -482,7 +549,7 @@ export interface Location {
   project: number | Project;
   name: string;
   /**
-   * Auto-generated unique identifier. Generated from name if not provided.
+   * Optional URL-friendly identifier. Leave empty for server-generated ID.
    */
   slug?: string | null;
   locationType?: ('region' | 'city' | 'town' | 'village' | 'dungeon' | 'landmark' | 'building') | null;
@@ -603,7 +670,7 @@ export interface StyleGuideEntry {
 export interface Effect {
   id: number;
   /**
-   * Auto-generated unique identifier. Generated from name if not provided.
+   * Optional URL-friendly identifier. Leave empty for server-generated ID.
    */
   slug?: string | null;
   /**
@@ -657,7 +724,7 @@ export interface Effect {
 export interface Spell {
   id: number;
   /**
-   * Auto-generated unique identifier (e.g., ember_ray). Generated from name if not provided.
+   * Optional unique identifier. Leave empty for server-generated ID.
    */
   spellId?: string | null;
   name: string;
@@ -764,7 +831,7 @@ export interface Rune {
   id: number;
   project: number | Project;
   /**
-   * Auto-generated unique identifier. Generated from concept if not provided.
+   * Optional URL-friendly identifier. Leave empty for server-generated ID.
    */
   slug?: string | null;
   /**
@@ -875,7 +942,7 @@ export interface Object {
   id: number;
   project: number | Project;
   /**
-   * Auto-generated unique identifier (e.g., "ember-crystal"). Generated from name if not provided.
+   * Optional URL-friendly identifier. Leave empty for server-generated ID.
    */
   slug?: string | null;
   name: string;
@@ -907,7 +974,7 @@ export interface Creature {
   id: number;
   project: number | Project;
   /**
-   * Auto-generated unique identifier (e.g., "shadow-beast"). Generated from name if not provided.
+   * Optional URL-friendly identifier. Leave empty for server-generated ID.
    */
   slug?: string | null;
   name: string;
@@ -1213,12 +1280,42 @@ export interface UsersSelect<T extends boolean = true> {
 export interface ProjectsSelect<T extends boolean = true> {
   name?: T;
   description?: T;
+  logo?: T;
+  displayTitle?: T;
   owner?: T;
   magicbornMode?: T;
   defaultView?: T;
   aiSystemPrompt?: T;
   aiProjectStory?: T;
   aiAssistantBehavior?: T;
+  entryTypeConfigs?: T;
+  homepageConfig?:
+    | T
+    | {
+        hero?:
+          | T
+          | {
+              title?: T;
+              subtitle?: T;
+              videos?:
+                | T
+                | {
+                    video?: T;
+                    url?: T;
+                    id?: T;
+                  };
+              backgroundImage?: T;
+            };
+        heroContent?:
+          | T
+          | {
+              text?: T;
+              style?: T;
+              highlightWords?: T;
+              color?: T;
+              id?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1634,6 +1731,10 @@ export interface SiteConfig {
   id: number;
   siteName: string;
   tagline?: string | null;
+  /**
+   * Select which project's homepage content to display. If not set, uses global SiteConfig defaults.
+   */
+  activeProject?: (number | null) | Project;
   hero?: {
     title?: string | null;
     subtitle?: string | null;
@@ -1834,6 +1935,7 @@ export interface SidebarConfig {
 export interface SiteConfigSelect<T extends boolean = true> {
   siteName?: T;
   tagline?: T;
+  activeProject?: T;
   hero?:
     | T
     | {

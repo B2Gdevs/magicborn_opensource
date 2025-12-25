@@ -63,7 +63,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
-        className={`bg-void border border-border rounded-lg ${maxWidthClasses[maxWidth]} w-full max-h-[90vh] flex flex-col ${className}`}
+        className={`bg-black border border-border rounded-lg ${maxWidthClasses[maxWidth]} w-full max-h-[90vh] flex flex-col ${className}`}
       >
         {/* Fixed Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0 bg-shadow/50">
@@ -118,7 +118,7 @@ export function Modal({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">{children}</div>
+        <div className="bg-shadow flex-1 overflow-y-auto px-6 py-4 min-h-0">{children}</div>
 
         {/* Fixed Footer */}
         {footer && (

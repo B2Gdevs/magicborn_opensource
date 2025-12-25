@@ -43,6 +43,7 @@ interface UserInfo {
 
 interface HomepageContentProps {
   siteConfig: SiteConfig | null;
+  activeProjectId?: number | string | null;
 }
 
 // Default content when SiteConfig is empty
@@ -76,7 +77,7 @@ function highlightText(text: string, highlightWords?: string): string {
   return result;
 }
 
-export function HomepageContent({ siteConfig }: HomepageContentProps) {
+export function HomepageContent({ siteConfig, activeProjectId }: HomepageContentProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showEditButton, setShowEditButton] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -273,6 +274,7 @@ export function HomepageContent({ siteConfig }: HomepageContentProps) {
       {isEditing && (
         <HomepageEditor
           siteConfig={siteConfig}
+          activeProjectId={activeProjectId}
           onClose={() => setIsEditing(false)}
         />
       )}

@@ -2,6 +2,8 @@
 
 import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { X, Upload } from "lucide-react";
+import { toast } from "@/lib/hooks/useToast";
+import { isValidImageFile } from "@/lib/utils/image-validation";
 
 interface MediaUploadProps {
   currentMediaId?: number;
@@ -100,9 +102,11 @@ export const MediaUpload = forwardRef<MediaUploadRef, MediaUploadProps>(({
     },
   }));
 
-  const handleFileSelect = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) {
-      alert("Please select an image file");
+  const handleFileSelect = useCallback(async (file: File) => {
+    // Validate file type using magic numbers (file signature)
+    const isValid = await isValidImageFile(file);
+    if (!isValid) {
+      toast.warning("Please select a valid image file (PNG, JPEG, GIF, WebP, BMP, or SVG)");
       return;
     }
 

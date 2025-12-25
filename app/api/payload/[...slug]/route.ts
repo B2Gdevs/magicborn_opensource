@@ -57,6 +57,16 @@ function normalizeMediaUrlsInDoc(doc: any): any {
     }
   }
   
+  // Normalize logo relationship URLs (for Projects)
+  if (normalized.logo) {
+    if (typeof normalized.logo === 'object' && normalized.logo.filename) {
+      normalized.logo = {
+        ...normalized.logo,
+        url: getMediaUrl(normalized.logo.filename),
+      }
+    }
+  }
+  
   return normalized
 }
 
@@ -259,9 +269,21 @@ export async function POST(
     }
     
     // Regular collection create
+    // Payload automatically generates integer IDs for all documents
+    // Remove empty slug/ID fields to let Payload handle ID generation
+    const cleanedData = { ...body };
+    
+    // Remove empty slug fields (server will generate IDs automatically)
+    if (cleanedData.slug === '' || cleanedData.slug === null || cleanedData.slug === undefined) {
+      delete cleanedData.slug;
+    }
+    if (cleanedData.spellId === '' || cleanedData.spellId === null || cleanedData.spellId === undefined) {
+      delete cleanedData.spellId;
+    }
+    
     const doc = await payload.create({
       collection: first as any,
-      data: body,
+      data: cleanedData,
     })
     
     // Normalize media URLs in relationships

@@ -10,8 +10,13 @@ import * as z from "zod";
 import { GridSelector } from "@components/ui/GridSelector";
 import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
+import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
 import { MapPin, User, Save, X } from "lucide-react";
+import { nameToId } from "@lib/utils/id-generation";
+import { checkIdUniqueness } from "@lib/validation/id-validation";
+import { EntryType } from "@lib/content-editor/constants";
+import { toast } from "@/lib/hooks/useToast";
 
 // Client-safe constants
 const COLLECTIONS = {
@@ -60,9 +65,9 @@ const REGION_TYPES = [
     { value: "room", label: "Room" },
 ] as const;
 
-// Validation schema
+// Validation schema - ID is optional for new entries (server generates), required for edit mode
 const regionSchema = z.object({
-    id: z.string().min(1, "ID is required").regex(/^[a-z0-9_-]+$/, "ID must be lowercase letters, numbers, underscores, and hyphens only"),
+    id: z.string().optional().or(z.literal("")), // Optional - server generates for new entries
     name: z.string().min(1, "Name is required"),
     description: z.string().optional().default(""),
     type: z.enum(["world", "continent", "region", "city", "district", "building", "room"]).default("region"),
@@ -77,76 +82,13 @@ const regionSchema = z.object({
 
 type RegionFormDataInput = z.infer<typeof regionSchema>;
 
-// Helper to convert name to ID
-function nameToId(name: string): string {
-    return name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-}
-
-// Check ID uniqueness
-async function checkIdUniqueness(
+// Wrapper for checkIdUniqueness with EntryType.Region
+async function checkRegionIdUniqueness(
     id: string,
     projectId?: string,
     excludeId?: number
 ): Promise<{ isUnique: boolean; error?: string }> {
-    if (!id.trim()) {
-        return { isUnique: true };
-    }
-
-    const normalizedId = id.trim().toLowerCase();
-
-    try {
-        const queryParts: string[] = [];
-        queryParts.push(`where[slug][equals]=${encodeURIComponent(normalizedId)}`);
-        
-        if (projectId) {
-            const projectIdNum = typeof projectId === 'string' ? parseInt(projectId, 10) : projectId;
-            if (!isNaN(projectIdNum)) {
-                queryParts.push(`where[project][equals]=${projectIdNum}`);
-            }
-        }
-        
-        if (excludeId) {
-            queryParts.push(`where[id][not_equals]=${excludeId}`);
-        }
-        
-        queryParts.push('limit=1');
-        
-        const queryString = queryParts.join('&');
-        const url = `/api/payload/locations?${queryString}`;
-        
-        const res = await fetch(url);
-        
-        if (!res.ok) {
-            return { isUnique: true };
-        }
-        
-        const data = await res.json();
-        const docs = data.docs || data.results || (Array.isArray(data) ? data : []);
-        
-        if (!Array.isArray(docs) || docs.length === 0) {
-            return { isUnique: true };
-        }
-        
-        const matchingDoc = docs.find((doc: any) => {
-            const docSlug = doc.slug?.toLowerCase()?.trim();
-            return docSlug === normalizedId;
-        });
-        
-        if (matchingDoc) {
-            return { 
-                isUnique: false, 
-                error: `A region with ID "${id}" already exists${projectId ? ' in this project' : ''}. Please choose a different ID.` 
-            };
-        }
-        
-        return { isUnique: true };
-    } catch (error) {
-        console.error("Error checking ID uniqueness:", error);
-        return { isUnique: true };
-    }
+    return checkIdUniqueness(EntryType.Region, id, projectId, excludeId);
 }
 
 // Form sections for sidebar navigation
@@ -201,7 +143,7 @@ export function RegionForm({
     const [gridValidationError, setGridValidationError] = useState<string | null>(null);
 
     // Initialize ID from initial values or generate from name
-    const initialId = initialValues.id || (initialValues.name ? nameToId(initialValues.name) : "");
+    const initialId = initialValues.id || "";
 
     const form = useForm({
         resolver: zodResolver(regionSchema),
@@ -222,16 +164,16 @@ export function RegionForm({
 
     const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = form;
     const name = watch("name");
-    const id = watch("id");
+    const id = watch("id") || ""; // Default to empty string for new entries
     const parentLocation = watch("parentLocation");
 
-    // Use reusable ID validation hook
+    // Use reusable ID validation hook (only validate if ID is provided)
     const { idValidation, validatingId } = useIdValidation({
-        id,
+        id: id || "", // Pass empty string if undefined
         isEdit,
         projectId,
         editEntryId,
-        checkIdUniqueness,
+        checkIdUniqueness: checkRegionIdUniqueness,
         setError,
         clearErrors,
     });
@@ -287,13 +229,7 @@ export function RegionForm({
         }
     }, [landmarkIconMediaId, isEdit]);
 
-    // Auto-generate ID from name
-    useEffect(() => {
-        if (!isEdit && name && !id) {
-            const generatedId = nameToId(name);
-            setValue("id", generatedId);
-        }
-    }, [name, isEdit, id, setValue]);
+            // ID is now server-generated, no auto-generation needed
 
     // Fetch parent regions and calculate occupied cells
     useEffect(() => {
@@ -431,20 +367,27 @@ export function RegionForm({
     const sections = getFormSections();
 
     const onSubmitForm = async (data: RegionFormDataInput) => {
+        // For new entries, ID is server-generated, so skip client-side validation
+        // For edit mode, ID should already be set
+        if (isEdit && !data.id) {
+            toast.error("ID is required for editing");
+            return;
+        }
+        
+        // Skip ID uniqueness check for new entries (server generates ID)
+        // Only check if user manually provided an ID
+        if (!isEdit && data.id && data.id.trim() && idValidation && !idValidation.isUnique) {
+            toast.error(idValidation.error || "ID validation failed. Please choose a different ID.");
+            return;
+        }
         // Validate grid cells
         const gridError = validateGridSelection();
         if (gridError) {
-            alert(gridError);
+            toast.error(gridError);
             setGridValidationError(gridError);
             return;
         }
         setGridValidationError(null);
-
-        // Check ID validation one more time before submitting
-        if (!isEdit && idValidation && !idValidation.isUnique) {
-            alert(idValidation.error || "ID validation failed. Please choose a different ID.");
-            return;
-        }
 
         // Upload pending images before submitting
         let finalImageMediaId = imageMediaId;
@@ -463,12 +406,23 @@ export function RegionForm({
                 }
             }
         } catch (error) {
-            alert(`Failed to upload images: ${error instanceof Error ? error.message : "Unknown error"}`);
+            toast.error(`Failed to upload images: ${error instanceof Error ? error.message : "Unknown error"}`);
+            return;
+        }
+
+        // For new entries, use a temporary placeholder ID (server will generate the real one)
+        // For edit mode, ID must be provided
+        const tempId = isEdit 
+            ? (data.id && data.id.trim() ? data.id.trim().toLowerCase() : "")
+            : (data.id && data.id.trim() ? data.id.trim().toLowerCase() : `temp-${Date.now()}`);
+        
+        if (isEdit && !tempId) {
+            toast.error("ID is required for editing");
             return;
         }
 
         const regionData: RegionFormData = {
-            id: data.id.trim(),
+            id: tempId, // Temporary ID for new entries, real ID for edit mode
             name: data.name.trim(),
             description: data.description?.trim() || undefined,
             type: data.type,
@@ -490,31 +444,22 @@ export function RegionForm({
         onSubmit(regionData);
     };
 
+    const navItems: SidebarNavItem[] = sections.map((section) => ({
+        id: section.id,
+        label: section.label,
+        icon: section.icon,
+    }));
+
     return (
         <div className="flex h-full">
             {/* Sidebar Navigation */}
-            <aside className="w-64 border-r border-border bg-shadow flex-shrink-0">
-                <nav className="p-4 space-y-1 sticky top-0">
-                    {sections.map((section) => {
-                        const Icon = section.icon;
-                        const isActive = activeSection === section.id;
-                        return (
-                            <button
-                                key={section.id}
-                                onClick={() => setActiveSection(section.id)}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                                    isActive
-                                        ? "bg-deep text-ember-glow"
-                                        : "text-text-muted hover:text-text-primary hover:bg-deep/50"
-                                }`}
-                            >
-                                <Icon className="w-4 h-4" />
-                                <span className="text-sm font-medium">{section.label}</span>
-                            </button>
-                        );
-                    })}
-                </nav>
-            </aside>
+            <SidebarNav
+                items={navItems}
+                activeId={activeSection}
+                onItemClick={(id) => setActiveSection(id as FormSection)}
+                width="md"
+                sticky={true}
+            />
 
             {/* Form Content */}
             <div ref={formContentRef} className="flex-1 overflow-y-auto">
@@ -525,7 +470,7 @@ export function RegionForm({
                         watch={watch}
                         setValue={setValue}
                         errors={errors}
-                        idValue={id}
+                        idValue={id || ""}
                         idPlaceholder="e.g., ember-wastes"
                         isEdit={isEdit}
                         idValidation={idValidation}
@@ -535,7 +480,6 @@ export function RegionForm({
                         }}
                         nameValue={name}
                         namePlaceholder="e.g., The Ember Wastes"
-                        autoGenerateIdFromName={true}
                         descriptionValue={watch("description") || ""}
                         descriptionPlaceholder="A vast desert of crimson sand..."
                         imageMediaId={imageMediaId}

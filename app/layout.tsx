@@ -121,7 +121,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             }}
           />
         </head>
-        <body className="bg-void text-text-primary">
+        <body className="text-text-primary">
           <ClientLayout>{children}</ClientLayout>
         </body>
       </html>

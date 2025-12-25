@@ -10,6 +10,7 @@ import { creatureClient, storiesClient } from "@/lib/api/clients";
 import type { CreatureDefinition } from "@/lib/data/creatures";
 import Link from "next/link";
 import { Tooltip } from "@components/ui/Tooltip";
+import { toast } from "@/lib/hooks/useToast";
 
 interface CreatureStoriesManagerProps {
   creature: CreatureDefinition;
@@ -46,7 +47,7 @@ export function CreatureStoriesManager({
 
   const handleCreateStory = async () => {
     if (!newStoryName.trim() || !newStoryContent.trim()) {
-      alert("Story name and content are required");
+      toast.error("Story name and content are required");
       return;
     }
 
@@ -79,13 +80,13 @@ export function CreatureStoriesManager({
       await loadAvailableStories();
     } catch (error) {
       console.error("Error creating story:", error);
-      alert(`Failed to create story: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to create story: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
   const handleFileUpload = async (file: File) => {
     if (!file.name.endsWith(".md")) {
-      alert("Please upload a markdown file (.md)");
+      toast.error("Please upload a markdown file (.md)");
       return;
     }
 
@@ -119,7 +120,7 @@ export function CreatureStoriesManager({
       await loadAvailableStories();
     } catch (error) {
       console.error("Error uploading story:", error);
-      alert(`Failed to upload story: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to upload story: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
@@ -135,7 +136,7 @@ export function CreatureStoriesManager({
       onCreatureUpdate(updatedCreature);
     } catch (error) {
       console.error("Error removing story:", error);
-      alert(`Failed to remove story: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to remove story: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
@@ -154,7 +155,7 @@ export function CreatureStoriesManager({
       setShowAssociateModal(false);
     } catch (error) {
       console.error("Error associating story:", error);
-      alert(`Failed to associate story: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to associate story: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 

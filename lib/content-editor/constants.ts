@@ -23,6 +23,9 @@ export enum EntryType {
   Spell = "spell",
   Rune = "rune",
   Effect = "effect",
+  Act = "act",
+  Chapter = "chapter",
+  Page = "page",
 }
 
 // Map category IDs to entry types
@@ -38,15 +41,38 @@ export const CATEGORY_TO_ENTRY_TYPE: Record<CodexCategory, EntryType> = {
 };
 
 // Map category IDs to Payload collections
-// Note: Creatures and Objects may not be in Collections yet
 export const CATEGORY_TO_COLLECTION: Record<CodexCategory, string> = {
   [CodexCategory.Characters]: Collections.Characters,
-  [CodexCategory.Creatures]: "creatures",
+  [CodexCategory.Creatures]: Collections.Creatures,
   [CodexCategory.Regions]: Collections.Locations,
-  [CodexCategory.Objects]: "objects",
+  [CodexCategory.Objects]: Collections.Objects,
   [CodexCategory.Stories]: Collections.Lore,
   [CodexCategory.Spells]: Collections.Spells,
   [CodexCategory.Runes]: Collections.Runes,
   [CodexCategory.Effects]: Collections.Effects,
+};
+
+// Reverse mapping: EntryType to CodexCategory
+export const ENTRY_TYPE_TO_CATEGORY: Record<EntryType, CodexCategory> = {
+  [EntryType.Character]: CodexCategory.Characters,
+  [EntryType.Creature]: CodexCategory.Creatures,
+  [EntryType.Region]: CodexCategory.Regions,
+  [EntryType.Object]: CodexCategory.Objects,
+  [EntryType.Story]: CodexCategory.Stories,
+  [EntryType.Spell]: CodexCategory.Spells,
+  [EntryType.Rune]: CodexCategory.Runes,
+  [EntryType.Effect]: CodexCategory.Effects,
+};
+
+// Reverse mapping: EntryType to Collection
+export const ENTRY_TYPE_TO_COLLECTION: Record<EntryType, string> = {
+  [EntryType.Character]: Collections.Characters,
+  [EntryType.Creature]: Collections.Creatures,
+  [EntryType.Region]: Collections.Locations,
+  [EntryType.Object]: Collections.Objects,
+  [EntryType.Story]: Collections.Lore,
+  [EntryType.Spell]: Collections.Spells,
+  [EntryType.Rune]: Collections.Runes,
+  [EntryType.Effect]: Collections.Effects,
 };
 

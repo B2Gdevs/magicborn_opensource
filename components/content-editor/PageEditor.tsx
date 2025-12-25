@@ -4,12 +4,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Loader2, Download, MoreVertical, HelpCircle } from "lucide-react";
+import { Download, MoreVertical, HelpCircle } from "lucide-react";
 import { SaveStatus } from "@lib/content-editor/types";
 import { BlockNoteEditor } from "./DynamicBlockNoteEditor";
 import { Modal } from "@components/ui/Modal";
 import { Button } from "@components/ui/Button";
 import { Tooltip } from "@components/ui/Tooltip";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface PageEditorProps {
   projectId: string;
@@ -228,8 +229,34 @@ export function PageEditor({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin text-ember-glow" />
+      <div className="h-full flex flex-col">
+        {/* Toolbar skeleton */}
+        <div className="border-b border-border bg-shadow p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Skeleton variant="rectangular" className="w-32 h-8 rounded" />
+              <Skeleton variant="rectangular" className="w-24 h-8 rounded" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton variant="circular" className="w-8 h-8" />
+              <Skeleton variant="circular" className="w-8 h-8" />
+            </div>
+          </div>
+        </div>
+        {/* Editor skeleton */}
+        <div className="flex-1 p-8">
+          <div className="max-w-4xl mx-auto space-y-4">
+            <Skeleton variant="text" className="w-3/4 h-10" />
+            <Skeleton variant="text" className="w-full h-6" />
+            <Skeleton variant="text" className="w-full h-6" />
+            <Skeleton variant="text" className="w-5/6 h-6" />
+            <div className="mt-8 space-y-3">
+              <Skeleton variant="text" className="w-full h-6" />
+              <Skeleton variant="text" className="w-full h-6" />
+              <Skeleton variant="text" className="w-4/5 h-6" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

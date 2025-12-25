@@ -153,7 +153,7 @@ export function SidebarEditor({ sidebarConfig, onClose }: SidebarEditorProps) {
       { label: 'Lore', href: '/lore', icon: 'Scroll', enabled: true },
       { label: 'Style Guide', href: '/style-guide', icon: 'Palette', enabled: true },
       { label: 'Content Editor', href: '/content-editor', icon: 'Settings', enabled: true },
-      { label: 'Developer Docs', href: '/docs/developer', icon: 'Code', enabled: true },
+      { label: 'API Docs', href: '/api/docs', icon: 'Terminal', enabled: true },
     ]
   );
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(

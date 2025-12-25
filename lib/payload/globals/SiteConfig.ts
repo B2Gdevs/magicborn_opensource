@@ -4,6 +4,7 @@
 import type { GlobalConfig } from 'payload'
 import { Globals, Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove } from '../access/roles'
+import { HERO_CONTENT_STYLE_OPTIONS, HERO_CONTENT_COLOR_OPTIONS } from '../constants/homepage'
 
 export const SiteConfig: GlobalConfig = {
   slug: Globals.SiteConfig,
@@ -26,6 +27,16 @@ export const SiteConfig: GlobalConfig = {
       name: 'tagline',
       type: 'text',
       defaultValue: "Mordred's Legacy",
+    },
+    // Project selection for homepage content
+    {
+      name: 'activeProject',
+      type: 'relationship',
+      relationTo: Collections.Projects,
+      required: false,
+      admin: {
+        description: 'Select which project\'s homepage content to display. If not set, uses global SiteConfig defaults.',
+      },
     },
     // Hero section
     {
@@ -85,16 +96,12 @@ export const SiteConfig: GlobalConfig = {
           type: 'textarea',
           required: true,
         },
-        {
-          name: 'style',
-          type: 'select',
-          options: [
-            { label: 'Normal', value: 'normal' },
-            { label: 'Italic', value: 'italic' },
-            { label: 'Bold', value: 'bold' },
-          ],
-          defaultValue: 'normal',
-        },
+            {
+              name: 'style',
+              type: 'select',
+              options: HERO_CONTENT_STYLE_OPTIONS,
+              defaultValue: 'normal',
+            },
         {
           name: 'highlightWords',
           type: 'text',
@@ -102,18 +109,11 @@ export const SiteConfig: GlobalConfig = {
             description: 'Comma-separated words to highlight in ember color',
           },
         },
-        {
-          name: 'color',
-          type: 'select',
-          options: [
-            { label: 'Default', value: '' },
-            { label: 'Ember', value: 'ember-glow' },
-            { label: 'Gold', value: 'amber-400' },
-            { label: 'Crimson', value: 'red-500' },
-            { label: 'Ice', value: 'cyan-400' },
-            { label: 'Mystic', value: 'purple-400' },
-          ],
-        },
+            {
+              name: 'color',
+              type: 'select',
+              options: HERO_CONTENT_COLOR_OPTIONS,
+            },
       ],
     },
     // Feature flags
