@@ -1,15 +1,14 @@
 // components/content-editor/PageEditor.tsx
-// BlockNote-based word processor for Pages - Google Docs/Word-style layout
+// Simple textarea-based editor for Pages (BlockNote replacement - to be upgraded to TipTap with PDF export)
 
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Download, MoreVertical, HelpCircle } from "lucide-react";
 import { SaveStatus } from "@lib/content-editor/types";
-import { BlockNoteEditor } from "./DynamicBlockNoteEditor";
 import { Modal } from "@components/ui/Modal";
 import { Button } from "@components/ui/Button";
-import { Tooltip } from "@components/ui/Tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 interface PageEditorProps {
@@ -32,8 +31,7 @@ export function PageEditor({
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [calculatedPageNumber, setCalculatedPageNumber] = useState<number>(1);
-  const [editorContent, setEditorContent] = useState<any>(undefined);
-  const [editorInstance, setEditorInstance] = useState<any>(null);
+  const [editorContent, setEditorContent] = useState<string>('');
   const [hasUserTyped, setHasUserTyped] = useState(false);
   const [isTitleHovered, setIsTitleHovered] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -135,21 +133,33 @@ export function PageEditor({
           setCalculatedPageNumber(1);
         }
         
-        // Load content into BlockNote (stored as JSON field)
+        // Load content (stored as text or JSON)
         if (pageData.content) {
-          // Content is already JSON from Payload (json field type)
-          // It should be an array of BlockNote blocks
-          if (Array.isArray(pageData.content) && pageData.content.length > 0) {
+          // Handle both text and legacy BlockNote JSON format
+          if (typeof pageData.content === 'string') {
             setEditorContent(pageData.content);
-            setHasUserTyped(true); // User has content, so they've typed
+            setHasUserTyped(true);
+          } else if (Array.isArray(pageData.content)) {
+            // Legacy BlockNote format - extract text
+            const text = pageData.content
+              .map((block: any) => {
+                if (block.content && Array.isArray(block.content)) {
+                  return block.content
+                    .filter((c: any) => c.type === 'text')
+                    .map((c: any) => c.text)
+                    .join('');
+                }
+                return '';
+              })
+              .join('\n\n');
+            setEditorContent(text || '');
+            setHasUserTyped(!!text);
           } else {
-            // If it's not an array, start fresh
-            console.warn("Page content is not in expected BlockNote format:", typeof pageData.content);
-            setEditorContent(undefined);
+            setEditorContent('');
             setHasUserTyped(false);
           }
         } else {
-          setEditorContent(undefined);
+          setEditorContent('');
           setHasUserTyped(false);
         }
       }
@@ -161,8 +171,7 @@ export function PageEditor({
   };
 
   const performSave = useCallback(async () => {
-    const currentEditor = editorInstance;
-    if (!currentEditor || isSavingRef.current) {
+    if (isSavingRef.current) {
       return;
     }
     
@@ -170,20 +179,15 @@ export function PageEditor({
     setSaving(true);
     onSaveStatusChange?.(SaveStatus.Saving);
     try {
-      // Get BlockNote content as JSON array of blocks
-      const blocks = currentEditor.document;
-      
-      // Title bar is the source of truth. Do NOT overwrite it from editor content during autosave.
+      // Title bar is the source of truth
       const extractedTitle = titleRef.current || `Page ${calculatedPageNumberRef.current}`;
       
-      // Filter out placeholder blocks before saving
-      const contentToSave = blocks.filter((block: any) => 
-        !block.id?.startsWith("placeholder")
-      );
+      // Get content from textarea (stored as plain text)
+      const contentToSave = editorContent || '';
       
       const payload = {
         title: extractedTitle,
-        content: contentToSave.length > 0 ? contentToSave : blocks, // Store as BlockNote JSON (json field type)
+        content: contentToSave, // Store as plain text
       };
       
       const res = await fetch(`/api/payload/pages/${pageIdRef.current}`, {
@@ -210,7 +214,7 @@ export function PageEditor({
       setSaving(false);
       isSavingRef.current = false;
     }
-  }, [editorInstance, onSaveStatusChange, onLastSavedChange]);
+  }, [editorContent, onSaveStatusChange, onLastSavedChange]);
 
   const triggerAutosave = useCallback(() => {
     // Clear existing timeout
@@ -261,109 +265,14 @@ export function PageEditor({
     );
   }
 
-  // Get placeholder content for new pages (BlockNote format)
-  const getPlaceholderContent = () => {
-    const pageTitle = title || `Page ${calculatedPageNumber}`;
-    return [
-      {
-        id: "placeholder-title",
-        type: "heading",
-        props: {
-          level: 1,
-          textColor: "default",
-          backgroundColor: "default",
-        },
-        content: [
-          {
-            type: "text",
-            text: pageTitle,
-            styles: {},
-          },
-        ],
-      },
-      {
-        id: "placeholder-1",
-        type: "paragraph",
-        props: {
-          textColor: "default",
-          backgroundColor: "default",
-        },
-        content: [
-          {
-            type: "text",
-            text: "The morning sun cast long shadows across the cobblestone streets, painting the ancient city in hues of gold and amber. A gentle breeze carried the scent of fresh bread from the bakery on the corner, mingling with the distant sound of church bells.",
-            styles: {},
-          },
-        ],
-      },
-      {
-        id: "placeholder-2",
-        type: "paragraph",
-        props: {
-          textColor: "default",
-          backgroundColor: "default",
-        },
-        content: [
-          {
-            type: "text",
-            text: "In the quiet of dawn, before the city fully awakened, there was a sense of possibility—a moment suspended between night and day where anything could happen.",
-            styles: {},
-          },
-        ],
-      },
-    ];
-  };
 
-  // Determine initial content - use placeholder if no content exists
-  const getInitialContent = () => {
-    if (editorContent && editorContent.length > 0) {
-      return editorContent;
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    setEditorContent(newContent);
+    if (!hasUserTyped && newContent.trim().length > 0) {
+      setHasUserTyped(true);
     }
-    if (!hasUserTyped) {
-      return getPlaceholderContent();
-    }
-    return undefined;
-  };
-
-  const handleEditorReady = (editor: any) => {
-    setEditorInstance(editor);
-    
-    // Track when user starts typing to remove placeholder
-    if (!hasUserTyped) {
-      const unsubscribe = editor.onChange(() => {
-        const blocks = editor.document;
-        // Check if user has modified any content (excluding title)
-        const hasUserContent = blocks.some((block: any) => {
-          if (block.id === "placeholder-title") return false; // Title block doesn't count
-          if (block.type === "paragraph" || block.type === "heading") {
-            const text = block.content
-              ?.filter((c: any) => c.type === "text")
-              .map((c: any) => c.text)
-              .join("") || "";
-            // Check if text is different from placeholder text
-            if (block.id === "placeholder-1") {
-              return text !== "The morning sun cast long shadows across the cobblestone streets, painting the ancient city in hues of gold and amber. A gentle breeze carried the scent of fresh bread from the bakery on the corner, mingling with the distant sound of church bells.";
-            }
-            if (block.id === "placeholder-2") {
-              return text !== "In the quiet of dawn, before the city fully awakened, there was a sense of possibility—a moment suspended between night and day where anything could happen.";
-            }
-            return text.trim().length > 0;
-          }
-          return true;
-        });
-        
-        if (hasUserContent) {
-          setHasUserTyped(true);
-          unsubscribe(); // Stop tracking once user has typed
-        }
-      });
-    }
-  };
-
-  const handleEditorChange = () => {
-    if (editorInstance) {
-      triggerAutosave();
-    }
+    triggerAutosave();
   };
 
   const handleExport = () => {
@@ -398,14 +307,19 @@ export function PageEditor({
           
           {/* Tools - only show on hover */}
           <div className={`flex items-center gap-1 transition-opacity duration-200 ${isTitleHovered ? 'opacity-100' : 'opacity-0'}`}>
-            <Tooltip content="Guide">
-              <button
-                onClick={() => setIsGuideOpen(true)}
-                className="p-1.5 rounded hover:bg-deep/50 text-text-secondary hover:text-text-primary transition-colors"
-                title="Guide"
-              >
-                <HelpCircle className="w-4 h-4" />
-              </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setIsGuideOpen(true)}
+                  className="p-1.5 rounded hover:bg-deep/50 text-text-secondary hover:text-text-primary transition-colors"
+                  title="Guide"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-shadow border border-border text-text-primary">
+                Guide
+              </TooltipContent>
             </Tooltip>
             <button
               onClick={handleExport}
@@ -427,64 +341,11 @@ export function PageEditor({
       {/* Document Area - Notion/Word style, integrated page */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto pt-1 pb-12 px-8">
-          <style jsx global>{`
-            .bn-container {
-              --bn-colors-editor-text: var(--text-primary);
-              --bn-colors-editor-background: transparent;
-              --bn-colors-menu-text: var(--text-primary);
-              --bn-colors-menu-background: var(--shadow);
-              --bn-colors-tooltip-text: var(--text-primary);
-              --bn-colors-tooltip-background: var(--deep);
-              --bn-colors-hovered-text: var(--text-primary);
-              --bn-colors-hovered-background: var(--deep);
-              --bn-colors-selected-text: var(--ember-glow);
-              --bn-colors-selected-background: var(--ember)/20;
-              --bn-colors-disabled-text: var(--text-muted);
-              --bn-colors-disabled-background: transparent;
-              --bn-colors-shadow: rgba(0, 0, 0, 0.3);
-              --bn-colors-border: var(--border);
-              --bn-border-radius: 0.375rem;
-            }
-            .bn-editor {
-              min-height: 600px;
-              font-size: 16px;
-              line-height: 1.75;
-              color: var(--text-primary);
-            }
-            .bn-editor p {
-              margin-bottom: 1rem;
-            }
-            .bn-editor h1 {
-              font-size: 2.5rem;
-              font-weight: 700;
-              margin-top: 2rem;
-              margin-bottom: 1.5rem;
-              line-height: 1.2;
-            }
-            .bn-editor h2 {
-              font-size: 2rem;
-              font-weight: 600;
-              margin-top: 1.5rem;
-              margin-bottom: 1rem;
-            }
-            .bn-editor h3 {
-              font-size: 1.5rem;
-              font-weight: 600;
-              margin-top: 1.25rem;
-              margin-bottom: 0.75rem;
-            }
-            /* Placeholder text styling */
-            .bn-editor [data-placeholder] {
-              color: var(--text-muted);
-              opacity: 0.6;
-            }
-          `}</style>
-          <BlockNoteEditor 
-            initialContent={getInitialContent()}
-            onEditorReady={handleEditorReady}
-            onChange={handleEditorChange}
-            projectId={projectId}
-            pageId={pageId}
+          <textarea
+            value={editorContent || (!hasUserTyped ? "The morning sun cast long shadows across the cobblestone streets, painting the ancient city in hues of gold and amber. A gentle breeze carried the scent of fresh bread from the bakery on the corner, mingling with the distant sound of church bells.\n\nIn the quiet of dawn, before the city fully awakened, there was a sense of possibility—a moment suspended between night and day where anything could happen." : "")}
+            onChange={handleContentChange}
+            className="w-full min-h-[600px] bg-transparent text-text-primary placeholder:text-text-muted/60 text-base leading-relaxed resize-none focus:outline-none"
+            placeholder="Start writing..."
           />
         </div>
       </div>
@@ -506,21 +367,10 @@ export function PageEditor({
           <div className="space-y-2">
             <div className="text-text-primary font-semibold">Basics</div>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Type <span className="font-mono text-text-primary">/</span> to open the slash menu (blocks + AI commands).</li>
-              <li>Select text to show the formatting toolbar (bold/italic/etc + AI).</li>
               <li>Edits autosave a moment after you stop typing.</li>
+              <li>Use the title bar to set your page title.</li>
+              <li>Export functionality coming soon (PDF, DOCX, etc.).</li>
             </ul>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-text-primary font-semibold">AI editing</div>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Select text → click the AI button in the toolbar to rewrite/expand/condense.</li>
-              <li>Or type <span className="font-mono text-text-primary">/ai</span> to open AI actions at the cursor.</li>
-            </ul>
-            <div className="text-xs text-text-muted">
-              Note: AI uses LM Studio by default (running locally). Prompts are pulled from your project, chapter, and page settings for context-aware assistance.
-            </div>
           </div>
         </div>
       </Modal>

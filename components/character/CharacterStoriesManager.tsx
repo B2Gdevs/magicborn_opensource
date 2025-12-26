@@ -8,7 +8,7 @@ import { BookOpen, Plus, X, Trash2, FileText, Upload } from "lucide-react";
 import { characterClient, storiesClient } from "@/lib/api/clients";
 import type { CharacterDefinition } from "@/lib/data/characters";
 import Link from "next/link";
-import { Tooltip } from "@components/ui/Tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/lib/hooks/useToast";
 
 interface CharacterStoriesManagerProps {
@@ -306,14 +306,19 @@ export function CharacterStoriesManager({
                 <BookOpen className="w-4 h-4" />
                 <span>{storyId}</span>
               </Link>
-              <Tooltip content="Remove story association">
-                <button
-                  onClick={() => handleRemoveStory(storyId)}
-                  className="text-text-muted hover:text-red-500 p-1 rounded"
-                  aria-label="Remove story"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleRemoveStory(storyId)}
+                    className="text-text-muted hover:text-red-500 p-1 rounded"
+                    aria-label="Remove story"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-shadow border border-border text-text-primary">
+                  Remove story association
+                </TooltipContent>
               </Tooltip>
             </div>
           ))}
@@ -328,10 +333,11 @@ export function CharacterStoriesManager({
           <div className="bg-void border border-border rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-glow">Associate Existing Stories</h3>
-              <Tooltip content="Close">
-                <button
-                  onClick={() => setShowAssociateModal(false)}
-                  className="text-text-muted hover:text-text-primary"
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowAssociateModal(false)}
+                    className="text-text-muted hover:text-text-primary"
                   aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />

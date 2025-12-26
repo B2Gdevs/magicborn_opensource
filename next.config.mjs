@@ -1,6 +1,14 @@
 /** @type {import('next').NextConfig} */
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+
 const nextConfig = {
-  reactStrictMode: false, // BlockNote is not yet compatible with React 19 / Next 15 StrictMode
+  reactStrictMode: true,
   webpack: (config, { isServer }) => {
     // Fix for Konva - exclude canvas from server-side bundle
     if (isServer) {
@@ -16,10 +24,6 @@ const nextConfig = {
       canvas: false,
     };
     
-    // Note: BlockNote has a known issue with TipTap 3.x Gapcursor export
-    // See: public/developer/content-editor/BLOCKNOTE_ISSUE.md
-    // The webpack alias approach doesn't fully work due to named export requirements
-    
     // Exclude better-sqlite3 and Node.js built-ins from client bundle
     if (!isServer) {
       config.resolve.fallback = {
@@ -28,6 +32,22 @@ const nextConfig = {
         path: false,
         crypto: false,
       };
+      
+      // Handle ansi-to-html CommonJS module in client bundle
+      // Use resolve to get the actual path to the module
+      try {
+        const ansiToHtmlPath = require.resolve("ansi-to-html");
+        config.resolve.alias = {
+          ...config.resolve.alias,
+          "ansi-to-html": ansiToHtmlPath,
+        };
+      } catch (e) {
+        // If resolve fails, just use the package name (webpack will handle it)
+        config.resolve.alias = {
+          ...config.resolve.alias,
+          "ansi-to-html": "ansi-to-html",
+        };
+      }
       
       // Ignore better-sqlite3 and database-related modules in client bundle
       config.externals = config.externals || [];

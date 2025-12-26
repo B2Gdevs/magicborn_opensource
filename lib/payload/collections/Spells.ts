@@ -28,6 +28,7 @@ export const Spells: CollectionConfig = {
     drafts: true,
     maxPerDoc: 25,
   },
+  trash: true,
   access: {
     read: publicReadAccess,
     create: isEditorOrAbove,

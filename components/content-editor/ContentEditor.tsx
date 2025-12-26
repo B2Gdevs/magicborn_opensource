@@ -5,7 +5,7 @@
 "use client";
 
 import { useState } from "react";
-import { CodexSidebar } from "./CodexSidebar";
+import { CodexSidebar } from "./codex/CodexSidebar";
 import { ContentNavigation } from "./ContentNavigation";
 import { WriterView } from "./WriterView";
 import { GameThreadView } from "./GameThreadView";

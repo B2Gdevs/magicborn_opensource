@@ -16,6 +16,7 @@ export const Objects: CollectionConfig = {
     drafts: true,
     maxPerDoc: 25,
   },
+  trash: true,
   access: {
     read: publicReadAccess,
     create: isEditorOrAbove,

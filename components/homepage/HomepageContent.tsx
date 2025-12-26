@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import HeroVideo from "@components/HeroVideo";
 import { HomepageEditor } from "./HomepageEditor";
 import { Pencil, LogIn, LogOut, User } from "lucide-react";
@@ -285,7 +286,12 @@ export function HomepageContent({ siteConfig, activeProjectId }: HomepageContent
           <div className="container mx-auto px-12 text-center">
             <div className="max-w-4xl mx-auto">
               {/* Logo */}
-              <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto mb-12 animate-fade-in">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className="relative w-48 h-48 md:w-64 md:h-64 mx-auto mb-12"
+              >
                 <Image
                   src="/design/logos/magicborn_logo.png"
                   alt={siteConfig?.siteName || "Magicborn: Mordred's Legacy"}
@@ -294,10 +300,15 @@ export function HomepageContent({ siteConfig, activeProjectId }: HomepageContent
                   priority
                   sizes="(max-width: 768px) 192px, 256px"
                 />
-              </div>
+              </motion.div>
 
               {/* Hero Text - From Payload */}
-              <div className="max-w-2xl mx-auto space-y-6 animate-fade-in-delay-2">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
+                className="max-w-2xl mx-auto space-y-6"
+              >
                 {heroContent.map((item, index) => (
                   <p
                     key={index}
@@ -315,12 +326,17 @@ export function HomepageContent({ siteConfig, activeProjectId }: HomepageContent
                     }}
                   />
                 ))}
-              </div>
+              </motion.div>
 
               {/* Waitlist Button */}
               {siteConfig?.features?.showWaitlistButton &&
                 siteConfig.features.waitlistUrl && (
-                  <div className="mt-12 animate-fade-in-delay-3">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
+                    className="mt-12"
+                  >
                     <a
                       href={siteConfig.features.waitlistUrl}
                       target="_blank"
@@ -329,7 +345,7 @@ export function HomepageContent({ siteConfig, activeProjectId }: HomepageContent
                     >
                       Join the Waitlist
                     </a>
-                  </div>
+                  </motion.div>
                 )}
             </div>
           </div>

@@ -16,6 +16,7 @@ export const Locations: CollectionConfig = {
     drafts: true,
     maxPerDoc: 25,
   },
+  trash: true,
   access: {
     read: publicReadWithFlag,
     create: isEditorOrAbove,
@@ -59,7 +60,7 @@ export const Locations: CollectionConfig = {
     },
     {
       name: 'description',
-      type: 'richText',
+      type: 'textarea',
     },
     {
       name: 'excerpt',

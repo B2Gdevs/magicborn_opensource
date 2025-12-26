@@ -35,7 +35,7 @@ export const StyleGuideEntries: CollectionConfig = {
     },
     {
       name: 'description',
-      type: 'richText',
+      type: 'textarea',
     },
     {
       name: 'isPublic',

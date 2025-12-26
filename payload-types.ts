@@ -362,21 +362,7 @@ export interface Scene {
   chapter: number | Chapter;
   title: string;
   summary?: string | null;
-  content?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  content?: string | null;
   order: number;
   codexRefs?:
     | {
@@ -406,17 +392,9 @@ export interface Page {
   chapter: number | Chapter;
   title: string;
   /**
-   * BlockNote editor content (JSON format)
+   * Page content (plain text - will be upgraded to rich text editor with PDF export)
    */
-  content?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  content?: string | null;
   image?: (number | null) | Media;
   order: number;
   /**
@@ -479,6 +457,7 @@ export interface Character {
   aiContextPrompt?: string | null;
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -494,21 +473,7 @@ export interface Lore {
    */
   slug?: string | null;
   category: 'history' | 'magic-system' | 'culture' | 'geography' | 'religion' | 'faction';
-  content?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  content?: string | null;
   /**
    * Short summary for previews
    */
@@ -538,6 +503,7 @@ export interface Lore {
   aiContextPrompt?: string | null;
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -553,21 +519,7 @@ export interface Location {
    */
   slug?: string | null;
   locationType?: ('region' | 'city' | 'town' | 'village' | 'dungeon' | 'landmark' | 'building') | null;
-  description?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  description?: string | null;
   excerpt?: string | null;
   isPublic?: boolean | null;
   featuredImage?: (number | null) | Media;
@@ -611,6 +563,7 @@ export interface Location {
   aiContextPrompt?: string | null;
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -621,21 +574,7 @@ export interface StyleGuideEntry {
   id: number;
   title: string;
   category: 'character-concept' | 'environment' | 'ui-design' | 'color-palette' | 'typography' | 'vfx';
-  description?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  description?: string | null;
   isPublic?: boolean | null;
   images?:
     | {
@@ -715,6 +654,7 @@ export interface Effect {
   };
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -821,6 +761,7 @@ export interface Spell {
   hint?: string | null;
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -932,6 +873,7 @@ export interface Rune {
   landmarkIcon?: (number | null) | Media;
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -964,6 +906,7 @@ export interface Object {
   value?: number | null;
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -1034,6 +977,7 @@ export interface Creature {
     | null;
   updatedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -1441,6 +1385,7 @@ export interface CharactersSelect<T extends boolean = true> {
   aiContextPrompt?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -1469,6 +1414,7 @@ export interface LoreSelect<T extends boolean = true> {
   aiContextPrompt?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -1499,6 +1445,7 @@ export interface LocationsSelect<T extends boolean = true> {
   aiContextPrompt?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -1554,6 +1501,7 @@ export interface EffectsSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -1585,6 +1533,7 @@ export interface SpellsSelect<T extends boolean = true> {
   hint?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -1612,6 +1561,7 @@ export interface RunesSelect<T extends boolean = true> {
   landmarkIcon?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -1631,6 +1581,7 @@ export interface ObjectsSelect<T extends boolean = true> {
   value?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**
@@ -1650,6 +1601,7 @@ export interface CreaturesSelect<T extends boolean = true> {
   elementAffinity?: T;
   updatedAt?: T;
   createdAt?: T;
+  deletedAt?: T;
   _status?: T;
 }
 /**

@@ -4,7 +4,7 @@
 "use client";
 
 import { Network, GitBranch, FileText } from "lucide-react";
-import { Tooltip } from "@/components/ui/Tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export enum DetailTab {
   Detail = "detail",
@@ -41,17 +41,22 @@ export function DetailToolbar({ activeTab, onTabChange }: DetailToolbarProps) {
         const isActive = activeTab === tab;
         
         return (
-          <Tooltip key={tab} content={config.label}>
-            <button
-              onClick={() => onTabChange(tab)}
-              className={`p-1.5 rounded transition-colors ${
-                isActive
-                  ? "bg-ember/20 text-ember-glow"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-            </button>
+          <Tooltip key={tab}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => onTabChange(tab)}
+                className={`p-1.5 rounded transition-colors ${
+                  isActive
+                    ? "bg-ember/20 text-ember-glow"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="bg-shadow border border-border text-text-primary">
+              {config.label}
+            </TooltipContent>
           </Tooltip>
         );
       })}

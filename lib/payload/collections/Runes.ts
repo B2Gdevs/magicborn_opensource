@@ -33,6 +33,7 @@ export const Runes: CollectionConfig = {
     drafts: true,
     maxPerDoc: 10,
   },
+  trash: true,
   access: {
     read: publicReadAccess,
     create: isEditorOrAbove,

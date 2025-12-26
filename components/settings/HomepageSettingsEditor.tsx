@@ -13,7 +13,7 @@ import {
   ChevronDown,
   Home,
 } from "lucide-react";
-import { HERO_CONTENT_STYLE_OPTIONS, HERO_CONTENT_COLOR_OPTIONS } from "@lib/payload/constants/homepage";
+import { HERO_CONTENT_STYLE_OPTIONS, HERO_CONTENT_COLOR_OPTIONS } from "@/lib/constants/homepage";
 
 interface HeroContentItem {
   text: string;

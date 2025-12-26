@@ -1,6 +1,5 @@
 import { buildConfig } from 'payload'
 import { sqliteAdapter } from '@payloadcms/db-sqlite'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -74,7 +73,7 @@ export default buildConfig({
     SiteConfig,
     SidebarConfig,
   ],
-  editor: lexicalEditor({}),
+  // Rich text editor removed - using simple textarea in PageEditor (to be upgraded to TipTap with PDF export)
   secret: process.env.PAYLOAD_SECRET || 'your-secret-key-change-in-production',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),

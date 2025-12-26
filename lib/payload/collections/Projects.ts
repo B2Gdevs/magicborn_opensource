@@ -4,7 +4,7 @@
 import type { CollectionConfig } from 'payload/types'
 import { isSuperuser, getAccessibleProjectIds } from '../access/helpers'
 import { Collections } from '../constants'
-import { HERO_CONTENT_STYLE_OPTIONS, HERO_CONTENT_COLOR_OPTIONS } from '../constants/homepage'
+import { HERO_CONTENT_STYLE_OPTIONS, HERO_CONTENT_COLOR_OPTIONS } from '@/lib/constants/homepage'
 
 export const Projects: CollectionConfig = {
   slug: Collections.Projects,

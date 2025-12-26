@@ -52,7 +52,6 @@ import {
 } from "lucide-react";
 import { SiDiscord, SiGithub, SiX, SiYoutube, SiTwitch, SiInstagram, SiTiktok, SiLinkedin, SiReddit, SiPatreon } from "react-icons/si";
 import { SidebarEditor } from "./sidebar/SidebarEditor";
-import { CheckCircle2 } from "lucide-react";
 
 // Icon mapping
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -133,7 +132,6 @@ export default function SidebarNav() {
   const [canEdit, setCanEdit] = useState(false);
   const [showEditButton, setShowEditButton] = useState(false);
   const activeProject = useActiveProject();
-  const [showActiveConfirm, setShowActiveConfirm] = useState(false);
   const [settingActive, setSettingActive] = useState(false);
 
   // Check auth status
@@ -242,10 +240,10 @@ export default function SidebarNav() {
         onMouseLeave={() => setShowEditButton(false)}
       >
         <div className="flex flex-col h-full p-6 relative">
-          {/* Active Project Overlay - Top Right */}
-          {activeProject && (
+          {/* Active Project Overlay - Top Right - Only visible to admin/superuser */}
+          {activeProject && canEdit && (
             <div className="absolute top-2 right-2 z-50 bg-black/40 backdrop-blur-sm border border-border/30 rounded-lg p-2 shadow-lg">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2">
                 {activeProject.logo && (
                   <div className="relative w-5 h-5 flex-shrink-0">
                     <Image
@@ -266,16 +264,16 @@ export default function SidebarNav() {
                     {activeProject.displayTitle || activeProject.name}
                   </div>
                 </div>
+                <button
+                  onClick={handleSetInactive}
+                  disabled={settingActive}
+                  className="flex items-center justify-center gap-1.5 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-xs text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50 flex-shrink-0"
+                  title="This project is live on the homepage. Click to make inactive."
+                >
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-[0_0_4px_rgba(34,197,94,0.8)]" />
+                  <span>Live</span>
+                </button>
               </div>
-              <button
-                onClick={handleSetInactive}
-                disabled={settingActive}
-                className="w-full flex items-center justify-center gap-1.5 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-xs text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
-                title="This project is live on the homepage. Click to make inactive."
-              >
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-[0_0_4px_rgba(34,197,94,0.8)]" />
-                <span>Live</span>
-              </button>
             </div>
           )}
 

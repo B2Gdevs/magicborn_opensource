@@ -491,7 +491,7 @@ export function RoadmapDialog({ onClose }: RoadmapDialogProps) {
           />
 
           {/* Content Panel */}
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto bg-shadow">
             <div className="max-w-4xl mx-auto p-8">
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-glow mb-2">

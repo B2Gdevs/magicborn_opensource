@@ -52,7 +52,7 @@ export const Scenes: CollectionConfig = {
     },
     {
       name: 'content',
-      type: 'richText',
+      type: 'textarea',
     },
     {
       name: 'order',

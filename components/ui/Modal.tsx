@@ -5,7 +5,7 @@
 
 import { ReactNode, useState } from "react";
 import { X, Trash2 } from "lucide-react";
-import { Tooltip } from "@components/ui/Tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ModalProps {
   isOpen: boolean;
@@ -63,10 +63,10 @@ export function Modal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
-        className={`bg-black border border-border rounded-lg ${maxWidthClasses[maxWidth]} w-full max-h-[90vh] flex flex-col ${className}`}
+        className={`bg-void border border-border rounded-lg ${maxWidthClasses[maxWidth]} w-full max-h-[90vh] flex flex-col ${className}`}
       >
         {/* Fixed Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0 bg-shadow/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0 bg-shadow">
           <h2 className="text-2xl font-bold text-glow">{title}</h2>
           <div className="flex items-center gap-2">
             {/* Delete Button - only shown when onDelete is provided */}
@@ -91,28 +91,38 @@ export function Modal({
                     </button>
                   </div>
                 ) : (
-                  <Tooltip content="Delete">
-                    <button
-                      onClick={handleDeleteClick}
-                      disabled={isDeleting}
-                      className="px-3 py-1.5 border border-red-500/50 text-red-500 hover:border-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm hover:shadow-md"
-                      aria-label="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="text-xs font-medium">Delete</span>
-                    </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleDeleteClick}
+                        disabled={isDeleting}
+                        className="px-3 py-1.5 border border-red-500/50 text-red-500 hover:border-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm hover:shadow-md"
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="text-xs font-medium">Delete</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-shadow border border-border text-text-primary">
+                      Delete
+                    </TooltipContent>
                   </Tooltip>
                 )}
               </>
             )}
-            <Tooltip content="Close">
-              <button
-                onClick={onClose}
-                className="text-text-muted hover:text-text-primary transition-colors p-1 rounded"
-                aria-label="Close modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onClose}
+                  className="text-text-muted hover:text-text-primary transition-colors p-1 rounded"
+                  aria-label="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-shadow border border-border text-text-primary">
+                Close
+              </TooltipContent>
             </Tooltip>
           </div>
         </div>

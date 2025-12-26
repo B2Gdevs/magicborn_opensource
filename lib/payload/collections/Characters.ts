@@ -14,6 +14,7 @@ export const Characters: CollectionConfig = {
   versions: {
     drafts: true,
   },
+  trash: true,
   access: {
     read: async ({ req }) => {
       if (isSuperuser({ req })) {

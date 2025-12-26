@@ -73,11 +73,11 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div 
-          className="bg-shadow border border-border rounded-xl shadow-xl w-full max-w-md"
+          className="bg-void border border-border rounded-xl shadow-xl w-full max-w-md flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center justify-between p-4 border-b border-border bg-shadow flex-shrink-0">
             <h2 className="text-lg font-bold text-glow flex items-center gap-2">
               <Book className="w-5 h-5" />
               Create New Project
@@ -91,7 +91,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <form onSubmit={handleSubmit} className="p-4 space-y-4 bg-shadow flex-1 overflow-y-auto">
             {error && (
               <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                 {error}

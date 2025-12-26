@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./toast.css";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { ClientLayout } from "@/components/ClientLayout";

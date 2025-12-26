@@ -16,6 +16,7 @@ export const Lore: CollectionConfig = {
     drafts: true,
     maxPerDoc: 25,
   },
+  trash: true,
   access: {
     read: publicReadWithFlag,
     create: isEditorOrAbove,
@@ -52,7 +53,7 @@ export const Lore: CollectionConfig = {
     },
     {
       name: 'content',
-      type: 'richText',
+      type: 'textarea',
     },
     {
       name: 'excerpt',

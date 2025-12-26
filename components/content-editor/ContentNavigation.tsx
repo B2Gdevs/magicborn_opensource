@@ -63,8 +63,8 @@ export function ContentNavigation({
 
   return (
     <div className="relative flex-shrink-0">
-      {/* Transparent navbar background */}
-      <div className="absolute inset-0 bg-void/80 backdrop-blur-sm" />
+      {/* Unified navbar background */}
+      <div className="absolute inset-0 bg-void" />
       
       {/* Navbar content */}
       <div className="relative flex items-center justify-between px-6 py-3 gap-6">

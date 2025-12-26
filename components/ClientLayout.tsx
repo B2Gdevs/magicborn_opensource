@@ -8,7 +8,7 @@ import { QueryProvider } from "./providers/QueryProvider";
 import { usePathname } from "next/navigation";
 import SidebarNav from "@components/SidebarNav";
 import TopNav from "@components/TopNav";
-import { TooltipProvider } from "@/components/ui/TooltipProvider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/Toaster";
 
 interface ClientLayoutProps {

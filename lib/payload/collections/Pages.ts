@@ -48,9 +48,9 @@ export const Pages: CollectionConfig = {
     },
     {
       name: 'content',
-      type: 'json',
+      type: 'textarea',
       admin: {
-        description: 'BlockNote editor content (JSON format)',
+        description: 'Page content (plain text - will be upgraded to rich text editor with PDF export)',
       },
     },
     {

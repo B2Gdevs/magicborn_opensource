@@ -4,7 +4,7 @@
 import type { GlobalConfig } from 'payload'
 import { Globals, Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove } from '../access/roles'
-import { HERO_CONTENT_STYLE_OPTIONS, HERO_CONTENT_COLOR_OPTIONS } from '../constants/homepage'
+import { HERO_CONTENT_STYLE_OPTIONS, HERO_CONTENT_COLOR_OPTIONS } from '@/lib/constants/homepage'
 
 export const SiteConfig: GlobalConfig = {
   slug: Globals.SiteConfig,

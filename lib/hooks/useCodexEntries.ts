@@ -26,6 +26,8 @@ export function useCodexEntries({ categoryId, projectId, enabled = true }: UseCo
     queryFn: async () => {
       if (!collection) return [];
 
+      // Fetch entries - Payload automatically excludes trashed when trash is enabled
+      // For existing data without _status, we'll filter client-side if needed
       const response = await fetch(
         `/api/payload/${collection}?where[project][equals]=${projectId}&limit=50`
       );
@@ -35,21 +37,26 @@ export function useCodexEntries({ categoryId, projectId, enabled = true }: UseCo
       }
 
       const result = await response.json();
-      const entries = result.docs?.map((doc: any) => {
-        // Handle different name fields for different collections
-        let displayName: string;
-        if (categoryId === CodexCategory.Runes) {
-          displayName = doc.concept || doc.name || `Rune ${doc.code || doc.id}`;
-        } else if (categoryId === CodexCategory.Effects) {
-          displayName = doc.name || doc.effectType || `Effect ${doc.id}`;
-        } else {
-          displayName = doc.name || doc.title || `Entry ${doc.id}`;
-        }
-        return {
-          id: String(doc.id), // Payload numeric ID as string
-          name: displayName,
-        };
-      }) || [];
+      const entries = result.docs
+        ?.filter((doc: any) => {
+          // Exclude trashed items (if _status exists and is 'trashed')
+          return !doc._status || doc._status !== 'trashed';
+        })
+        ?.map((doc: any) => {
+          // Handle different name fields for different collections
+          let displayName: string;
+          if (categoryId === CodexCategory.Runes) {
+            displayName = doc.concept || doc.name || `Rune ${doc.code || doc.id}`;
+          } else if (categoryId === CodexCategory.Effects) {
+            displayName = doc.name || doc.effectType || `Effect ${doc.id}`;
+          } else {
+            displayName = doc.name || doc.title || `Entry ${doc.id}`;
+          }
+          return {
+            id: String(doc.id), // Payload numeric ID as string
+            name: displayName,
+          };
+        }) || [];
 
       return entries;
     },

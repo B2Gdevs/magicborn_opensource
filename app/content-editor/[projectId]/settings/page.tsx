@@ -339,7 +339,7 @@ export default function ProjectSettingsPage() {
         </aside>
 
         {/* Content Panel */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-shadow">
           <div className="max-w-4xl mx-auto p-8">
             {error && (
               <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">

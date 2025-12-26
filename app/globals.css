@@ -70,7 +70,7 @@ nextjs-portal > * {
   }
   
   body {
-    @apply bg-black text-white antialiased;
+    @apply bg-shadow text-white antialiased;
   }
   
   /* Typography enhancements */
@@ -81,73 +81,64 @@ nextjs-portal > * {
   em, i {
     @apply italic text-text-glow;
   }
-
-  /* Story content styling */
-  .story-content h1,
-  .story-content h2,
-  .story-content h3 {
-    @apply mt-8 mb-4;
+  :root {
+    /* Override shadcn defaults with dark theme */
+    --background: 10 10% 4%; /* #0a0a0a - shadow */
+    --foreground: 30 10% 91%; /* #e8e6e3 - text-primary */
+    --card: 10 10% 4%; /* shadow */
+    --card-foreground: 30 10% 91%;
+    --popover: 10 10% 4%;
+    --popover-foreground: 30 10% 91%;
+    --primary: 25 50% 50%; /* ember */
+    --primary-foreground: 30 10% 91%;
+    --secondary: 10 10% 10%; /* deep */
+    --secondary-foreground: 30 10% 91%;
+    --muted: 10 10% 10%;
+    --muted-foreground: 30 10% 48%; /* text-muted */
+    --accent: 10 10% 10%;
+    --accent-foreground: 30 10% 91%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 16.5%; /* #2a2a2a */
+    --input: 0 0% 16.5%;
+    --ring: 25 50% 50%; /* ember */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
   }
-
-  .story-content p {
-    @apply mb-6 leading-relaxed;
-  }
-
-  .story-content strong {
-    @apply font-bold text-ember-glow;
-  }
-
-  .story-content em {
-    @apply italic text-text-glow;
-  }
-
-  /* Form field focus glow - subtle ember glow on bottom border only */
-  input:focus,
-  textarea:focus,
-  select:focus {
-    outline: none;
-    border-bottom-color: var(--color-ember-glow);
-    border-bottom-width: 2px;
-    box-shadow: 0 1px 0 0 rgba(139, 69, 19, 0.15);
-    transition: border-bottom-color 0.2s ease, box-shadow 0.2s ease;
+  .dark {
+    --background: 10 10% 4%;
+    --foreground: 30 10% 91%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
 @layer components {
-  /* Compact Card with rounded borders */
-  .card {
-    @apply bg-shadow border-2 border-border rounded-xl p-4;
-    box-shadow: 
-      0 4px 6px -1px rgba(0, 0, 0, 0.5),
-      0 2px 4px -1px rgba(0, 0, 0, 0.3),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-    position: relative;
-  }
-  
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.05) 0%, transparent 50%);
-    border-radius: inherit;
-    pointer-events: none;
-  }
-  
-  .card-glow {
-    @apply card;
-    box-shadow: 
-      0 4px 6px -1px rgba(0, 0, 0, 0.5),
-      0 2px 4px -1px rgba(0, 0, 0, 0.3),
-      0 0 20px rgba(139, 69, 19, 0.2),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  }
-  
-  .card-glow::before {
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, transparent 50%);
-  }
+
   
   /* Compact button styles */
   .btn {
@@ -200,24 +191,6 @@ nextjs-portal > * {
   /* Muted text */
   .text-muted {
     @apply text-text-muted;
-  }
-  
-  /* Tab styles */
-  .tab {
-    @apply px-4 py-2 rounded-t-lg font-bold text-sm transition-all;
-    @apply bg-deep border-2 border-b-0 border-border;
-    @apply text-text-secondary;
-    @apply hover:text-ember-glow;
-  }
-  
-  .tab-active {
-    @apply tab;
-    @apply bg-shadow text-ember-glow border-ember;
-    box-shadow: 0 -2px 10px rgba(139, 69, 19, 0.3);
-  }
-  
-  .tab-content {
-    @apply card rounded-t-none;
   }
 }
 
@@ -297,42 +270,6 @@ nextjs-portal > * {
   .shadow-ember-glow {
     box-shadow: 0 0 20px rgba(139, 69, 19, 0.4);
   }
-  
-  /* Animations */
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .animate-fade-in {
-    animation: fade-in 1s ease-out forwards;
-  }
-  
-  .animate-fade-in-delay {
-    animation: fade-in 1s ease-out 0.2s forwards;
-    opacity: 0;
-  }
-  
-  .animate-fade-in-delay-2 {
-    animation: fade-in 1s ease-out 0.4s forwards;
-    opacity: 0;
-  }
-  
-  .animate-fade-in-delay-3 {
-    animation: fade-in 1s ease-out 0.6s forwards;
-    opacity: 0;
-  }
-  
-  .animate-fade-in-delay-4 {
-    animation: fade-in 1s ease-out 0.8s forwards;
-    opacity: 0;
-  }
 
   /* Skeleton shimmer animation - very subtle */
   @keyframes shimmer {
@@ -354,15 +291,6 @@ nextjs-portal > * {
     background-size: 200% 100%;
     animation: shimmer 2s ease-in-out infinite;
   }
-
-
-
-
-
-
-
-  
-
 
   /* Custom Scrollbars - Dark theme */
   /* Webkit browsers (Chrome, Safari, Edge) */
@@ -396,68 +324,12 @@ nextjs-portal > * {
 }
 
 
-/* Toast styling - shadcn card style with color-coded top borders */
-@keyframes slideInFromLeft {
-  from {
-    transform: translateX(-100%);
-    opacity: 0;
+
+@layer base {
+  * {
+    @apply border-border;
   }
-  to {
-    transform: translateX(0);
-    opacity: 1;
+  body {
+    @apply bg-background text-foreground;
   }
-}
-
-@keyframes slideOutToLeft {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-}
-
-[data-sonner-toast] {
-  background-color: var(--color-shadow) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: 0.5rem !important;
-  box-shadow: 
-    0 4px 6px -1px rgba(0, 0, 0, 0.5),
-    0 2px 4px -1px rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
-  animation: slideInFromLeft 0.3s ease-out !important;
-}
-
-[data-sonner-toast][data-swiping="true"] {
-  transform: translateX(var(--sonner-swipe-x, 0)) !important;
-}
-
-[data-sonner-toast][data-removed="true"] {
-  animation: slideOutToLeft 0.2s ease-in forwards !important;
-}
-
-[data-sonner-toast][data-type="success"] {
-  border-top: 2px solid rgb(34, 197, 94) !important; /* green-500 */
-}
-
-[data-sonner-toast][data-type="error"] {
-  border-top: 2px solid rgb(239, 68, 68) !important; /* red-500 */
-}
-
-[data-sonner-toast][data-type="warning"] {
-  border-top: 2px solid rgb(245, 158, 11) !important; /* amber-500 */
-}
-
-[data-sonner-toast][data-type="info"] {
-  border-top: 2px solid rgb(59, 130, 246) !important; /* blue-500 */
-}
-
-[data-sonner-toast] [data-title] {
-  color: var(--color-text-secondary) !important;
-}
-
-[data-sonner-toast] [data-description] {
-  color: var(--color-text-muted) !important;
 }

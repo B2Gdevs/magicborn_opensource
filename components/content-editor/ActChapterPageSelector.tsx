@@ -110,7 +110,6 @@ export function ActChapterPageSelector({
 
       // Auto-select latest act if none selected (only once on initial load)
       if (!hasAutoSelected && !selectedAct && actsList.length > 0 && onActSelect) {
-        setHasAutoSelected(true);
         onActSelect(actsList[0].id);
         return; // Will refetch with selected act
       }
@@ -135,9 +134,8 @@ export function ActChapterPageSelector({
       }
       setChapters(filteredChapters);
 
-      // Auto-select latest chapter if none selected but act is selected (only once)
+      // Auto-select latest chapter if none selected but act is selected (only on initial load)
       if (!hasAutoSelected && selectedAct && !selectedChapter && filteredChapters.length > 0 && onChapterSelect) {
-        setHasAutoSelected(true);
         onChapterSelect(filteredChapters[0].id);
         return; // Will refetch with selected chapter
       }
@@ -151,9 +149,9 @@ export function ActChapterPageSelector({
         const pagesList = pagesData.docs || [];
         setPages(pagesList);
 
-        // Auto-select latest page if none selected (only once)
+        // Auto-select latest page if none selected (only on initial load)
         if (!hasAutoSelected && !selectedPage && pagesList.length > 0 && onPageSelect) {
-          setHasAutoSelected(true);
+          setHasAutoSelected(true); // Mark as complete after selecting page (final step)
           onPageSelect(pagesList[0].id);
         }
       } else {

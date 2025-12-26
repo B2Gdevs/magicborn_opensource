@@ -6,6 +6,7 @@ import { contentEditorRoadmap, currentStatus, nextSteps } from "./content-editor
 import { configSettingsRoadmap } from "./config-settings-roadmap";
 import { visualPolishRoadmap } from "./visual-polish-roadmap";
 import { standardizedMediaUploadRoadmap, standardizedMediaUploadQuestions, standardizedMediaUploadRecommendations } from "./standardized-media-upload-roadmap";
+import { codexRefactorRoadmap } from "./codex-refactor-roadmap";
 import type { RoadmapData } from "./roadmap-types";
 
 // Register all roadmaps here
@@ -14,6 +15,7 @@ export const allRoadmaps: RoadmapData[] = [
   configSettingsRoadmap,
   visualPolishRoadmap,
   standardizedMediaUploadRoadmap,
+  codexRefactorRoadmap,
 ];
 
 // Export questions and recommendations for roadmaps

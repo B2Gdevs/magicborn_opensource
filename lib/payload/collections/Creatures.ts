@@ -15,6 +15,7 @@ export const Creatures: CollectionConfig = {
   versions: {
     drafts: true,
   },
+  trash: true,
   access: {
     read: async ({ req }) => {
       if (isSuperuser({ req })) {

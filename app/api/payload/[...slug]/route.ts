@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { Collections } from '@/lib/payload/constants'
 
 async function getPayloadClient() {
   return await getPayload({ config })
@@ -238,7 +239,81 @@ export async function POST(
       return response
     }
 
-    const body = await request.json()
+    // Handle restore: POST /api/payload/:collection/:id/restore
+    // URL pattern: /api/payload/characters/2/restore => slug = ['characters', '2', 'restore']
+    const third = slug[2]
+    if (third === 'restore') {
+      const collection = first
+      const id = second
+      
+      if (!id) {
+        return NextResponse.json({ error: 'ID required' }, { status: 400 })
+      }
+      
+      try {
+        // In Payload 3.x, trashed documents are accessible via findByID with overrideAccess
+        // We need to restore by updating _status from 'trashed' to 'draft'
+        // First, try to find the trashed document
+        let trashedDoc: any
+        try {
+          trashedDoc = await payload.findByID({
+            collection: collection as any,
+            id,
+            overrideAccess: true,
+            draft: true, // Trashed docs might be in draft state
+          })
+        } catch (findError: any) {
+          // If not found with draft: true, try without (might be in trashed state)
+          try {
+            trashedDoc = await payload.findByID({
+              collection: collection as any,
+              id,
+              overrideAccess: true,
+            })
+          } catch {
+            // Document might be truly deleted or doesn't exist
+            return NextResponse.json(
+              { error: 'Document not found or already permanently deleted' },
+              { status: 404 }
+            )
+          }
+        }
+        
+        // Restore by updating _status back to 'draft' and clearing deletedAt
+        // Note: We need to publish the change (not just save draft) for it to persist
+        const restored = await payload.update({
+          collection: collection as any,
+          id,
+          data: {
+            _status: 'draft',
+            deletedAt: null,
+          } as any,
+          overrideAccess: true,
+          draft: false, // Publish the change, not just draft
+        })
+        
+        const normalizedDoc = normalizeMediaUrlsInDoc(restored as any)
+        return NextResponse.json(normalizedDoc)
+      } catch (error: any) {
+        console.error(`Payload RESTORE error:`, error)
+        return NextResponse.json(
+          { error: error.message || 'Failed to restore' },
+          { status: error.status || 500 }
+        )
+      }
+    }
+
+    // Parse body only if not restore endpoint (restore doesn't need body)
+    let body: any = {};
+    try {
+      const text = await request.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch {
+      // Empty body or invalid JSON - use empty object
+      body = {};
+    }
     
     // Handle auth: /api/payload/users/login
     if (first === 'users' && second === 'login') {
@@ -281,9 +356,18 @@ export async function POST(
       delete cleanedData.spellId;
     }
     
+    // For Projects collection, ensure name is provided (required field)
+    if (first === Collections.Projects && !cleanedData.name) {
+      return NextResponse.json(
+        { error: 'Project name is required' },
+        { status: 400 }
+      );
+    }
+    
     const doc = await payload.create({
       collection: first as any,
       data: cleanedData,
+      overrideAccess: true, // Allow creation with proper validation
     })
     
     // Normalize media URLs in relationships
@@ -339,6 +423,12 @@ export async function PATCH(
   return PUT(request, { params })
 }
 
+// Collections that support soft-delete (have trash: true in their config)
+const TRASHABLE_COLLECTIONS = [
+  'characters', 'creatures', 'locations', 'objects', 
+  'lore', 'spells', 'runes', 'effects'
+]
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string[] }> }
@@ -352,9 +442,25 @@ export async function DELETE(
   }
   
   try {
+    // For trashable collections, soft-delete by setting _status to 'trashed'
+    // (Payload's delete() hard-deletes even with trash: true in some versions)
+    if (TRASHABLE_COLLECTIONS.includes(collection)) {
+      await payload.update({
+        collection: collection as any,
+        id,
+        data: {
+          _status: 'trashed',
+        } as any,
+        overrideAccess: true,
+      })
+      return NextResponse.json({ success: true, trashed: true })
+    }
+    
+    // For non-trashable collections, actually delete
     await payload.delete({
       collection: collection as any,
       id,
+      overrideAccess: true,
     })
     
     return NextResponse.json({ success: true })
