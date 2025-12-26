@@ -1,12 +1,83 @@
 // components/ui/IdInput.tsx
-// Reusable ID input component with validation logic
+// Reusable ID input component with validation logic - now checks against Payload CMS
 
 "use client";
 
 import { useState, useEffect } from "react";
-import { idClient } from "@/lib/api/clients";
 
-export type ContentType = "spells" | "effects" | "characters" | "creatures" | "runes" | "environments" | "maps";
+export type ContentType = "spells" | "effects" | "characters" | "creatures" | "runes" | "environments" | "maps" | "regions" | "objects" | "lore";
+
+// Map content types to Payload collection slugs
+const contentTypeToCollection: Record<ContentType, string> = {
+  spells: "spells",
+  effects: "effects",
+  characters: "characters",
+  creatures: "creatures",
+  runes: "runes",
+  environments: "environments",
+  maps: "maps",
+  regions: "locations",
+  objects: "objects",
+  lore: "lore",
+};
+
+// Check ID uniqueness against Payload
+// For characters, checks 'slug' field; for others, checks 'name' field
+async function checkPayloadIdUniqueness(
+  id: string,
+  contentType: ContentType,
+  projectId?: string,
+  excludeId?: number // For edit mode - exclude current entry
+): Promise<{ isUnique: boolean; conflictingTypes: string[] }> {
+  const collection = contentTypeToCollection[contentType];
+  if (!collection) {
+    return { isUnique: true, conflictingTypes: [] };
+  }
+
+  try {
+    // Map content types to their unique identifier fields in Payload
+    const fieldNameMap: Record<ContentType, string> = {
+      characters: 'slug',
+      runes: 'code',
+      objects: 'slug',
+      spells: 'spellId',
+      effects: 'effectType',
+      lore: 'slug',
+      regions: 'slug', // locations collection uses 'slug'
+      creatures: 'slug', // assuming creatures use slug
+      environments: 'slug', // assuming environments use slug
+      maps: 'slug', // assuming maps use slug
+    };
+    
+    const fieldName = fieldNameMap[contentType] || 'name';
+    
+    // Build query
+    let query = `where[${fieldName}][equals]=${encodeURIComponent(id)}`;
+    
+    // Filter by project if provided
+    if (projectId) {
+      query += `&where[project][equals]=${projectId}`;
+    }
+    
+    // Exclude current entry if editing
+    if (excludeId) {
+      query += `&where[id][not_equals]=${excludeId}`;
+    }
+    
+    const res = await fetch(`/api/payload/${collection}?${query}&limit=1`);
+    if (!res.ok) {
+      // If collection doesn't exist or error, assume unique
+      return { isUnique: true, conflictingTypes: [] };
+    }
+    const data = await res.json();
+    if (data.docs && data.docs.length > 0) {
+      return { isUnique: false, conflictingTypes: [contentType] };
+    }
+    return { isUnique: true, conflictingTypes: [] };
+  } catch {
+    return { isUnique: true, conflictingTypes: [] };
+  }
+}
 
 interface IdInputProps {
   value: string;
@@ -16,8 +87,10 @@ interface IdInputProps {
   placeholder?: string;
   label?: string;
   disabled?: boolean;
-  autoGenerateFrom?: string; // If provided, will auto-generate ID from this value
+  // autoGenerateFrom removed - IDs are now server-generated
   className?: string;
+  projectId?: string; // For filtering validation by project
+  excludeId?: number; // For edit mode - exclude current entry from validation
 }
 
 // Helper to convert name to ID
@@ -36,8 +109,9 @@ export function IdInput({
   placeholder = "e.g., my-id",
   label = "ID",
   disabled = false,
-  autoGenerateFrom,
   className = "",
+  projectId,
+  excludeId,
 }: IdInputProps) {
   const [idValidation, setIdValidation] = useState<{
     isUnique: boolean;
@@ -46,15 +120,9 @@ export function IdInput({
   const [validatingId, setValidatingId] = useState(false);
   const [lastValidatedId, setLastValidatedId] = useState<string | null>(null);
 
-  // Auto-generate ID from name if provided
-  useEffect(() => {
-    if (!isEdit && autoGenerateFrom?.trim() && !value) {
-      const generatedId = nameToId(autoGenerateFrom);
-      onChange(generatedId);
-    }
-  }, [autoGenerateFrom, isEdit, value, onChange]);
+  // ID is now server-generated, no auto-generation needed
 
-  // Validate ID uniqueness
+  // Validate ID uniqueness against Payload
   useEffect(() => {
     if (!isEdit && value.trim()) {
       if (value === lastValidatedId) {
@@ -65,10 +133,8 @@ export function IdInput({
         const currentId = value;
         if (currentId === value && currentId !== lastValidatedId) {
           setValidatingId(true);
-          idClient
-            .checkIdUniqueness(value, contentType)
+          checkPayloadIdUniqueness(value, contentType, projectId, excludeId)
             .then((result) => {
-              // Only update if the ID hasn't changed
               if (currentId === value) {
                 setIdValidation(result);
                 setLastValidatedId(value);
@@ -76,13 +142,11 @@ export function IdInput({
             })
             .catch((error) => {
               console.error("Error validating ID:", error);
-              // Only clear if the ID hasn't changed
               if (currentId === value) {
                 setIdValidation(null);
               }
             })
             .finally(() => {
-              // Only update validating state if the ID hasn't changed
               if (currentId === value) {
                 setValidatingId(false);
               }
@@ -95,7 +159,7 @@ export function IdInput({
       setIdValidation(null);
       setLastValidatedId(null);
     }
-  }, [value, isEdit, lastValidatedId, contentType]);
+  }, [value, isEdit, lastValidatedId, contentType, projectId, excludeId]);
 
   const getValidationStatus = () => {
     if (isEdit || !value.trim()) return null;
@@ -166,7 +230,6 @@ export function IdInput({
   );
 }
 
-// Export validation helper for use in forms
 export function validateIdBeforeSubmit(
   id: string,
   idValidation: { isUnique: boolean; conflictingTypes: string[] } | null,

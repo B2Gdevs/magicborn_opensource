@@ -1,0 +1,13 @@
+diff --git a/node_modules/@blocknote/core/dist/blocknote.js b/node_modules/@blocknote/core/dist/blocknote.js
+index 9f49bbc..2de5571 100644
+--- a/node_modules/@blocknote/core/dist/blocknote.js
++++ b/node_modules/@blocknote/core/dist/blocknote.js
+@@ -18,7 +18,7 @@ import { inputRules as _t, InputRule as Dt } from "@handlewithcare/prosemirror-i
+ import { keymap as Lt } from "@tiptap/pm/keymap";
+ import { c as Nt, o as Ot } from "./BlockNoteExtension-C2X7LW-V.js";
+ import { a as ii } from "./BlockNoteExtension-C2X7LW-V.js";
+-import { Gapcursor as Ft } from "@tiptap/extension-gapcursor";
++import { Gapcursor as Ft } from "@tiptap/extensions";
+ import { Link as $t } from "@tiptap/extension-link";
+ import { Text as Ht } from "@tiptap/extension-text";
+ import { NodeSelection as L, TextSelection as M, Plugin as ee } from "prosemirror-state";

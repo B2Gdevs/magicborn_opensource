@@ -1,4 +1,5 @@
 // lib/data/namedSpells.ts
+import type { BaseEntity } from "@core/types";
 import type { RuneCode } from "@core/types";
 import { DamageType, SpellTag } from "@core/enums";
 import { RC } from "@pkg/runes";
@@ -17,12 +18,11 @@ export type NamedSpellId =
   | "tidal_barrier";
 
 /**
- * Blueprint for a named spell evolution target.
+ * Spell definition - a named spell that can be evolved/discovered.
+ * Extends BaseEntity with spell-specific properties.
  */
-export interface NamedSpellBlueprint {
+export interface SpellDefinition extends BaseEntity {
   id: NamedSpellId;
-  name: string;
-  description: string;
 
   // semantic tags for UI / filtering
   tags: SpellTag[];
@@ -76,13 +76,11 @@ export interface NamedSpellBlueprint {
    * These are in addition to any effects derived from runes.
    */
   effects?: EffectBlueprint[];
-
-  /**
-   * Path to the spell's image in public/game-content/spells/
-   * Example: "/game-content/spells/ember_ray.png"
-   */
-  imagePath?: string;
 }
+
+// Backward compatibility alias (deprecated - use SpellDefinition)
+/** @deprecated Use SpellDefinition instead */
+export type NamedSpellBlueprint = SpellDefinition;
 
 /** 🔥 Ember Ray – base named Fire ray */
 export const EMBER_RAY_BLUEPRINT: NamedSpellBlueprint = {
@@ -180,23 +178,24 @@ const BLUEPRINTS_BY_ID: Record<NamedSpellId, NamedSpellBlueprint> = {
 function loadBlueprintsFromDatabase(): NamedSpellBlueprint[] {
   try {
     // Only load from DB on server-side
-    if (typeof window === "undefined") {
-      // Dynamic import to avoid bundling database code in client
-      const { getSpellsRepository } = require("./spellsRepository");
-      const repo = getSpellsRepository();
-      const spells = repo.listAll();
-      // Only use database data if we have valid spells that match known IDs
-      // This ensures we fall back to hardcoded data if database is empty or corrupted
-      if (spells.length > 0) {
-        // Validate that we have at least the core blueprints
-        const knownIds = new Set(NAMED_SPELL_BLUEPRINTS.map(bp => bp.id));
-        const hasKnownSpells = spells.some((spell: NamedSpellBlueprint) => knownIds.has(spell.id));
-        // If database has valid known spells, use it; otherwise fall back
-        if (hasKnownSpells) {
-          return spells;
-        }
-      }
-    }
+    // TODO: Re-enable when spellsRepository is available
+    // if (typeof window === "undefined") {
+    //   // Dynamic import to avoid bundling database code in client
+    //   const { getSpellsRepository } = require("./spellsRepository");
+    //   const repo = getSpellsRepository();
+    //   const spells = repo.listAll();
+    //   // Only use database data if we have valid spells that match known IDs
+    //   // This ensures we fall back to hardcoded data if database is empty or corrupted
+    //   if (spells.length > 0) {
+    //     // Validate that we have at least the core blueprints
+    //     const knownIds = new Set(NAMED_SPELL_BLUEPRINTS.map(bp => bp.id));
+    //     const hasKnownSpells = spells.some((spell: NamedSpellBlueprint) => knownIds.has(spell.id));
+    //     // If database has valid known spells, use it; otherwise fall back
+    //     if (hasKnownSpells) {
+    //       return spells;
+    //     }
+    //   }
+    // }
   } catch (error) {
     console.warn("Failed to load spells from database, using fallback:", error);
   }

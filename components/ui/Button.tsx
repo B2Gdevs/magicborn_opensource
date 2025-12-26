@@ -38,6 +38,7 @@ export function Button({
       className={cn(
         "rounded-lg font-semibold transition-all",
         "disabled:opacity-40 disabled:cursor-not-allowed",
+        "active:scale-[0.98]",
         variantStyles[variant],
         sizeStyles[size],
         className

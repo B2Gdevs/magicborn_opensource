@@ -1,19 +1,27 @@
 // components/rune/RuneForm.tsx
-// Reusable form component for creating/editing runes
+// Reusable form component for creating/editing runes with React Hook Form
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import type { RuneDef } from "@/lib/packages/runes";
 import type { RuneCode } from "@core/types";
 import { RuneTag, CrowdControlTag, DamageType, EffectType } from "@core/enums";
 import type { DamageVector } from "@core/combat";
 import type { EffectBlueprint } from "@core/effects";
-import { ImageUpload } from "@components/ui/ImageUpload";
+import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
 import { TagSelector } from "@components/ui/TagSelector";
 import { MultiSelectDropdown } from "@components/ui/MultiSelectDropdown";
-import { IdInput } from "@components/ui/IdInput";
-import { EFFECT_DEFS } from "@/lib/data/effects";
+import { BasicInfoSection } from "@components/ui/BasicInfoSection";
+import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
+import { useIdValidation } from "@/lib/hooks/useIdValidation";
+import { Sparkles, User } from "lucide-react";
+import { checkIdUniqueness } from "@lib/validation/id-validation";
+import { EntryType } from "@lib/content-editor/constants";
+import { toast } from "@/lib/hooks/useToast";
 
 interface RuneFormProps {
   initialValues?: Partial<RuneDef>;
@@ -23,6 +31,59 @@ interface RuneFormProps {
   onCancel?: () => void;
   saving?: boolean;
   submitLabel?: string;
+  projectId?: string;
+  editEntryId?: number;
+}
+
+// Validation schema
+const runeSchema = z.object({
+  id: z.string().optional().or(z.literal("")), // Optional - server generates for new entries (code is the actual ID for runes)
+  name: z.string().min(1, "Name is required"), // Maps to "concept" for runes
+  code: z.string().length(1, "Code must be a single letter").regex(/^[A-Z]$/, "Code must be an uppercase letter A-Z"),
+  description: z.string().optional().default(""),
+  powerFactor: z.number().min(0).max(2),
+  controlFactor: z.number().min(0).max(2),
+  instabilityBase: z.number().min(0).max(1),
+  tags: z.array(z.string()).min(1, "At least one tag is required"),
+  manaCost: z.number().min(0),
+  dotAffinity: z.number().min(0).max(1).optional(),
+  imageMediaId: z.number().optional(),
+  landmarkIconMediaId: z.number().optional(),
+  // Complex fields stored as JSON in Payload
+  damage: z.record(z.string(), z.number()).optional(),
+  ccInstant: z.array(z.string()).optional(),
+  pen: z.record(z.string(), z.number()).optional(),
+  effects: z.array(z.any()).optional(),
+  overchargeEffects: z.array(z.any()).optional(),
+});
+
+type RuneFormDataInput = z.infer<typeof runeSchema>;
+
+const allRuneTags = Object.values(RuneTag);
+const allDamageTypes = Object.values(DamageType);
+const allCCTags = Object.values(CrowdControlTag);
+const allEffectTypes = Object.values(EffectType);
+const allRuneCodes: RuneCode[] = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+
+// Form sections for sidebar navigation
+type FormSection = "basic" | "properties";
+
+// Get form sections
+const getFormSections = (): Array<{ id: FormSection; label: string; icon: typeof User }> => {
+  return [
+    { id: "basic", label: "Basic Info", icon: User },
+    { id: "properties", label: "Rune Properties", icon: Sparkles },
+  ];
+};
+
+// Wrapper for checkIdUniqueness with EntryType.Rune
+// Note: Runes use 'code' field, not 'slug', handled by shared utility
+async function checkRuneIdUniqueness(
+  id: string,
+  projectId?: string,
+  excludeId?: number
+): Promise<{ isUnique: boolean; error?: string }> {
+  return checkIdUniqueness(EntryType.Rune, id, projectId, excludeId);
 }
 
 export function RuneForm({
@@ -33,38 +94,30 @@ export function RuneForm({
   onCancel,
   saving = false,
   submitLabel,
+  projectId,
+  editEntryId,
 }: RuneFormProps) {
-  const [code, setCode] = useState<RuneCode>(initialValues.code || ("A" as RuneCode));
-  const [concept, setConcept] = useState(initialValues.concept || "");
-  const [powerFactor, setPowerFactor] = useState(initialValues.powerFactor || 1.0);
-  const [controlFactor, setControlFactor] = useState(initialValues.controlFactor || 1.0);
-  const [instabilityBase, setInstabilityBase] = useState(initialValues.instabilityBase || 0.0);
-  const [tags, setTags] = useState<RuneTag[]>(initialValues.tags || []);
-  const [manaCost, setManaCost] = useState(initialValues.manaCost || 0);
-  const [dotAffinity, setDotAffinity] = useState<number | undefined>(initialValues.dotAffinity);
-  const [imagePath, setImagePath] = useState<string | undefined>(initialValues.imagePath);
+  const [activeSection, setActiveSection] = useState<FormSection>("basic");
+  const [imageMediaId, setImageMediaId] = useState<number | undefined>(initialValues.imageId);
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [landmarkIconMediaId, setLandmarkIconMediaId] = useState<number | undefined>(initialValues.landmarkIconId);
+  const [landmarkIconUrl, setLandmarkIconUrl] = useState<string | undefined>(undefined);
+  const imageUploadRef = useRef<MediaUploadRef | null>(null);
+  const landmarkIconUploadRef = useRef<MediaUploadRef | null>(null);
 
-  // Damage vector state
+  // Complex field state (not in form schema, managed separately)
   const [damage, setDamage] = useState<DamageVector>(initialValues.damage || {});
   const [damageType, setDamageType] = useState<DamageType | "">("");
   const [damageValue, setDamageValue] = useState(0);
-
-  // CC Instant state
   const [ccInstant, setCcInstant] = useState<CrowdControlTag[]>(initialValues.ccInstant || []);
-
-  // Penetration state
   const [pen, setPen] = useState<Partial<Record<DamageType, number>>>(initialValues.pen || {});
   const [penType, setPenType] = useState<DamageType | "">("");
   const [penValue, setPenValue] = useState(0);
-
-  // Effects state
   const [effects, setEffects] = useState<EffectBlueprint[]>(initialValues.effects || []);
   const [selectedEffectType, setSelectedEffectType] = useState<EffectType | "">("");
   const [effectMagnitude, setEffectMagnitude] = useState(1.0);
   const [effectDuration, setEffectDuration] = useState(4);
   const [effectSelf, setEffectSelf] = useState(false);
-
-  // Overcharge effects state
   const [overchargeEffects, setOverchargeEffects] = useState<Array<{
     minExtraMana: number;
     blueprint: EffectBlueprint;
@@ -75,12 +128,82 @@ export function RuneForm({
   const [overchargeDuration, setOverchargeDuration] = useState(4);
   const [overchargeSelf, setOverchargeSelf] = useState(false);
 
-  const allRuneTags = Object.values(RuneTag);
-  const allDamageTypes = Object.values(DamageType);
-  const allCCTags = Object.values(CrowdControlTag);
-  const allEffectTypes = Object.values(EffectType);
-  const allRuneCodes: RuneCode[] = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
   const availableCodes = allRuneCodes.filter(c => !existingRunes.some(r => r.code === c) || (isEdit && initialValues.code === c));
+
+  // Initialize ID from existing value (server generates for new entries)
+  const initialId = initialValues.id || "";
+
+  const form = useForm({
+    resolver: zodResolver(runeSchema),
+    defaultValues: {
+      id: initialId,
+      name: initialValues.concept || "", // Map concept to name for BasicInfoSection
+      code: initialValues.code || ("A" as RuneCode),
+      description: initialValues.description || "",
+      powerFactor: initialValues.powerFactor || 1.0,
+      controlFactor: initialValues.controlFactor || 1.0,
+      instabilityBase: initialValues.instabilityBase || 0.0,
+      tags: initialValues.tags || [],
+      manaCost: initialValues.manaCost || 0,
+      dotAffinity: initialValues.dotAffinity,
+      imageMediaId,
+      landmarkIconMediaId,
+      damage: initialValues.damage || {},
+      ccInstant: initialValues.ccInstant || [],
+      pen: initialValues.pen || {},
+      effects: initialValues.effects || [],
+      overchargeEffects: initialValues.overchargeEffects || [],
+    },
+  });
+
+  const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = form;
+  const id = watch("id") || ""; // Default to empty string for new entries
+  const name = watch("name"); // Name maps to concept for runes
+  const code = watch("code");
+
+  // Use reusable ID validation hook (only validate if ID is provided)
+  const { idValidation, validatingId } = useIdValidation({
+    id: id || "", // Pass empty string if undefined
+    isEdit,
+    projectId,
+    editEntryId,
+    checkIdUniqueness: checkRuneIdUniqueness,
+    setError,
+    clearErrors,
+  });
+
+  // Fetch image URLs when editing
+  useEffect(() => {
+    if (imageMediaId && isEdit) {
+      fetch(`/api/payload/media/${imageMediaId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            setImageUrl(data.url);
+          }
+        })
+        .catch(err => console.error("Failed to fetch image:", err));
+    } else if (!imageMediaId) {
+      setImageUrl(undefined);
+    }
+  }, [imageMediaId, isEdit]);
+
+  useEffect(() => {
+    if (landmarkIconMediaId && isEdit) {
+      fetch(`/api/payload/media/${landmarkIconMediaId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.url) {
+            setLandmarkIconUrl(data.url);
+          }
+        })
+        .catch(err => console.error("Failed to fetch landmark icon:", err));
+    } else if (!landmarkIconMediaId) {
+      setLandmarkIconUrl(undefined);
+    }
+  }, [landmarkIconMediaId, isEdit]);
+
+  // ID is now server-generated, no auto-generation needed
 
   const handleAddDamage = () => {
     if (damageType && damageValue > 0) {
@@ -154,477 +277,585 @@ export function RuneForm({
     setOverchargeEffects(overchargeEffects.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!code || !concept.trim()) {
-      alert("Code and concept are required");
+  const onSubmitForm = async (data: RuneFormDataInput) => {
+    // Upload pending images before submitting
+    let finalImageMediaId = imageMediaId;
+    let finalLandmarkIconMediaId = landmarkIconMediaId;
+    try {
+      if (imageUploadRef.current) {
+        const uploadedId = await imageUploadRef.current.uploadFile();
+        if (uploadedId) {
+          finalImageMediaId = uploadedId;
+        }
+      }
+      if (landmarkIconUploadRef.current) {
+        const uploadedId = await landmarkIconUploadRef.current.uploadFile();
+        if (uploadedId) {
+          finalLandmarkIconMediaId = uploadedId;
+        }
+      }
+    } catch (error) {
+      toast.error(`Failed to upload image: ${error instanceof Error ? error.message : "Unknown error"}`);
       return;
     }
 
-    // ID validation is handled by validation state
-    // ID validation is handled by IdInput component
+    // For new entries, ID is server-generated, so skip client-side validation
+    // For edit mode, ID should already be set
+    // Note: For runes, the actual ID is the 'code' field (single letter A-Z)
+    if (isEdit && !data.id) {
+      toast.error("ID is required for editing");
+      return;
+    }
+    
+    // Skip ID uniqueness check for new entries (server generates ID)
+    // Only check if user manually provided an ID
+    if (!isEdit && data.id && data.id.trim() && idValidation && !idValidation.isUnique) {
+      toast.error(idValidation.error || "ID validation failed. Please choose a different ID.");
+      return;
+    }
+
+    // For new entries, use a temporary placeholder ID (server will generate the real one)
+    // For edit mode, ID must be provided
+    // Note: For runes, 'code' is the actual unique identifier
+    const tempId = isEdit 
+      ? (data.id && data.id.trim() ? data.id.trim().toLowerCase() : "")
+      : (data.id && data.id.trim() ? data.id.trim().toLowerCase() : `temp-${Date.now()}`);
+    
+    if (isEdit && !tempId) {
+      toast.error("ID is required for editing");
+      return;
+    }
 
     const rune: RuneDef = {
-      code,
-      concept: concept.trim(),
-      powerFactor,
-      controlFactor,
-      instabilityBase,
-      tags,
-      manaCost,
+      id: tempId, // Temporary ID for new entries, real ID for edit mode
+      name: data.name.trim(), // Map name to concept for BaseEntity
+      code: data.code as RuneCode,
+      concept: data.name.trim(), // Map name back to concept
+      description: data.description,
+      powerFactor: data.powerFactor,
+      controlFactor: data.controlFactor,
+      instabilityBase: data.instabilityBase,
+      tags: data.tags as RuneTag[],
+      manaCost: data.manaCost,
       ...(Object.keys(damage).length > 0 ? { damage } : {}),
       ...(ccInstant.length > 0 ? { ccInstant } : {}),
       ...(Object.keys(pen).length > 0 ? { pen } : {}),
       ...(effects.length > 0 ? { effects } : {}),
       ...(overchargeEffects.length > 0 ? { overchargeEffects } : {}),
-      ...(dotAffinity !== undefined ? { dotAffinity } : {}),
-      ...(imagePath ? { imagePath } : {}),
+      ...(data.dotAffinity !== undefined ? { dotAffinity: data.dotAffinity } : {}),
+      ...(finalImageMediaId ? { imageId: finalImageMediaId } : {}),
+      ...(finalLandmarkIconMediaId ? { landmarkIconId: finalLandmarkIconMediaId } : {}),
     };
 
     onSubmit(rune);
   };
 
+  // Scroll to section when active section changes
+  useEffect(() => {
+    const sectionElement = document.getElementById(`section-${activeSection}`);
+    if (sectionElement) {
+      sectionElement.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [activeSection]);
+
+  // Track active section based on scroll position
+  const formContentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const formContent = formContentRef.current;
+    if (!formContent) return;
+
+    const handleScroll = () => {
+      const sections = getFormSections();
+      const scrollPosition = formContent.scrollTop + 100; // Offset for sticky header
+
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const section = sections[i];
+        const element = document.getElementById(`section-${section.id}`);
+        if (element && formContent.contains(element)) {
+          const offsetTop = element.offsetTop - formContent.offsetTop;
+          if (scrollPosition >= offsetTop) {
+            setActiveSection(section.id);
+            break;
+          }
+        }
+      }
+    };
+
+    formContent.addEventListener("scroll", handleScroll);
+    return () => formContent.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const sections = getFormSections();
+
+  const navItems: SidebarNavItem[] = sections.map((section) => ({
+    id: section.id,
+    label: section.label,
+    icon: section.icon,
+  }));
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto">
-      <ImageUpload
-        currentImagePath={imagePath}
-        contentType="runes"
-        entityId={code}
-        onImageUploaded={setImagePath}
-        label="Rune Image"
-        disabled={saving}
+    <div className="flex h-full">
+      {/* Sidebar Navigation */}
+      <SidebarNav
+        items={navItems}
+        activeId={activeSection}
+        onItemClick={(id: string) => setActiveSection(id as FormSection)}
+        width="md"
+        sticky={true}
       />
 
-      {isEdit ? (
-        <IdInput
-          value={code}
-          onChange={() => {}} // Read-only in edit mode
-          contentType="runes"
-          isEdit={true}
-          placeholder="Rune Code"
-          label="Code (Rune Letter)"
-          disabled={true}
-        />
-      ) : (
+      {/* Form Content */}
+      <div ref={formContentRef} className="flex-1 overflow-y-auto">
+        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
+          {/* Basic Info Section */}
+          <BasicInfoSection
+            register={register}
+            watch={watch}
+            setValue={setValue}
+            errors={errors}
+            idValue={id || ""}
+            idPlaceholder="e.g., fire"
+            isEdit={isEdit}
+            idValidation={idValidation}
+            validatingId={validatingId}
+            onIdChange={(newId) => {
+              setValue("id", newId);
+            }}
+            nameValue={name}
+            namePlaceholder="e.g., Fire"
+            descriptionValue={watch("description") || ""}
+            descriptionPlaceholder="Description of the rune..."
+            imageMediaId={imageMediaId}
+            imageUrl={imageUrl}
+            onImageUploaded={(mediaId) => {
+              setImageMediaId(mediaId);
+              setValue("imageMediaId", mediaId);
+              if (!mediaId) {
+                setImageUrl(undefined);
+              }
+            }}
+            imageUploadRef={imageUploadRef}
+            landmarkIconMediaId={landmarkIconMediaId}
+            landmarkIconUrl={landmarkIconUrl}
+            onLandmarkIconUploaded={(mediaId) => {
+              setLandmarkIconMediaId(mediaId);
+              setValue("landmarkIconMediaId", mediaId);
+              if (!mediaId) {
+                setLandmarkIconUrl(undefined);
+              }
+            }}
+            landmarkIconUploadRef={landmarkIconUploadRef}
+            showLandmarkIcon={true}
+            saving={saving}
+            projectId={projectId}
+            editEntryId={editEntryId}
+          />
+
+          {/* Rune-Specific Fields */}
+          <section id="section-properties" className="space-y-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-5 h-5 text-ember-glow" />
+          <h2 className="text-xl font-bold text-glow">Rune Properties</h2>
+        </div>
+
+        {/* Code selection (special case for runes - single letter) */}
         <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-1">
-            Code (Rune Letter) *
+          <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+            <span>Rune Code (Letter)</span>
+            <span className="text-ember">*</span>
           </label>
-          <select
-            value={code}
-            onChange={(e) => setCode(e.target.value as RuneCode)}
-            className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            required
-          >
-            <option value="">Select a rune code</option>
-            {availableCodes.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          {/* Use IdInput for validation feedback - hidden input, visible validation */}
-          {code && (
-            <IdInput
+          {isEdit ? (
+            <input
+              type="text"
               value={code}
-              onChange={(id) => setCode(id as RuneCode)}
-              contentType="runes"
-              isEdit={false}
-              placeholder=""
-              label=""
-              disabled={false}
-              className="hidden"
+              disabled
+              className="w-full px-3 py-2 bg-deep/50 border border-border rounded text-text-muted cursor-not-allowed"
             />
+          ) : (
+            <select
+              {...register("code")}
+              className={`w-full px-3 py-2 bg-deep border rounded text-text-primary ${
+                errors.code ? "border-red-500" : "border-border"
+              }`}
+            >
+              <option value="">Select a rune code</option>
+              {availableCodes.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          )}
+          {errors.code && (
+            <p className="text-xs text-red-500 mt-1">{errors.code.message as string}</p>
+          )}
+          <p className="text-xs text-text-muted mt-1">
+            Single letter code (A-Z) that uniquely identifies this rune
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+              <span>Power Factor</span>
+              <span className="text-ember">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              {...register("powerFactor", { valueAsNumber: true })}
+              className={`w-full px-3 py-2 bg-deep border rounded text-text-primary ${
+                errors.powerFactor ? "border-red-500" : "border-border"
+              }`}
+            />
+            {errors.powerFactor && (
+              <p className="text-xs text-red-500 mt-1">{errors.powerFactor.message as string}</p>
+            )}
+          </div>
+          <div>
+            <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+              <span>Control Factor</span>
+              <span className="text-ember">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              {...register("controlFactor", { valueAsNumber: true })}
+              className={`w-full px-3 py-2 bg-deep border rounded text-text-primary ${
+                errors.controlFactor ? "border-red-500" : "border-border"
+              }`}
+            />
+            {errors.controlFactor && (
+              <p className="text-xs text-red-500 mt-1">{errors.controlFactor.message as string}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+              <span>Instability Base (0-1)</span>
+              <span className="text-ember">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              {...register("instabilityBase", { valueAsNumber: true })}
+              className={`w-full px-3 py-2 bg-deep border rounded text-text-primary ${
+                errors.instabilityBase ? "border-red-500" : "border-border"
+              }`}
+            />
+            {errors.instabilityBase && (
+              <p className="text-xs text-red-500 mt-1">{errors.instabilityBase.message as string}</p>
+            )}
+          </div>
+          <div>
+            <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+              <span>Mana Cost</span>
+              <span className="text-ember">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              {...register("manaCost", { valueAsNumber: true })}
+              className={`w-full px-3 py-2 bg-deep border rounded text-text-primary ${
+                errors.manaCost ? "border-red-500" : "border-border"
+              }`}
+            />
+            {errors.manaCost && (
+              <p className="text-xs text-red-500 mt-1">{errors.manaCost.message as string}</p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+            <span>Tags</span>
+            <span className="text-ember">*</span>
+          </label>
+          <TagSelector
+            selected={watch("tags") as RuneTag[]}
+            options={allRuneTags}
+            onChange={(tags) => setValue("tags", tags)}
+            getLabel={(tag) => tag}
+          />
+          {errors.tags && (
+            <p className="text-xs text-red-500 mt-1">{errors.tags.message as string}</p>
           )}
         </div>
-      )}
 
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          Concept (Name) *
-        </label>
-        <input
-          type="text"
-          value={concept}
-          onChange={(e) => setConcept(e.target.value)}
-          className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-          placeholder="e.g., Fire, Air, Burst"
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-1">
-            Power Factor *
-          </label>
-          <input
-            type="number"
-            step="0.1"
-            value={powerFactor}
-            onChange={(e) => setPowerFactor(parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-1">
-            Control Factor *
-          </label>
-          <input
-            type="number"
-            step="0.1"
-            value={controlFactor}
-            onChange={(e) => setControlFactor(parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            required
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-1">
-            Instability Base (0-1) *
+          <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+            <span>DOT Affinity (0-1, optional)</span>
           </label>
           <input
             type="number"
             step="0.01"
             min="0"
             max="1"
-            value={instabilityBase}
-            onChange={(e) => setInstabilityBase(parseFloat(e.target.value) || 0)}
+            {...register("dotAffinity", { valueAsNumber: true })}
             className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            required
+            placeholder="Leave empty if none"
           />
         </div>
+
+        {/* Damage Vector */}
+        <div className="border-t border-border pt-4">
+          <label className="block text-sm font-semibold text-text-secondary mb-2">
+            Damage Vector (optional)
+          </label>
+          <div className="space-y-2">
+            {Object.entries(damage).map(([type, value]) => (
+              <div key={type} className="flex items-center gap-2">
+                <span className="text-sm text-text-primary">{type}: {value}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveDamage(type as DamageType)}
+                  className="text-red-500 hover:text-red-700 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <select
+                value={damageType}
+                onChange={(e) => setDamageType(e.target.value as DamageType | "")}
+                className="flex-1 px-3 py-2 bg-deep border border-border rounded text-text-primary"
+              >
+                <option value="">Select damage type</option>
+                {allDamageTypes.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                step="0.1"
+                value={damageValue}
+                onChange={(e) => setDamageValue(parseFloat(e.target.value) || 0)}
+                placeholder="Value"
+                className="w-24 px-3 py-2 bg-deep border border-border rounded text-text-primary"
+              />
+              <button
+                type="button"
+                onClick={handleAddDamage}
+                className="px-3 py-2 bg-ember hover:bg-ember-dark text-white rounded"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* CC Instant */}
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-1">
-            Mana Cost *
+            Crowd Control (Instant) (optional)
           </label>
-          <input
-            type="number"
-            step="0.1"
-            value={manaCost}
-            onChange={(e) => setManaCost(parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            required
+          <MultiSelectDropdown
+            selected={ccInstant}
+            options={allCCTags.map(tag => ({ value: tag, label: tag }))}
+            onChange={(selected) => setCcInstant(selected as CrowdControlTag[])}
+            placeholder="Select CC tags"
           />
         </div>
-      </div>
 
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          Tags *
-        </label>
-        <TagSelector
-          selected={tags}
-          options={allRuneTags}
-          onChange={setTags}
-          getLabel={(tag) => tag}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          DOT Affinity (0-1, optional)
-        </label>
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          max="1"
-          value={dotAffinity || ""}
-          onChange={(e) => setDotAffinity(e.target.value ? parseFloat(e.target.value) : undefined)}
-          className="w-full px-3 py-2 bg-deep border border-border rounded text-text-primary"
-          placeholder="Leave empty if none"
-        />
-      </div>
-
-      {/* Damage Vector */}
-      <div className="border-t border-border pt-4">
-        <label className="block text-sm font-semibold text-text-secondary mb-2">
-          Damage Vector (optional)
-        </label>
-        <div className="space-y-2">
-          {Object.entries(damage).map(([type, value]) => (
-            <div key={type} className="flex items-center gap-2">
-              <span className="text-sm text-text-primary">{type}: {value}</span>
-              <button
-                type="button"
-                onClick={() => handleRemoveDamage(type as DamageType)}
-                className="text-red-500 hover:text-red-700 text-sm"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <div className="flex gap-2">
-            <select
-              value={damageType}
-              onChange={(e) => setDamageType(e.target.value as DamageType | "")}
-              className="flex-1 px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            >
-              <option value="">Select damage type</option>
-              {allDamageTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              step="0.1"
-              value={damageValue}
-              onChange={(e) => setDamageValue(parseFloat(e.target.value) || 0)}
-              placeholder="Value"
-              className="w-24 px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            />
-            <button
-              type="button"
-              onClick={handleAddDamage}
-              className="px-3 py-2 bg-ember hover:bg-ember-dark text-white rounded"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* CC Instant */}
-      <div>
-        <label className="block text-sm font-semibold text-text-secondary mb-1">
-          Crowd Control (Instant) (optional)
-        </label>
-        <MultiSelectDropdown
-          selected={ccInstant}
-          options={allCCTags.map(tag => ({ value: tag, label: tag }))}
-          onChange={(selected) => setCcInstant(selected as CrowdControlTag[])}
-          placeholder="Select CC tags"
-        />
-      </div>
-
-      {/* Penetration */}
-      <div className="border-t border-border pt-4">
-        <label className="block text-sm font-semibold text-text-secondary mb-2">
-          Penetration (optional)
-        </label>
-        <div className="space-y-2">
-          {Object.entries(pen).map(([type, value]) => (
-            <div key={type} className="flex items-center gap-2">
-              <span className="text-sm text-text-primary">{type}: {value}</span>
-              <button
-                type="button"
-                onClick={() => handleRemovePen(type as DamageType)}
-                className="text-red-500 hover:text-red-700 text-sm"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <div className="flex gap-2">
-            <select
-              value={penType}
-              onChange={(e) => setPenType(e.target.value as DamageType | "")}
-              className="flex-1 px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            >
-              <option value="">Select damage type</option>
-              {allDamageTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              step="0.1"
-              value={penValue}
-              onChange={(e) => setPenValue(parseFloat(e.target.value) || 0)}
-              placeholder="Value"
-              className="w-24 px-3 py-2 bg-deep border border-border rounded text-text-primary"
-            />
-            <button
-              type="button"
-              onClick={handleAddPen}
-              className="px-3 py-2 bg-ember hover:bg-ember-dark text-white rounded"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Effects */}
-      <div className="border-t border-border pt-4">
-        <label className="block text-sm font-semibold text-text-secondary mb-2">
-          Effects (optional)
-        </label>
-        <div className="space-y-2">
-          {effects.map((effect, index) => (
-            <div key={index} className="flex items-center gap-2 p-2 bg-deep rounded">
-              <span className="text-sm text-text-primary flex-1">
-                {effect.type} (mag: {effect.baseMagnitude}, dur: {effect.baseDurationSec}s{effect.self ? ", self" : ""})
-              </span>
-              <button
-                type="button"
-                onClick={() => handleRemoveEffect(index)}
-                className="text-red-500 hover:text-red-700 text-sm"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <div className="space-y-2 p-3 bg-deep rounded">
-            <select
-              value={selectedEffectType}
-              onChange={(e) => setSelectedEffectType(e.target.value as EffectType | "")}
-              className="w-full px-3 py-2 bg-void border border-border rounded text-text-primary"
-            >
-              <option value="">Select effect type</option>
-              {allEffectTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-            <div className="grid grid-cols-3 gap-2">
-              <input
-                type="number"
-                step="0.1"
-                value={effectMagnitude}
-                onChange={(e) => setEffectMagnitude(parseFloat(e.target.value) || 0)}
-                placeholder="Magnitude"
-                className="px-3 py-2 bg-void border border-border rounded text-text-primary"
-              />
-              <input
-                type="number"
-                step="0.1"
-                value={effectDuration}
-                onChange={(e) => setEffectDuration(parseFloat(e.target.value) || 0)}
-                placeholder="Duration (sec)"
-                className="px-3 py-2 bg-void border border-border rounded text-text-primary"
-              />
-              <label className="flex items-center gap-2 text-sm text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={effectSelf}
-                  onChange={(e) => setEffectSelf(e.target.checked)}
-                />
-                Self
-              </label>
-            </div>
-            <button
-              type="button"
-              onClick={handleAddEffect}
-              className="w-full px-3 py-2 bg-ember hover:bg-ember-dark text-white rounded"
-            >
-              Add Effect
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Overcharge Effects */}
-      <div className="border-t border-border pt-4">
-        <label className="block text-sm font-semibold text-text-secondary mb-2">
-          Overcharge Effects (optional)
-        </label>
-        <div className="space-y-2">
-          {overchargeEffects.map((overcharge, index) => (
-            <div key={index} className="flex items-center gap-2 p-2 bg-deep rounded">
-              <span className="text-sm text-text-primary flex-1">
-                {overcharge.minExtraMana}+ mana: {overcharge.blueprint.type} (mag: {overcharge.blueprint.baseMagnitude}, dur: {overcharge.blueprint.baseDurationSec}s{overcharge.blueprint.self ? ", self" : ""})
-              </span>
-              <button
-                type="button"
-                onClick={() => handleRemoveOverchargeEffect(index)}
-                className="text-red-500 hover:text-red-700 text-sm"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <div className="space-y-2 p-3 bg-deep rounded">
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="number"
-                step="1"
-                value={overchargeMana}
-                onChange={(e) => setOverchargeMana(parseInt(e.target.value) || 0)}
-                placeholder="Min extra mana"
-                className="px-3 py-2 bg-void border border-border rounded text-text-primary"
-              />
+        {/* Penetration */}
+        <div className="border-t border-border pt-4">
+          <label className="block text-sm font-semibold text-text-secondary mb-2">
+            Penetration (optional)
+          </label>
+          <div className="space-y-2">
+            {Object.entries(pen).map(([type, value]) => (
+              <div key={type} className="flex items-center gap-2">
+                <span className="text-sm text-text-primary">{type}: {value}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemovePen(type as DamageType)}
+                  className="text-red-500 hover:text-red-700 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-2">
               <select
-                value={overchargeEffectType}
-                onChange={(e) => setOverchargeEffectType(e.target.value as EffectType | "")}
-                className="px-3 py-2 bg-void border border-border rounded text-text-primary"
+                value={penType}
+                onChange={(e) => setPenType(e.target.value as DamageType | "")}
+                className="flex-1 px-3 py-2 bg-deep border border-border rounded text-text-primary"
+              >
+                <option value="">Select damage type</option>
+                {allDamageTypes.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                step="0.1"
+                value={penValue}
+                onChange={(e) => setPenValue(parseFloat(e.target.value) || 0)}
+                placeholder="Value"
+                className="w-24 px-3 py-2 bg-deep border border-border rounded text-text-primary"
+              />
+              <button
+                type="button"
+                onClick={handleAddPen}
+                className="px-3 py-2 bg-ember hover:bg-ember-dark text-white rounded"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Effects */}
+        <div className="border-t border-border pt-4">
+          <label className="block text-sm font-semibold text-text-secondary mb-2">
+            Effects (optional)
+          </label>
+          <div className="space-y-2">
+            {effects.map((effect, index) => (
+              <div key={index} className="flex items-center gap-2 p-2 bg-deep rounded">
+                <span className="text-sm text-text-primary flex-1">
+                  {effect.type} (mag: {effect.baseMagnitude}, dur: {effect.baseDurationSec}s{effect.self ? ", self" : ""})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveEffect(index)}
+                  className="text-red-500 hover:text-red-700 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div className="space-y-2 p-3 bg-deep rounded">
+              <select
+                value={selectedEffectType}
+                onChange={(e) => setSelectedEffectType(e.target.value as EffectType | "")}
+                className="w-full px-3 py-2 bg-void border border-border rounded text-text-primary"
               >
                 <option value="">Select effect type</option>
                 {allEffectTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </select>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <input
-                type="number"
-                step="0.1"
-                value={overchargeMagnitude}
-                onChange={(e) => setOverchargeMagnitude(parseFloat(e.target.value) || 0)}
-                placeholder="Magnitude"
-                className="px-3 py-2 bg-void border border-border rounded text-text-primary"
-              />
-              <input
-                type="number"
-                step="0.1"
-                value={overchargeDuration}
-                onChange={(e) => setOverchargeDuration(parseFloat(e.target.value) || 0)}
-                placeholder="Duration (sec)"
-                className="px-3 py-2 bg-void border border-border rounded text-text-primary"
-              />
-              <label className="flex items-center gap-2 text-sm text-text-secondary">
+              <div className="grid grid-cols-3 gap-2">
                 <input
-                  type="checkbox"
-                  checked={overchargeSelf}
-                  onChange={(e) => setOverchargeSelf(e.target.checked)}
+                  type="number"
+                  step="0.1"
+                  value={effectMagnitude}
+                  onChange={(e) => setEffectMagnitude(parseFloat(e.target.value) || 0)}
+                  placeholder="Magnitude"
+                  className="px-3 py-2 bg-void border border-border rounded text-text-primary"
                 />
-                Self
-              </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={effectDuration}
+                  onChange={(e) => setEffectDuration(parseFloat(e.target.value) || 0)}
+                  placeholder="Duration (sec)"
+                  className="px-3 py-2 bg-void border border-border rounded text-text-primary"
+                />
+                <label className="flex items-center gap-2 text-sm text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={effectSelf}
+                    onChange={(e) => setEffectSelf(e.target.checked)}
+                  />
+                  Self
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddEffect}
+                className="w-full px-3 py-2 bg-ember hover:bg-ember-dark text-white rounded"
+              >
+                Add Effect
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleAddOverchargeEffect}
-              className="w-full px-3 py-2 bg-ember hover:bg-ember-dark text-white rounded"
-            >
-              Add Overcharge Effect
-            </button>
           </div>
         </div>
-      </div>
 
-      <div className="flex gap-3 pt-4 border-t border-border">
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex-1 px-4 py-2 bg-ember hover:bg-ember-dark text-white rounded-lg font-semibold disabled:opacity-50"
-        >
-          {saving ? "Saving..." : submitLabel || (isEdit ? "Update Rune" : "Create Rune")}
-        </button>
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="px-4 py-2 bg-deep hover:bg-void border border-border rounded-lg font-semibold text-text-secondary disabled:opacity-50"
-          >
-            Cancel
-          </button>
-        )}
+        {/* Overcharge Effects */}
+        <div className="border-t border-border pt-4">
+          <label className="block text-sm font-semibold text-text-secondary mb-2">
+            Overcharge Effects (optional)
+          </label>
+          <div className="space-y-2">
+            {overchargeEffects.map((overcharge, index) => (
+              <div key={index} className="flex items-center gap-2 p-2 bg-deep rounded">
+                <span className="text-sm text-text-primary flex-1">
+                  {overcharge.minExtraMana}+ mana: {overcharge.blueprint.type} (mag: {overcharge.blueprint.baseMagnitude}, dur: {overcharge.blueprint.baseDurationSec}s{overcharge.blueprint.self ? ", self" : ""})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveOverchargeEffect(index)}
+                  className="text-red-500 hover:text-red-700 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div className="space-y-2 p-3 bg-deep rounded">
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  step="1"
+                  value={overchargeMana}
+                  onChange={(e) => setOverchargeMana(parseInt(e.target.value) || 0)}
+                  placeholder="Min extra mana"
+                  className="px-3 py-2 bg-void border border-border rounded text-text-primary"
+                />
+                <select
+                  value={overchargeEffectType}
+                  onChange={(e) => setOverchargeEffectType(e.target.value as EffectType | "")}
+                  className="px-3 py-2 bg-void border border-border rounded text-text-primary"
+                >
+                  <option value="">Select effect type</option>
+                  {allEffectTypes.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={overchargeMagnitude}
+                  onChange={(e) => setOverchargeMagnitude(parseFloat(e.target.value) || 0)}
+                  placeholder="Magnitude"
+                  className="px-3 py-2 bg-void border border-border rounded text-text-primary"
+                />
+                <input
+                  type="number"
+                  step="0.1"
+                  value={overchargeDuration}
+                  onChange={(e) => setOverchargeDuration(parseFloat(e.target.value) || 0)}
+                  placeholder="Duration (sec)"
+                  className="px-3 py-2 bg-void border border-border rounded text-text-primary"
+                />
+                <label className="flex items-center gap-2 text-sm text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={overchargeSelf}
+                    onChange={(e) => setOverchargeSelf(e.target.checked)}
+                  />
+                  Self
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddOverchargeEffect}
+                className="w-full px-3 py-2 bg-ember hover:bg-ember-dark text-white rounded"
+              >
+                Add Overcharge Effect
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+        </form>
       </div>
-    </form>
+    </div>
   );
 }
-

@@ -133,11 +133,12 @@ setSelectionMode("placement");
 **Purpose:** Select cells to define regions, create nested maps, and set area properties.
 
 **What happens:**
-- Click and drag → Selects cell range
+- Click and drag → Selects cell range (automatically creates a square)
 - Click single cell → Selects that cell
-- Ctrl+Click / Shift+Click → Add/remove cells from selection
-- Create region → From selected cells
+- Create region → From selected cells (always creates a square region)
 - Assign environment → To selected cells/region
+
+**Important:** All regions are squares. When you select cells, the selection is automatically converted to a square by using the larger dimension (width or height) for both dimensions.
 
 **When to use:**
 - ✅ Defining regions with different environments
@@ -155,9 +156,14 @@ setSelectionMode("cell");
 // Clears placement selections
 // Enables cell selection
 
-// Select cells
+// Select cells (always creates a square when dragging)
 selectCell(cellX, cellY, addToSelection = false);
 selectCellRange(
+  { cellX: startX, cellY: startY },
+  { cellX: endX, cellY: endY }
+);
+// Or use selectCellSquare to force square selection
+selectCellSquare(
   { cellX: startX, cellY: startY },
   { cellX: endX, cellY: endY }
 );
@@ -166,8 +172,13 @@ selectCellRange(
 **Visual Indicators:**
 - Status bar: `Mode: Cell Selection` (blue)
 - Toolbar: Square icon highlighted in blue
-- Selected cells: Blue highlight (temporary selection)
+- Selected cells: **Blue highlight (temporary selection)** - Shows all selected cells as blue rectangles
 - Regions: Colored overlays (persistent)
+
+**Note:** When in cell selection mode, selected cells are highlighted in blue. If you don't see the highlighting, ensure:
+- You're in cell selection mode (blue square icon active)
+- You have cells selected (check status bar for cell count)
+- The map image has loaded
 
 **Keyboard Shortcuts:**
 - `Ctrl+A` / `Cmd+A` - Select all cells (in cell selection mode)
@@ -208,11 +219,17 @@ selectCellRange(
 
 ### What is a Region?
 
-A **region** is a selection of cells that defines an area with specific properties:
+A **region** is a **square selection of cells** that defines an area with specific properties:
+- **Always a square** - Regions are stored as `minX`, `minY`, `width`, `height` (not individual cell points)
 - Environment template (biome, climate, danger level)
 - Optional nested map (for more detailed editing)
 - Visual color for identification
 - Can have child regions (nested regions)
+
+**Storage Format:**
+- Regions are stored as squares: `{ minX, minY, width, height }`
+- This is more efficient than storing individual cell coordinates
+- When selecting cells, the selection is automatically converted to a square (using the larger dimension)
 
 ### Region Visibility
 
@@ -280,9 +297,11 @@ if (isBaseRegion(region)) {
 
 1. **Select a map** - Use the map selector combobox to choose which map to edit
 2. **Switch to cell selection mode** - Click the square icon in the toolbar (or use the plus icon which auto-switches)
-3. **Select cells** - Click and drag on the map to select the cells for your region
+3. **Select cells** - Click and drag on the map to select cells (selection is automatically converted to a square)
 4. **Create region** - Click "Create Region from Selection" button that appears
 5. **Name and configure** - Enter region name and optional environment properties
+
+**Important:** The selection will automatically be converted to a square (using the larger dimension for both width and height). This ensures all regions are squares, which is more efficient for storage and rendering.
 
 **UI:**
 - **Plus icon (➕)** in toolbar - Switches to cell selection mode if a map is selected
@@ -292,11 +311,21 @@ if (isBaseRegion(region)) {
 **Code:**
 ```typescript
 // User selects cells, then clicks "Create Region from Selection"
+// Selection is automatically converted to a square
+const bounds = selectedCellBounds; // { minX, minY, maxX, maxY }
+const width = bounds.maxX - bounds.minX + 1;
+const height = bounds.maxY - bounds.minY + 1;
+const size = Math.max(width, height); // Make it square
+
 const regionId = `region-${Date.now()}`;
 await addRegion({
   id: regionId,
   mapId: selectedMap.id,
   name: "My Region",
+  minX: bounds.minX,
+  minY: bounds.minY,
+  width: size,
+  height: size,
   cells: selectedCells,
   color: generateRegionColor(regionId),
   metadata: { /* environment properties */ },
@@ -715,7 +744,10 @@ const handleCreateRegion = async () => {
     id: regionId,
     mapId: selectedMap.id,
     name: "My Region",
-    cells: selectedCells,  // Selected cells define boundaries
+    minX: bounds.minX,
+    minY: bounds.minY,
+    width: size,  // Square region
+    height: size,  // Square region
     color: generateRegionColor(regionId),  // Unique color
     environmentId: "world_environment",  // Optional
     metadata: {
@@ -806,3 +838,8 @@ setSelectionMode("placement");
 - [COORDINATE_SYSTEM_ARCHITECTURE.md](./technical/COORDINATE_SYSTEM_ARCHITECTURE.md) - Detailed coordinate system architecture
 - [GRID_SYSTEM.md](./technical/GRID_SYSTEM.md) - Grid system and cell coordinates
 - [MAP_SIZING_STANDARDS.md](./technical/MAP_SIZING_STANDARDS.md) - Standard map sizes and configurations
+
+
+
+
+

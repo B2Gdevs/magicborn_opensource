@@ -9,6 +9,7 @@ import { RC } from "@pkg/runes";
 import { EFFECT_DEFS } from "@/lib/data/effects";
 import { SpellForm } from "@components/spell/SpellForm";
 import { spellClient } from "@/lib/api/clients";
+import { toast } from "@/lib/hooks/useToast";
 import { Tooltip } from "@components/ui/Tooltip";
 
 export default function SpellEditor() {
@@ -48,7 +49,7 @@ export default function SpellEditor() {
       setShowEditModal(false);
     } catch (error) {
       console.error("Error saving spell:", error);
-      alert(`Failed to save spell: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to save spell: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -70,7 +71,7 @@ export default function SpellEditor() {
       }
     } catch (error) {
       console.error("Error deleting spell:", error);
-      alert(`Failed to delete spell: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to delete spell: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -89,7 +90,7 @@ export default function SpellEditor() {
       setSelectedSpell(newSpell);
     } catch (error) {
       console.error("Error creating spell:", error);
-      alert(`Failed to create spell: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error(`Failed to create spell: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }

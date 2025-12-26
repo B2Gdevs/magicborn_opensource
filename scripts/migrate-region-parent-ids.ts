@@ -69,3 +69,8 @@ migrateRegionParentIds()
     process.exit(1);
   });
 
+
+
+
+
+

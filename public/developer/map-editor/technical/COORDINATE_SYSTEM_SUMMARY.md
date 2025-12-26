@@ -131,3 +131,8 @@ formatCellSizeInMeters(config): string // e.g., "47m" or "2.5m"
 - [GRID_SYSTEM.md](./GRID_SYSTEM.md) - Grid system and cell coordinates
 - [MAP_SIZING_STANDARDS.md](./MAP_SIZING_STANDARDS.md) - Standard map sizes
 
+
+
+
+
+

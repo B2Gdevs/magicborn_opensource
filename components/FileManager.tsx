@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "@/lib/hooks/useToast";
 
 interface FileItem {
   name: string;
@@ -96,7 +97,7 @@ export default function FileManager({ initialPath = "" }: FileManagerProps) {
       loadFiles(currentPath); // Refresh file list
     } catch (error) {
       console.error("Error saving file:", error);
-      alert("Failed to save file");
+      toast.error("Failed to save file");
     }
   };
 
@@ -117,7 +118,7 @@ export default function FileManager({ initialPath = "" }: FileManagerProps) {
       loadFiles(currentPath);
     } catch (error) {
       console.error("Error deleting:", error);
-      alert("Failed to delete item");
+      toast.error("Failed to delete item");
     }
   };
 
@@ -147,7 +148,7 @@ export default function FileManager({ initialPath = "" }: FileManagerProps) {
       }
     } catch (error) {
       console.error("Error creating:", error);
-      alert("Failed to create item");
+      toast.error("Failed to create item");
     }
   };
 
@@ -169,7 +170,7 @@ export default function FileManager({ initialPath = "" }: FileManagerProps) {
       loadFiles(currentPath);
     } catch (error) {
       console.error("Error uploading:", error);
-      alert("Failed to upload file");
+      toast.error("Failed to upload file");
     }
   };
 
