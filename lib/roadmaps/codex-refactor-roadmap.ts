@@ -108,36 +108,52 @@ export const codexRefactorRoadmap: RoadmapData = {
       ],
     },
     {
-      title: "Phase 5: Form Refactor Template",
+      title: "Phase 5: Form Refactor & Transformers",
       priority: "Medium Priority",
       sections: [
         {
           title: "Shared Form Components",
           goal: "Create shared form components and patterns",
           items: [
-            { text: "Create components/content-editor/forms/CodexFormShell.tsx", completed: false },
-            { text: "Create lib/hooks/usePayloadMediaUrl.ts", completed: false },
-            { text: "Create lib/hooks/useUploadBeforeSubmit.ts", completed: false },
-            { text: "Refactor CharacterForm to use new pattern (schema, form hook, sections, form footer)", completed: false },
-            { text: "Refactor EffectForm to use new pattern", completed: false },
-            { text: "Remove document.querySelector('form') everywhere", completed: false },
-            { text: "Forms do not fetch docs or call CRUD directly", completed: false },
+            { text: "Create components/content-editor/forms/CodexFormShell.tsx", completed: true },
+            { text: "Create components/content-editor/forms/CodexFormFooter.tsx", completed: true },
+            { text: "Create lib/content-editor/codex/transformers/ directory", completed: true },
+          ],
+        },
+        {
+          title: "Entity Transformers",
+          goal: "Extract Payload<->Form transformers from NewEntryMenu",
+          items: [
+            { text: "Create character.ts transformer", completed: true },
+            { text: "Create creature.ts transformer", completed: true },
+            { text: "Create region.ts transformer", completed: true },
+            { text: "Create object.ts transformer", completed: true },
+            { text: "Create lore.ts transformer", completed: true },
+            { text: "Create spell.ts transformer", completed: true },
+            { text: "Create rune.ts transformer", completed: true },
+            { text: "Create effect.ts transformer", completed: true },
+          ],
+        },
+        {
+          title: "NewEntryMenu Cleanup",
+          goal: "Slim down NewEntryMenu using transformers",
+          items: [
+            { text: "Import transformers from centralized location", completed: true },
+            { text: "Remove inline payloadTo* transformer functions", completed: true },
+            { text: "Switch statement cleanup (future - forms work as-is)", completed: false },
           ],
         },
       ],
     },
     {
-      title: "Phase 6: Command Palette (Optional)",
-      priority: "Low Priority",
+      title: "Phase 6: Command Palette (Cancelled)",
+      priority: "Cancelled",
       sections: [
         {
           title: "Command Palette",
-          goal: "Add command palette for quick actions",
+          goal: "Cancelled per user request",
           items: [
-            { text: "Research command palette libraries (cmdk, etc.)", completed: false },
-            { text: "Implement command palette UI", completed: false },
-            { text: "Wire up codex commands to palette", completed: false },
-            { text: "Add keyboard shortcut (Cmd/Ctrl+K)", completed: false },
+            { text: "Not implementing command palette", completed: true },
           ],
         },
       ],

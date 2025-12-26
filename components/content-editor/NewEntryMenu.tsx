@@ -30,6 +30,24 @@ import {
 } from "@/lib/content-editor/constants";
 import { toast } from "@/lib/hooks/useToast";
 import {
+  payloadToCharacter,
+  payloadToCreature,
+  payloadToRune,
+  payloadToRegion,
+  payloadToObject,
+  payloadToLore,
+  payloadToSpell,
+  payloadToEffect,
+  characterToPayload,
+  creatureToPayload,
+  runeToPayload,
+  regionToPayload,
+  objectToPayload,
+  loreToPayload,
+  spellToPayload,
+  effectToPayload,
+} from "@/lib/content-editor/codex/transformers";
+import {
   getAllEntryTypes,
   getEntryConfig,
   getCollectionForEntryType,
@@ -201,142 +219,7 @@ export function NewEntryMenu({
     };
   };
 
-  // Transformers: Payload -> Form Data
-  const payloadToCharacter = (payload: unknown): Partial<CharacterDefinition> => {
-    if (typeof payload !== "object" || !payload) return {};
-    const p = payload as Record<string, unknown>;
-    const combatStats = ((p.combatStats as Record<string, unknown>) || {}) as {
-      hp?: number;
-      maxHp?: number;
-      mana?: number;
-      maxMana?: number;
-      affinity?: Record<string, number>;
-      elementXp?: Record<string, number>;
-      elementAffinity?: Record<string, number>;
-      controlBonus?: number;
-      costEfficiency?: number;
-      effects?: Array<{
-        type: string;
-        magnitude: number;
-        durationSec: number;
-        stacks?: number;
-        appliedAt?: number;
-      }>;
-    };
-
-    return {
-      id: (p.slug as string) || (p.id?.toString() || ""),
-      name: (p.name as string) || "",
-      description: (p.description as string) || "",
-      hp: combatStats.hp ?? 0,
-      maxHp: combatStats.maxHp ?? 0,
-      mana: combatStats.mana ?? 0,
-      maxMana: combatStats.maxMana ?? 0,
-      affinity: combatStats.affinity || {},
-      elementXp: combatStats.elementXp,
-      elementAffinity: combatStats.elementAffinity,
-      controlBonus: combatStats.controlBonus,
-      costEfficiency: combatStats.costEfficiency,
-      effects: (combatStats.effects || []).map(
-        (eff): EffectInstance => ({
-          type: eff.type as any, // Payload stores as string, will be validated by form
-          magnitude: eff.magnitude ?? 0,
-          durationSec: eff.durationSec ?? 0,
-          self: (eff as { self?: boolean }).self ?? false,
-        })
-      ),
-      imageId:
-        typeof p.image === "object" && p.image && "id" in p.image
-          ? (p.image.id as number)
-          : typeof p.image === "number"
-            ? p.image
-            : undefined,
-      storyIds: [],
-    };
-  };
-
-  const payloadToCreature = (payload: unknown): CreatureDefinition => {
-    if (typeof payload !== "object" || !payload) {
-      return {
-        id: "",
-        name: "",
-        description: "",
-        hp: 100,
-        maxHp: 100,
-        mana: 50,
-        maxMana: 50,
-        affinity: {},
-        effects: [],
-        storyIds: [],
-      };
-    }
-    const p = payload as Record<string, unknown>;
-    const combatStats = ((p.combatStats as Record<string, unknown>) || {}) as {
-      hp?: number;
-      maxHp?: number;
-      mana?: number;
-      maxMana?: number;
-      affinity?: Record<string, number>;
-      elementXp?: Record<string, number>;
-      elementAffinity?: Record<string, number>;
-    };
-
-    return {
-      id: (p.slug as string) || (p.id?.toString() || ""),
-      name: (p.name as string) || "",
-      description: (p.description as string) || "",
-      hp: combatStats.hp ?? 100,
-      maxHp: combatStats.maxHp ?? 100,
-      mana: combatStats.mana ?? 50,
-      maxMana: combatStats.maxMana ?? 50,
-      affinity: combatStats.affinity || {},
-      elementXp: combatStats.elementXp,
-      elementAffinity: combatStats.elementAffinity,
-      effects: [],
-      storyIds: [],
-      imageId:
-        typeof p.image === "object" && p.image && "id" in p.image
-          ? (p.image.id as number)
-          : typeof p.image === "number"
-            ? p.image
-            : undefined,
-      landmarkIconId:
-        typeof p.landmarkIcon === "object" && p.landmarkIcon && "id" in p.landmarkIcon
-          ? (p.landmarkIcon.id as number)
-          : typeof p.landmarkIcon === "number"
-            ? p.landmarkIcon
-            : undefined,
-    };
-  };
-
-  const payloadToRune = (payload: unknown): Partial<RuneDef> => {
-    if (typeof payload !== "object" || !payload) return {};
-    const p = payload as Record<string, unknown>;
-    // Use type assertions since Payload stores these as JSON and forms will validate
-    return {
-      code: p.code as any,
-      concept: p.concept as string,
-      powerFactor: p.powerFactor as number,
-      controlFactor: p.controlFactor as number,
-      instabilityBase: p.instabilityBase as number,
-      tags: (p.tags as any) || [],
-      manaCost: p.manaCost as number,
-      damage: p.damage as any,
-      ccInstant: p.ccInstant as any,
-      pen: p.pen as any,
-      effects: p.effects as any,
-      overchargeEffects: p.overchargeEffects as any,
-      dotAffinity: p.dotAffinity as any,
-      imageId:
-        typeof p.image === "object" && p.image && "id" in p.image
-          ? (p.image.id as number)
-          : typeof p.image === "number"
-            ? p.image
-            : undefined,
-    };
-  };
-
-  // Handlers
+  // Handlers - use centralized transformers from lib/content-editor/codex/transformers/
   const handleCreateCharacter = createSaveHandler<CharacterDefinition>(
     EntryType.Character,
     (character) => ({
