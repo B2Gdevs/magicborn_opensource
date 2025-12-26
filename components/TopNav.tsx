@@ -10,6 +10,7 @@ const repo = new PlayerLocalRepo();
 interface SiteFeatures {
   showWaitlistButton?: boolean;
   waitlistUrl?: string;
+  waitlistEmbedCode?: string;
 }
 
 export default function TopNav() {
@@ -56,7 +57,11 @@ export default function TopNav() {
           )}
         </div>
       </header>
-      <WaitlistModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <WaitlistModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        embedCode={features?.waitlistEmbedCode}
+      />
     </>
   );
 }

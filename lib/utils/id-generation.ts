@@ -20,3 +20,4 @@ export function nameToId(name: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
+

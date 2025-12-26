@@ -20,8 +20,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   
   // These routes have their own layout - don't show main app nav
   const isFullscreenRoute = 
-    pathname?.startsWith("/content-editor") ||
-    pathname?.startsWith("/docs/swagger");
+    pathname?.startsWith("/content-editor")
   
   if (isFullscreenRoute) {
     return (
