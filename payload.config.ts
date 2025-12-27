@@ -28,6 +28,10 @@ import { Runes } from './lib/payload/collections/Runes'
 import { Objects } from './lib/payload/collections/Objects'
 import { Creatures } from './lib/payload/collections/Creatures'
 
+// Collections - Custom Codex Types
+import { CodexEntityTypes } from './lib/payload/collections/CodexEntityTypes'
+import { CodexEntities } from './lib/payload/collections/CodexEntities'
+
 // Collections - System
 import { ProjectSnapshots } from './lib/payload/collections/ProjectSnapshots'
 import { AIGenerations } from './lib/payload/collections/AIGenerations'
@@ -65,6 +69,9 @@ export default buildConfig({
     Runes,
     Objects,
     Creatures,
+    // Custom Types
+    CodexEntityTypes,
+    CodexEntities,
     // System
     ProjectSnapshots,
     AIGenerations,

@@ -1,34 +1,40 @@
 // codexHistory.store.ts
 // Zustand store for undo/redo history of codex operations
+// This store is intentionally generic so it can handle:
+// - entry trash/restore
+// - entity type create/update/import/trash
+// - custom entity create/update/trash
 
 import { create } from "zustand";
-import { CodexCategory } from "@lib/content-editor/constants";
 
-export type CodexOp =
-  | {
-      type: "trash";
-      collection: string;
-      categoryId: CodexCategory;
-      entryIds: string[];
-      names?: string[];
-    }
-  | {
-      type: "restore";
-      collection: string;
-      categoryId: CodexCategory;
-      entryIds: string[];
-      names?: string[];
-    };
+export type CodexHistoryOp = {
+  /**
+   * Short label shown in UI / logs ("Trash Character", "Update Entity Type", etc.)
+   */
+  label: string;
+  /**
+   * Undo the operation (should be idempotent when possible)
+   */
+  undo: () => Promise<void>;
+  /**
+   * Redo the operation (should be idempotent when possible)
+   */
+  redo: () => Promise<void>;
+  /**
+   * Optional metadata for debugging / future UI
+   */
+  meta?: Record<string, unknown>;
+};
 
 const MAX_HISTORY = 50;
 
 interface CodexHistoryState {
-  undoStack: CodexOp[];
-  redoStack: CodexOp[];
+  undoStack: CodexHistoryOp[];
+  redoStack: CodexHistoryOp[];
 
-  push: (op: CodexOp) => void;
-  undo: () => CodexOp | null;
-  redo: () => CodexOp | null;
+  push: (op: CodexHistoryOp) => void;
+  undo: () => CodexHistoryOp | null;
+  redo: () => CodexHistoryOp | null;
   clear: () => void;
 }
 
@@ -54,7 +60,7 @@ export const useCodexHistoryStore = create<CodexHistoryState>((set, get) => ({
     const newUndoStack = state.undoStack.slice(0, -1);
 
     // Push the ORIGINAL operation to redo stack (not inverse)
-    // This way redo can re-execute the same operation
+    // This way redo can re-execute the same operation.
     set({
       undoStack: newUndoStack,
       redoStack: [...state.redoStack, op].slice(-MAX_HISTORY),

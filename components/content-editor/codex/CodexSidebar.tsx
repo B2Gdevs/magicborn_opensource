@@ -4,10 +4,10 @@
 
 "use client";
 
-import { useMemo, useCallback, useEffect, type ReactNode } from "react";
+import { useMemo, useCallback, useRef, type ReactNode } from "react";
 import { useMagicbornMode } from "@lib/payload/hooks/useMagicbornMode";
 import { useInvalidateCodexEntries } from "@lib/hooks/useCodexEntries";
-import { Settings, Trash2, Plus, Edit, Copy } from "lucide-react";
+import { Settings, Trash2, Plus, Edit, Copy, ChevronDown, ChevronRight, Upload, Download } from "lucide-react";
 import Link from "next/link";
 import { CodexContextMenu, type CodexContextMenuItem } from "./CodexContextMenu";
 import { NewEntryMenu } from "../NewEntryMenu";
@@ -22,6 +22,14 @@ import { useCodexHistoryStore } from "@lib/content-editor/codex/store/codexHisto
 import { CodexCategory, EntryType, CATEGORY_TO_ENTRY_TYPE } from "@lib/content-editor/constants";
 import { getAllEntryTypes, getDisplayName, useProjectConfigs } from "@lib/content-editor/entry-config";
 import type { CodexEntry } from "./types/codex.types";
+import { useCodexEntityTypes } from "@/lib/content-editor/codex/hooks/useCodexEntityTypes";
+import { useCodexEntitiesByType } from "@/lib/content-editor/codex/hooks/useCodexEntitiesByType";
+import { EntityTypeModalHost } from "./modals/EntityTypeModalHost";
+import { CustomEntityModalHost } from "./modals/CustomEntityModalHost";
+import { useCodexTypeCommands } from "@/lib/content-editor/codex/commands/useCodexTypeCommands";
+import { assertValidEntityTypeExport } from "@/lib/content-editor/codex/schema/validate";
+import { toExportFile, downloadJson } from "@/lib/content-editor/codex/api/schemaImportExport";
+import { toast } from "@/lib/hooks/useToast";
 
 interface Category {
   id: CodexCategory;
@@ -39,21 +47,28 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   const { isMagicbornMode } = useMagicbornMode(projectId);
   const projectConfigs = useProjectConfigs(projectId);
   const invalidateCodexEntries = useInvalidateCodexEntries();
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   // Zustand store for UI state
   const {
     isCollapsed,
     expanded,
+    expandedEntityTypes,
     searchQuery,
     contextMenu,
     triggerNewEntry,
     editEntry,
     toggleCategory,
     expandCategory,
+    toggleEntityType,
     setCollapsed,
     setSearchQuery,
     openContextMenu,
     closeContextMenu,
+    openCreateEntityType,
+    openEditEntityType,
+    openCreateCustomEntity,
+    openEditCustomEntity,
   } = useCodexSidebarStore();
 
   // Get all categories from entry-config (single source of truth) with project overrides
@@ -131,9 +146,45 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     clearSelection,
   });
 
+  // Custom Types hooks
+  const typeCommands = useCodexTypeCommands(projectId);
+  const entityTypesQuery = useCodexEntityTypes(projectId);
+
   // History state for undo/redo buttons
   const canUndo = useCodexHistoryStore((s) => s.undoStack.length > 0);
   const canRedo = useCodexHistoryStore((s) => s.redoStack.length > 0);
+
+  const handleImportTypeClick = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportTypeFile = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      assertValidEntityTypeExport(parsed);
+
+      // Create as a new type (no overwrite behavior yet)
+      await typeCommands.createType({
+        project: parseInt(projectId, 10),
+        name: parsed.name,
+        slug: parsed.slug,
+        icon: parsed.icon,
+        schema: parsed.schema,
+        uiSchema: parsed.uiSchema,
+        version: parsed.version ?? 1,
+        isSystem: false,
+      });
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Failed to import Entity Type");
+    } finally {
+      if (importInputRef.current) {
+        importInputRef.current.value = "";
+      }
+    }
+  };
 
   // Handle category toggle
   const handleToggleCategory = useCallback(
@@ -286,31 +337,7 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     ];
   };
 
-  // Handle Cmd/Ctrl+A for select all
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeElement = document.activeElement;
-      if (
-        activeElement &&
-        (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA")
-      ) {
-        return;
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === "a") {
-        e.preventDefault();
-        // Convert expanded Record to Set for selectAllInCategories
-        const expandedSet = new Set<CodexCategory>();
-        Object.entries(expanded).forEach(([cat, isExp]) => {
-          if (isExp) expandedSet.add(cat as CodexCategory);
-        });
-        selectAllInCategories(expandedSet, getEntries);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [expanded, getEntries, selectAllInCategories]);
+  // NOTE: Intentionally no keyboard shortcuts in Codex (per product decision).
 
   return (
     <aside
@@ -372,6 +399,67 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         </Link>
       </div>
 
+      {/* Custom Types */}
+      <div className="px-2 pb-2">
+        <div
+          className={`flex items-center ${
+            isCollapsed ? "justify-center" : "justify-between"
+          } px-2 py-1.5 text-xs font-semibold text-text-muted`}
+        >
+          {!isCollapsed && <span>Custom Types</span>}
+          <div className={`flex items-center gap-1 ${isCollapsed ? "flex-col" : ""}`}>
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-deep text-text-secondary hover:text-text-primary"
+              title="Import Entity Type"
+              onClick={handleImportTypeClick}
+            >
+              <Upload className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-deep text-text-secondary hover:text-text-primary"
+              title="Create Entity Type"
+              onClick={openCreateEntityType}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={(e) => handleImportTypeFile(e.target.files?.[0] ?? null)}
+        />
+
+        {!entityTypesQuery.isLoading && (entityTypesQuery.data?.length ?? 0) === 0 && !isCollapsed && (
+          <div className="px-2 py-2 text-xs text-text-muted">No custom types yet.</div>
+        )}
+
+        <div className="space-y-1">
+          {(entityTypesQuery.data ?? []).map((t: any) => (
+            <CustomTypeRow
+              key={String(t.id)}
+              projectId={projectId}
+              typeDoc={t}
+              isCollapsed={isCollapsed}
+              isExpanded={!!expandedEntityTypes[String(t.id)]}
+              onToggle={() => toggleEntityType(String(t.id))}
+              onCreateEntry={() => openCreateCustomEntity(String(t.id))}
+              onEditType={() => openEditEntityType(String(t.id))}
+              onExport={() => {
+                const file = toExportFile(t);
+                downloadJson(`${t.slug || t.name || "entity-type"}.json`, file);
+              }}
+              onEditEntry={(entityId) => openEditCustomEntity(String(t.id), entityId)}
+            />
+          ))}
+        </div>
+      </div>
+
       {contextMenu && (
         <CodexContextMenu
           x={contextMenu.x}
@@ -410,7 +498,121 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
           }
         }}
       />
+
+      {/* Custom Types modals */}
+      <EntityTypeModalHost projectId={projectId} />
+      <CustomEntityModalHost projectId={projectId} />
     </aside>
+  );
+}
+
+function CustomTypeRow({
+  projectId,
+  typeDoc,
+  isCollapsed,
+  isExpanded,
+  onToggle,
+  onCreateEntry,
+  onEditType,
+  onExport,
+  onEditEntry,
+}: {
+  projectId: string;
+  typeDoc: any;
+  isCollapsed: boolean;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onCreateEntry: () => void;
+  onEditType: () => void;
+  onExport: () => void;
+  onEditEntry: (entityId: string) => void;
+}) {
+  const typeId = String(typeDoc.id);
+  const entitiesQuery = useCodexEntitiesByType(projectId, typeId, isExpanded);
+
+  return (
+    <div className="rounded border border-border/30 bg-deep/10">
+      <div
+        className={`flex items-center ${
+          isCollapsed ? "justify-center" : "justify-between"
+        } px-2 py-1.5`}
+      >
+        <button
+          type="button"
+          className={`flex items-center ${
+            isCollapsed ? "" : "gap-2"
+          } text-xs text-text-secondary hover:text-text-primary`}
+          onClick={onToggle}
+          title={typeDoc.name}
+        >
+          {isCollapsed ? (
+            <span className="text-sm font-semibold">{typeDoc.name?.[0] ?? "T"}</span>
+          ) : (
+            <>
+              {isExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+              <span className="truncate">{typeDoc.name}</span>
+            </>
+          )}
+        </button>
+
+        {!isCollapsed && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-deep text-text-secondary hover:text-text-primary"
+              title="Create Entry"
+              onClick={onCreateEntry}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-deep text-text-secondary hover:text-text-primary"
+              title="Edit Type"
+              onClick={onEditType}
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-deep text-text-secondary hover:text-text-primary"
+              title="Export Type"
+              onClick={onExport}
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {isExpanded && !isCollapsed && (
+        <div className="px-2 pb-2">
+          {entitiesQuery.isLoading ? (
+            <div className="py-2 text-xs text-text-muted">Loading...</div>
+          ) : (entitiesQuery.data?.length ?? 0) === 0 ? (
+            <div className="py-2 text-xs text-text-muted">No entries.</div>
+          ) : (
+            <div className="space-y-1">
+              {(entitiesQuery.data ?? []).map((e: any) => (
+                <button
+                  key={String(e.id)}
+                  type="button"
+                  className="w-full text-left px-2 py-1 rounded hover:bg-deep/40 text-xs text-text-secondary hover:text-text-primary"
+                  onClick={() => onEditEntry(String(e.id))}
+                  title={e.name}
+                >
+                  <span className="truncate block">{e.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

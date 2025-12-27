@@ -6,7 +6,8 @@ import type { RoadmapData } from "./roadmap-types";
 
 export const codexRefactorRoadmap: RoadmapData = {
   name: "Codex Refactor & Modernization",
-  description: "Refactor CodexSidebar, integrate shadcn, implement undo/redo, and improve architecture",
+  description:
+    "Refactor CodexSidebar, integrate shadcn, implement undo/redo, and add Custom Types (JSON Schema + import/export)",
   phases: [
     {
       title: "Phase 0: Payload Trash Everywhere",
@@ -58,6 +59,59 @@ export const codexRefactorRoadmap: RoadmapData = {
       ],
     },
     {
+      title: "Phase CT1: Custom Types MVP (JSON Schema)",
+      priority: "High Priority",
+      sections: [
+        {
+          title: "Payload Collections",
+          goal: "Add collections for type definitions and instances (trash enabled)",
+          items: [
+            { text: "Add codex-entity-types collection (trash: true)", completed: true },
+            { text: "Add codex-entities collection (trash: true)", completed: true },
+            { text: "Ensure API soft-delete uses Payload trash (no hard deletes)", completed: true },
+          ],
+        },
+        {
+          title: "Schema Form Stack",
+          goal: "Render schema-driven forms for custom entities",
+          items: [
+            { text: "Install @rjsf/core", completed: true },
+            { text: "Create SchemaEntityForm (RJSF)", completed: true },
+          ],
+        },
+        {
+          title: "Type Builder + Modal",
+          goal: "Create/edit types in-app (produces JSON Schema + uiSchema)",
+          items: [
+            { text: "Create EntityTypeBuilder (MVP)", completed: true },
+            { text: "Create EntityTypeModalHost (create/edit/trash)", completed: true },
+            { text: "Create useCodexTypeCommands (create/update/trash + undo)", completed: true },
+          ],
+        },
+        {
+          title: "Import / Export",
+          goal: "Portable type format (JSON Schema) with versioned file format",
+          items: [
+            { text: "Create schema/types + validate helpers", completed: true },
+            { text: "Create schemaImportExport helpers (downloadJson + toExportFile)", completed: true },
+            { text: "Wire import UI (Custom Types header)", completed: true },
+            { text: "Wire export UI (per type)", completed: true },
+            { text: "Add overwrite / conflict handling for imports (future)", completed: false },
+          ],
+        },
+        {
+          title: "Custom Entity CRUD",
+          goal: "Create/edit/trash/restore custom entries with undo/redo",
+          items: [
+            { text: "List types in Codex sidebar and expand to show entries", completed: true },
+            { text: "Create CustomEntityModalHost (create/edit/trash)", completed: true },
+            { text: "Create useCodexCustomEntityCommands (create/update/trash + undo)", completed: true },
+            { text: "Add right-click / context menu for custom entities (future)", completed: false },
+          ],
+        },
+      ],
+    },
+    {
       title: "Phase 2: Keyboard Shortcuts (Cancelled)",
       priority: "Cancelled",
       sections: [
@@ -65,7 +119,7 @@ export const codexRefactorRoadmap: RoadmapData = {
           title: "Keyboard Shortcuts",
           goal: "Cancelled - would interfere with main content area shortcuts",
           items: [
-            { text: "Keyboard shortcuts removed from codex to avoid conflicts", completed: true },
+            { text: "Keyboard shortcuts removed from Codex to avoid conflicts (including Cmd/Ctrl+A)", completed: true },
           ],
         },
       ],

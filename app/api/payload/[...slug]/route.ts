@@ -426,7 +426,8 @@ export async function PATCH(
 // Collections that support soft-delete (have trash: true in their config)
 const TRASHABLE_COLLECTIONS = [
   'characters', 'creatures', 'locations', 'objects', 
-  'lore', 'spells', 'runes', 'effects'
+  'lore', 'spells', 'runes', 'effects',
+  'codex-entity-types', 'codex-entities'
 ]
 
 export async function DELETE(

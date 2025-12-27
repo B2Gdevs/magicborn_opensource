@@ -14,7 +14,7 @@ import {
   getEntryTypeMetadata,
   type EntryModalConfig,
 } from "@/lib/content-editor/codex/modals/entryModalRegistry";
-import { EntryType, CodexCategory } from "@/lib/content-editor/constants";
+import { EntryType, CodexCategory, CATEGORY_TO_ENTRY_TYPE } from "@/lib/content-editor/constants";
 import { trashEntry } from "@/lib/content-editor/codex/api/codexApi";
 import { useCodexHistoryStore } from "@/lib/content-editor/codex/store/codexHistory.store";
 
@@ -44,10 +44,12 @@ export function EntryModalHost({ projectId }: EntryModalHostProps) {
   // Handle new entry trigger
   useEffect(() => {
     if (triggerNewEntry) {
-      const config = getEntryModalConfig(triggerNewEntry as EntryType);
+      const entryType =
+        (CATEGORY_TO_ENTRY_TYPE as any)[triggerNewEntry] ?? (triggerNewEntry as EntryType);
+      const config = getEntryModalConfig(entryType as EntryType);
       if (config) {
         setCurrentConfig(config);
-        setActiveModal(triggerNewEntry as EntryType);
+        setActiveModal(entryType as EntryType);
         setEditData(null);
       }
       closeNewEntry();
@@ -57,7 +59,8 @@ export function EntryModalHost({ projectId }: EntryModalHostProps) {
   // Handle edit entry trigger
   useEffect(() => {
     if (editEntry) {
-      const entryType = editEntry.categoryId as EntryType;
+      const entryType =
+        CATEGORY_TO_ENTRY_TYPE[editEntry.categoryId] ?? (editEntry.categoryId as unknown as EntryType);
       const config = getEntryModalConfig(entryType);
 
       if (config) {
@@ -162,13 +165,19 @@ export function EntryModalHost({ projectId }: EntryModalHostProps) {
       const { collection, category } = getEntryTypeMetadata(activeModal);
       await trashEntry({ collection, id: entryId.toString() });
 
-      // Push to history
+      // Push to history (generic op)
+      const displayName = entryName || currentConfig.displayName || "entry";
       pushHistory({
-        type: "trash",
-        collection,
-        categoryId: category,
-        entryIds: [entryId.toString()],
-        names: entryName ? [entryName] : undefined,
+        label: `Trash ${displayName}`,
+        undo: async () => {
+          await fetch(`/api/payload/${collection}/${entryId}/restore`, { method: "POST" });
+          invalidateCategory(category);
+        },
+        redo: async () => {
+          await trashEntry({ collection, id: entryId.toString() });
+          invalidateCategory(category);
+        },
+        meta: { collection, category, entryId, entryName },
       });
 
       invalidateCategory(category);

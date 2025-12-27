@@ -66,38 +66,29 @@ export function useCodexCommands({
         const collection = getCollectionFromCategory(categoryId);
         await trashEntry({ collection, id: entryId });
 
-        // Push to history
+        // Push to history (generic op)
+        const displayName = name || "entry";
         pushHistory({
-          type: "trash",
-          collection,
-          categoryId,
-          entryIds: [entryId],
-          names: name ? [name] : undefined,
+          label: `Trash ${displayName}`,
+          undo: async () => {
+            await restoreEntry({ collection, id: entryId });
+            invalidateAndRefresh(categoryId);
+          },
+          redo: async () => {
+            await trashEntry({ collection, id: entryId });
+            invalidateAndRefresh(categoryId);
+          },
+          meta: { categoryId, collection, entryId, name },
         });
 
         // Invalidate queries
         invalidateAndRefresh(categoryId);
 
-        // Show toast with undo action
-        const displayName = name || "entry";
         toast.success(`Deleted ${displayName}`, {
           action: {
             label: "Undo",
             onClick: async () => {
-              try {
-                await restoreEntry({ collection, id: entryId });
-                pushHistory({
-                  type: "restore",
-                  collection,
-                  categoryId,
-                  entryIds: [entryId],
-                  names: name ? [name] : undefined,
-                });
-                invalidateAndRefresh(categoryId);
-                toast.success(`Restored ${displayName}`);
-              } catch (error) {
-                toast.error("Failed to restore entry");
-              }
+              await undoLast();
             },
           },
         });
@@ -106,6 +97,7 @@ export function useCodexCommands({
         throw error;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [pushHistory, invalidateAndRefresh]
   );
 
@@ -118,12 +110,18 @@ export function useCodexCommands({
         const collection = getCollectionFromCategory(categoryId);
         await restoreEntry({ collection, id: entryId });
 
+        const displayName = name || "entry";
         pushHistory({
-          type: "restore",
-          collection,
-          categoryId,
-          entryIds: [entryId],
-          names: name ? [name] : undefined,
+          label: `Restore ${displayName}`,
+          undo: async () => {
+            await trashEntry({ collection, id: entryId });
+            invalidateAndRefresh(categoryId);
+          },
+          redo: async () => {
+            await restoreEntry({ collection, id: entryId });
+            invalidateAndRefresh(categoryId);
+          },
+          meta: { categoryId, collection, entryId, name },
         });
 
         invalidateAndRefresh(categoryId);
@@ -133,6 +131,7 @@ export function useCodexCommands({
         throw error;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [pushHistory, invalidateAndRefresh]
   );
 
@@ -150,11 +149,16 @@ export function useCodexCommands({
         await bulkTrash({ collection, ids: entryIds });
 
         pushHistory({
-          type: "trash",
-          collection,
-          categoryId,
-          entryIds,
-          names,
+          label: `Trash ${entryIds.length} ${entryIds.length === 1 ? "item" : "items"}`,
+          undo: async () => {
+            await bulkRestore({ collection, ids: entryIds });
+            invalidateAndRefresh(categoryId);
+          },
+          redo: async () => {
+            await bulkTrash({ collection, ids: entryIds });
+            invalidateAndRefresh(categoryId);
+          },
+          meta: { categoryId, collection, entryIds, names },
         });
 
         invalidateAndRefresh(categoryId);
@@ -165,20 +169,7 @@ export function useCodexCommands({
           action: {
             label: "Undo",
             onClick: async () => {
-              try {
-                await bulkRestore({ collection, ids: entryIds });
-                pushHistory({
-                  type: "restore",
-                  collection,
-                  categoryId,
-                  entryIds,
-                  names,
-                });
-                invalidateAndRefresh(categoryId);
-                toast.success(`Restored ${count} ${count === 1 ? "item" : "items"}`);
-              } catch (error) {
-                toast.error("Failed to restore entries");
-              }
+              await undoLast();
             },
           },
         });
@@ -187,6 +178,7 @@ export function useCodexCommands({
         throw error;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [pushHistory, invalidateAndRefresh, clearSelection]
   );
 
@@ -275,17 +267,36 @@ export function useCodexCommands({
 
         await Promise.all(promises);
 
-        // Push history for first category (we track all IDs together)
-        const firstCategory = entriesByCategory.keys().next().value;
-        if (firstCategory) {
-          pushHistory({
-            type: "trash",
-            collection: getCollectionFromCategory(firstCategory),
-            categoryId: firstCategory,
-            entryIds: allEntryIds,
-            names: allNames.length > 0 ? allNames : undefined,
-          });
-        }
+        // Push history as a single undoable op across categories
+        pushHistory({
+          label: `Trash ${allEntryIds.length} ${allEntryIds.length === 1 ? "entry" : "entries"}`,
+          undo: async () => {
+            const restorePromises: Promise<unknown>[] = [];
+            entriesByCategory.forEach((entryIds, categoryId) => {
+              const collection = getCollectionFromCategory(categoryId);
+              entryIds.forEach((entryId) => {
+                restorePromises.push(restoreEntry({ collection, id: entryId }));
+              });
+            });
+            await Promise.all(restorePromises);
+            entriesByCategory.forEach((_, categoryId) => invalidateAndRefresh(categoryId));
+          },
+          redo: async () => {
+            const trashPromises: Promise<unknown>[] = [];
+            entriesByCategory.forEach((entryIds, categoryId) => {
+              const collection = getCollectionFromCategory(categoryId);
+              entryIds.forEach((entryId) => {
+                trashPromises.push(trashEntry({ collection, id: entryId }));
+              });
+            });
+            await Promise.all(trashPromises);
+            entriesByCategory.forEach((_, categoryId) => invalidateAndRefresh(categoryId));
+          },
+          meta: {
+            allEntryIds,
+            allNames: allNames.length > 0 ? allNames : undefined,
+          },
+        });
 
         // Invalidate all affected categories
         entriesByCategory.forEach((_, categoryId) => {
@@ -301,38 +312,7 @@ export function useCodexCommands({
             action: {
               label: "Undo",
               onClick: async () => {
-                try {
-                  // Restore all entries
-                  const restorePromises: Promise<unknown>[] = [];
-                  entriesByCategory.forEach((entryIds, categoryId) => {
-                    const collection = getCollectionFromCategory(categoryId);
-                    entryIds.forEach((entryId) => {
-                      restorePromises.push(restoreEntry({ collection, id: entryId }));
-                    });
-                  });
-
-                  await Promise.all(restorePromises);
-
-                  if (firstCategory) {
-                    pushHistory({
-                      type: "restore",
-                      collection: getCollectionFromCategory(firstCategory),
-                      categoryId: firstCategory,
-                      entryIds: allEntryIds,
-                      names: allNames.length > 0 ? allNames : undefined,
-                    });
-                  }
-
-                  entriesByCategory.forEach((_, categoryId) => {
-                    invalidateAndRefresh(categoryId);
-                  });
-
-                  toast.success(
-                    `Restored ${totalCount} ${totalCount === 1 ? "entry" : "entries"}`
-                  );
-                } catch (error) {
-                  toast.error("Failed to restore entries");
-                }
+                await undoLast();
               },
             },
           }
@@ -342,6 +322,7 @@ export function useCodexCommands({
         throw error;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [getEntries, pushHistory, invalidateAndRefresh, clearSelection]
   );
 
@@ -418,24 +399,8 @@ export function useCodexCommands({
       }
 
       try {
-        if (op.type === "trash") {
-          // Undo trash = restore
-          await Promise.all(
-            op.entryIds.map((id) => restoreEntry({ collection: op.collection, id }))
-          );
-          toast.success(
-            `Restored ${op.entryIds.length} ${op.entryIds.length === 1 ? "entry" : "entries"}`
-          );
-        } else if (op.type === "restore") {
-          // Undo restore = trash
-          await Promise.all(
-            op.entryIds.map((id) => trashEntry({ collection: op.collection, id }))
-          );
-          toast.success(
-            `Trashed ${op.entryIds.length} ${op.entryIds.length === 1 ? "entry" : "entries"}`
-          );
-        }
-        invalidateAndRefresh(op.categoryId);
+        await op.undo();
+        toast.success(`Undid: ${op.label}`);
       } catch (error) {
         toast.error("Failed to undo operation");
         // Re-push to undo stack to allow retry
@@ -450,24 +415,8 @@ export function useCodexCommands({
       }
 
       try {
-        if (op.type === "trash") {
-          // Redo trash = trash again
-          await Promise.all(
-            op.entryIds.map((id) => trashEntry({ collection: op.collection, id }))
-          );
-          toast.success(
-            `Trashed ${op.entryIds.length} ${op.entryIds.length === 1 ? "entry" : "entries"}`
-          );
-        } else if (op.type === "restore") {
-          // Redo restore = restore again
-          await Promise.all(
-            op.entryIds.map((id) => restoreEntry({ collection: op.collection, id }))
-          );
-          toast.success(
-            `Restored ${op.entryIds.length} ${op.entryIds.length === 1 ? "entry" : "entries"}`
-          );
-        }
-        invalidateAndRefresh(op.categoryId);
+        await op.redo();
+        toast.success(`Redid: ${op.label}`);
       } catch (error) {
         toast.error("Failed to redo operation");
       }
