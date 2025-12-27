@@ -17,6 +17,26 @@ export type ContextMenuState =
       type: "category" | "entry";
       categoryId: CodexCategory;
       entry?: CodexEntry;
+    }
+  | {
+      x: number;
+      y: number;
+      type: "sidebar";
+    }
+  | {
+      x: number;
+      y: number;
+      type: "customType";
+      typeId: string;
+      typeName: string;
+      typeDoc?: any;
+    }
+  | {
+      x: number;
+      y: number;
+      type: "customEntry";
+      typeId: string;
+      entry: CodexEntry;
     };
 
 export type EditEntryState = null | { categoryId: CodexCategory; entryId: string };

@@ -76,28 +76,7 @@ export function useCodexSelection() {
     setSelectedEntries(allEntryIds);
   }, []);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle shortcuts when sidebar is focused or when no input is focused
-      const activeElement = document.activeElement;
-      if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-        return;
-      }
-
-      // Escape: clear selection
-      if (e.key === 'Escape') {
-        clearSelection();
-        return;
-      }
-
-      // Delete/Backspace: handled by parent component
-      // (We don't handle it here to avoid circular dependencies)
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedEntries, clearSelection]);
+  // NOTE: Intentionally no keyboard shortcuts in Codex (per product decision).
 
   // Click outside to deselect
   useEffect(() => {

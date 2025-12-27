@@ -4,11 +4,9 @@
 
 "use client";
 
-import { FolderOpen, FolderClosed, Undo2, Redo2, HelpCircle } from "lucide-react";
+import { FolderOpen, FolderClosed, Undo2, Redo2, Plus, Upload } from "lucide-react";
 import { CodexSearch } from "./CodexSearch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import { getModifierKey, getModifierKeyName } from "@/lib/utils/keyboard";
 
 interface CodexSidebarHeaderProps {
   isCollapsed: boolean;
@@ -19,7 +17,8 @@ interface CodexSidebarHeaderProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
-  onShowShortcuts?: () => void;
+  onCreateCustomType?: () => void;
+  onImportCustomType?: () => void;
 }
 
 export function CodexSidebarHeader({
@@ -31,11 +30,9 @@ export function CodexSidebarHeader({
   onRedo,
   canUndo = false,
   canRedo = false,
-  onShowShortcuts,
+  onCreateCustomType,
+  onImportCustomType,
 }: CodexSidebarHeaderProps) {
-  const modKey = getModifierKey();
-  const modKeyName = getModifierKeyName();
-
   return (
     <div className="p-2">
       {!isCollapsed ? (
@@ -49,6 +46,38 @@ export function CodexSidebarHeader({
               <h2 className="text-sm font-semibold text-glow">Codex</h2>
             </div>
             <div className="flex items-center gap-1">
+              {onImportCustomType && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={onImportCustomType}
+                      className="p-1.5 rounded hover:bg-deep text-text-muted hover:text-text-primary transition-colors"
+                      aria-label="Import Entity Type"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-shadow border border-border text-text-primary">
+                    Import Entity Type
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {onCreateCustomType && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={onCreateCustomType}
+                      className="p-1.5 rounded hover:bg-deep text-text-muted hover:text-text-primary transition-colors"
+                      aria-label="Create Entity Type"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-shadow border border-border text-text-primary">
+                    Create Entity Type
+                  </TooltipContent>
+                </Tooltip>
+              )}
               {onUndo && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -62,9 +91,7 @@ export function CodexSidebarHeader({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-shadow border border-border text-text-primary">
-                    <div className="flex items-center gap-2">
-                      Undo <KbdGroup><Kbd>{modKey}</Kbd><Kbd>Z</Kbd></KbdGroup>
-                    </div>
+                    Undo
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -81,38 +108,7 @@ export function CodexSidebarHeader({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-shadow border border-border text-text-primary">
-                    <div className="flex items-center gap-2">
-                      Redo <KbdGroup><Kbd>Shift</Kbd><Kbd>{modKey}</Kbd><Kbd>Z</Kbd></KbdGroup>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {onShowShortcuts && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={onShowShortcuts}
-                      className="p-1.5 rounded hover:bg-deep text-text-muted hover:text-text-primary transition-colors"
-                      aria-label="Keyboard shortcuts"
-                    >
-                      <HelpCircle className="w-3.5 h-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-shadow border border-border text-text-primary">
-                    <div className="text-xs space-y-1">
-                      <div className="flex items-center gap-2">
-                        Undo: <KbdGroup><Kbd>{modKey}</Kbd><Kbd>Z</Kbd></KbdGroup>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        Redo: <KbdGroup><Kbd>Shift</Kbd><Kbd>{modKey}</Kbd><Kbd>Z</Kbd></KbdGroup>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        Delete: <Kbd>Delete</Kbd> or <Kbd>Backspace</Kbd>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        Edit: <Kbd>Enter</Kbd>
-                      </div>
-                    </div>
+                    Redo
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -132,6 +128,38 @@ export function CodexSidebarHeader({
               onClick={onToggleCollapsed}
             />
           </div>
+          {onImportCustomType && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onImportCustomType}
+                  className="p-1.5 rounded hover:bg-deep text-text-muted hover:text-text-primary transition-colors"
+                  aria-label="Import Entity Type"
+                >
+                  <Upload className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-shadow border border-border text-text-primary">
+                Import Entity Type
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {onCreateCustomType && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onCreateCustomType}
+                  className="p-1.5 rounded hover:bg-deep text-text-muted hover:text-text-primary transition-colors"
+                  aria-label="Create Entity Type"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-shadow border border-border text-text-primary">
+                Create Entity Type
+              </TooltipContent>
+            </Tooltip>
+          )}
           {onUndo && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -145,9 +173,7 @@ export function CodexSidebarHeader({
                 </button>
               </TooltipTrigger>
               <TooltipContent className="bg-shadow border border-border text-text-primary">
-                <div className="flex items-center gap-2">
-                  Undo <KbdGroup><Kbd>{modKey}</Kbd><Kbd>Z</Kbd></KbdGroup>
-                </div>
+                Undo
               </TooltipContent>
             </Tooltip>
           )}
@@ -164,9 +190,7 @@ export function CodexSidebarHeader({
                 </button>
               </TooltipTrigger>
               <TooltipContent className="bg-shadow border border-border text-text-primary">
-                <div className="flex items-center gap-2">
-                  Redo <KbdGroup><Kbd>Shift</Kbd><Kbd>{modKey}</Kbd><Kbd>Z</Kbd></KbdGroup>
-                </div>
+                Redo
               </TooltipContent>
             </Tooltip>
           )}
