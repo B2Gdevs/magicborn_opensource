@@ -77,6 +77,8 @@ export async function GET(
 ) {
   const { slug } = await params
   const payload = await getPayloadClient()
+  const searchParams = request.nextUrl.searchParams
+  const draft = searchParams.get('draft') === 'true'
   
   // Parse slug: e.g., ['projects'] or ['projects', '123'] or ['globals', 'site-config']
   const [first, second, third] = slug
@@ -116,6 +118,7 @@ export async function GET(
       const doc = await payload.findByID({
         collection: collection as any,
         id,
+        ...(draft ? { draft: true } : {}),
       })
       
       // Normalize media URLs if this is a media document - just use filename
@@ -132,7 +135,6 @@ export async function GET(
       return NextResponse.json(normalizedDoc)
     } else if (collection) {
       // Get collection
-      const searchParams = request.nextUrl.searchParams
       const limit = parseInt(searchParams.get('limit') || '10')
       const page = parseInt(searchParams.get('page') || '1')
       
@@ -161,6 +163,7 @@ export async function GET(
         collection: collection as any,
         ...(Object.keys(where).length > 0 && { where }),
         ...(sort && { sort }),
+        ...(draft ? { draft: true } : {}),
         limit,
         page,
       })

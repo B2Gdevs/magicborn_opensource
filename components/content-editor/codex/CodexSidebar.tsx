@@ -10,7 +10,6 @@ import { useInvalidateCodexEntries } from "@lib/hooks/useCodexEntries";
 import { Settings, Trash2, Plus, Edit, Copy, Download, Upload } from "lucide-react";
 import Link from "next/link";
 import { CodexContextMenu, type CodexContextMenuItem } from "./CodexContextMenu";
-import { NewEntryMenu } from "../NewEntryMenu";
 import { CodexSidebarHeader } from "./CodexSidebarHeader";
 import { CodexCategoryList } from "./CodexCategoryList";
 import { CodexBulkActions } from "./CodexBulkActions";
@@ -25,6 +24,7 @@ import type { CodexEntry } from "./types/codex.types";
 import { useCodexEntityTypes } from "@/lib/content-editor/codex/hooks/useCodexEntityTypes";
 import { EntityTypeModalHost } from "./modals/EntityTypeModalHost";
 import { CustomEntityModalHost } from "./modals/CustomEntityModalHost";
+import { EntryModalHost } from "./EntryModalHost";
 import { useCodexTypeCommands } from "@/lib/content-editor/codex/commands/useCodexTypeCommands";
 import { assertValidEntityTypeExport } from "@/lib/content-editor/codex/schema/validate";
 import { toExportFile, downloadJson } from "@/lib/content-editor/codex/api/schemaImportExport";
@@ -530,39 +530,12 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         />
       )}
 
-      <NewEntryMenu
-        projectId={projectId}
-        isMagicbornMode={isMagicbornMode}
-        onEntryCreated={(category) => {
-          const categoryId = category.toLowerCase() as CodexCategory;
-          refreshCategory(categoryId);
-        }}
-        triggerType={triggerNewEntry}
-        onTriggerHandled={() => {
-          const { clearNewEntryTrigger } = useCodexSidebarStore.getState();
-          clearNewEntryTrigger();
-        }}
-        editEntry={
-          editEntry
-            ? {
-                categoryId: editEntry.categoryId,
-                entryId: editEntry.entryId,
-              }
-            : null
-        }
-        onEditClosed={() => {
-          const { closeEditEntry } = useCodexSidebarStore.getState();
-          const currentEdit = editEntry;
-          closeEditEntry();
-          if (currentEdit) {
-            refreshCategory(currentEdit.categoryId);
-          }
-        }}
-      />
-
       {/* Custom Types modals */}
       <EntityTypeModalHost projectId={projectId} />
       <CustomEntityModalHost projectId={projectId} />
+
+      {/* System entry modal host (replaces NewEntryMenu for registered forms) */}
+      <EntryModalHost projectId={projectId} />
     </aside>
   );
 }

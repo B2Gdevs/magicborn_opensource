@@ -44,7 +44,8 @@ export async function listEntityTypes(projectId: string): Promise<EntityTypeDoc[
 }
 
 export async function getEntityType(typeId: string): Promise<EntityTypeDoc> {
-  return (await getEntry("codex-entity-types", typeId)) as EntityTypeDoc;
+  // Use draft=true to support drafts-enabled collections (avoids NotFound when only draft exists)
+  return (await fetchJson(`/api/payload/codex-entity-types/${typeId}?draft=true`)) as EntityTypeDoc;
 }
 
 export async function createEntityType(data: Record<string, unknown>) {
@@ -71,7 +72,7 @@ export async function listEntitiesByType(projectId: string, typeId: string): Pro
 }
 
 export async function getCustomEntity(entityId: string): Promise<CodexEntityDoc> {
-  return (await getEntry("codex-entities", entityId)) as CodexEntityDoc;
+  return (await fetchJson(`/api/payload/codex-entities/${entityId}?draft=true`)) as CodexEntityDoc;
 }
 
 export async function createCustomEntity(data: Record<string, unknown>) {

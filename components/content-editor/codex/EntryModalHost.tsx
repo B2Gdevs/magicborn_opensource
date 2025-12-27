@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Modal } from "@/components/ui/Modal";
 import { toast } from "@/lib/hooks/useToast";
 import { useCodexSidebarStore } from "./store/codexSidebar.store";
+import "@/lib/content-editor/codex/modals/systemEntryModals";
 import {
   getEntryModalConfig,
   getEntryTypeMetadata,

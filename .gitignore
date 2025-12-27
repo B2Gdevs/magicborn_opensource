@@ -36,6 +36,11 @@ next-env.d.ts
 # vitest
 .vitest
 
+# local databases (never commit sqlite files)
+/data/*.db
+/data/*.db-shm
+/data/*.db-wal
+
 # n8n API key (sensitive)
 infra/ai-stack/n8n/.api-key
 

@@ -5,6 +5,7 @@
 
 import { useMemo } from "react";
 import Form from "@rjsf/core";
+import validator from "@rjsf/validator-ajv8";
 import type { UiSchema } from "@/lib/content-editor/codex/schema/types";
 
 export function SchemaEntityForm({
@@ -27,6 +28,7 @@ export function SchemaEntityForm({
   return (
     <div className="space-y-4">
       <Form
+        validator={validator as any}
         schema={schema}
         uiSchema={uiSchema}
         formData={formData}
