@@ -1,15 +1,11 @@
 // components/ui/MediaLibraryPopup.tsx
-// Reusable media library popup for selecting or uploading media
-// Used by StandardMediaUpload component
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { X, ImageIcon, Search, Upload, Check, Loader2 } from "lucide-react";
-import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
+import { SidebarNav } from "@components/ui/SidebarNav";
 
-// Media item from Payload CMS
 export interface MediaItem {
   id: number;
   filename: string;
@@ -19,7 +15,6 @@ export interface MediaItem {
   height?: number;
 }
 
-// Individual media grid item component (for hover state)
 function MediaGridItem({
   item,
   isSelected,
@@ -33,6 +28,7 @@ function MediaGridItem({
 
   return (
     <button
+      type="button"
       onClick={() => onSelect(item)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -42,22 +38,14 @@ function MediaGridItem({
           : "border-border/30 hover:border-ember/50 hover:scale-105"
       }`}
     >
-      {/* Lazy loading - only loads when visible */}
-      <img
-        src={item.url}
-        alt={item.filename}
-        className="w-full h-full object-cover"
-        loading="lazy"
-        decoding="async"
-      />
-      
-      {/* Filename overlay on hover */}
+      <img src={item.url} alt={item.filename} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+
       {isHovered && (
         <div className="absolute top-0 left-0 right-0 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 truncate z-10">
           {item.filename}
         </div>
       )}
-      
+
       {isSelected && (
         <div className="absolute inset-0 bg-ember/10 flex items-center justify-center">
           <div className="w-6 h-6 rounded-full bg-ember flex items-center justify-center">
@@ -72,10 +60,19 @@ function MediaGridItem({
 interface MediaLibraryPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (media: MediaItem) => void; // Called when user selects media from library
-  onUpload: (file: File) => void; // Called when user uploads new file
-  currentMediaId?: number; // Currently selected media ID (for highlighting)
-  mediaType?: "image" | "video" | "audio" | "all"; // Filter by media type
+  onSelect: (media: MediaItem) => void;
+  onUpload: (file: File) => void;
+  currentMediaId?: number;
+  mediaType?: "image" | "video" | "audio" | "all";
+  projectId?: string | number;
+}
+
+function getMimeType(doc: any): string | undefined {
+  return doc?.mimeType ?? doc?.mime_type ?? doc?.file?.mimeType ?? undefined;
+}
+
+function safeString(v: unknown) {
+  return v === undefined || v === null ? "" : String(v);
 }
 
 export function MediaLibraryPopup({
@@ -85,6 +82,7 @@ export function MediaLibraryPopup({
   onUpload,
   currentMediaId,
   mediaType = "image",
+  projectId,
 }: MediaLibraryPopupProps) {
   const [mediaLibrary, setMediaLibrary] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -93,137 +91,112 @@ export function MediaLibraryPopup({
   const [activeTab, setActiveTab] = useState<"image" | "library">("image");
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parentRef = useRef<HTMLDivElement>(null);
-  const loadingRef = useRef(false); // Use ref to avoid stale closures
-  
-  // Grid configuration
+  const loadingRef = useRef(false);
+
   const COLUMNS = 5;
-  const GAP = 8; // gap-2 = 8px
-  const ITEMS_PER_PAGE = 20; // Load 20 images at a time
+  const GAP = 8;
+  const ITEMS_PER_PAGE = 20;
 
-  // Fetch media from Payload CMS with pagination
-  const fetchMediaLibrary = useCallback(async (pageNum: number = 1, reset: boolean = false) => {
-    if (loadingRef.current) return; // Prevent concurrent requests
-    
-    loadingRef.current = true;
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/payload/media?limit=${ITEMS_PER_PAGE}&page=${pageNum}&sort=-createdAt`
-      );
-      const data = await res.json();
-      
-      // Filter by media type
-      let items = data.docs || [];
-      if (mediaType === "image") {
-        items = items.filter((doc: any) => doc.mimeType?.startsWith("image/"));
-      } else if (mediaType === "video") {
-        items = items.filter((doc: any) => doc.mimeType?.startsWith("video/"));
-      } else if (mediaType === "audio") {
-        items = items.filter((doc: any) => doc.mimeType?.startsWith("audio/"));
-      }
-      
-      // Map to MediaItem format
-      const mediaItems: MediaItem[] = items.map((doc: any) => ({
-        id: doc.id,
-        filename: doc.filename,
-        url: doc.url || `/media/${doc.filename}`,
-        mimeType: doc.mimeType,
-        width: doc.width,
-        height: doc.height,
-      }));
-      
-      if (reset) {
-        setMediaLibrary(mediaItems);
-      } else {
-        setMediaLibrary((prev) => [...prev, ...mediaItems]);
-      }
-      
-      // Check if there are more pages
-      // Since we filter client-side, we need to check the original data
-      // If we got a full page of raw docs, there might be more
-      // Also check hasNextPage if available from Payload
-      const rawDocsCount = (data.docs || []).length;
-      const hasMorePages = data.hasNextPage === true || (data.hasNextPage !== false && rawDocsCount >= ITEMS_PER_PAGE);
-      setHasMore(hasMorePages);
-      
-      // Debug logging
-      console.log('Media fetch:', {
-        page: pageNum,
-        rawDocs: rawDocsCount,
-        filteredItems: items.length,
-        hasNextPage: data.hasNextPage,
-        hasMore: hasMorePages,
-        totalLoaded: reset ? items.length : mediaLibrary.length + items.length
-      });
-    } catch (error) {
-      console.error("Failed to fetch media library:", error);
-      if (reset) {
-        setMediaLibrary([]);
-      }
-    } finally {
-      loadingRef.current = false;
-      setLoading(false);
-    }
-  }, [mediaType]);
+  const canScope = projectId !== undefined && projectId !== null && safeString(projectId).length > 0;
 
-  // Fetch media library when popup opens (must be after fetchMediaLibrary is defined)
+  const fetchMediaLibrary = useCallback(
+    async (pageNum: number = 1, reset: boolean = false) => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      setLoading(true);
+
+      try {
+        const qs = new URLSearchParams();
+        qs.set("limit", String(ITEMS_PER_PAGE));
+        qs.set("page", String(pageNum));
+        qs.set("sort", "-createdAt");
+
+        // MUST match your GET handler’s where parsing and your field name: "project"
+        if (canScope) {
+          qs.set("where[project][equals]", safeString(projectId));
+        }
+
+        const res = await fetch(`/api/payload/media?${qs.toString()}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as any)?.error || (err as any)?.message || `Request failed: ${res.status}`);
+        }
+
+        const data = await res.json();
+        let docs = data?.docs ?? [];
+
+        // Client-side type filter (keeps server simple)
+        if (mediaType !== "all") {
+          docs = docs.filter((doc: any) => {
+            const mt = (getMimeType(doc) || "").toLowerCase();
+            if (mediaType === "image") return mt.startsWith("image/");
+            if (mediaType === "video") return mt.startsWith("video/");
+            if (mediaType === "audio") return mt.startsWith("audio/");
+            return true;
+          });
+        }
+
+        const items: MediaItem[] = docs.map((doc: any) => ({
+          id: Number(doc.id),
+          filename: safeString(doc.filename),
+          url: doc?.url || (doc?.filename ? `/media/${doc.filename}` : ""),
+          mimeType: getMimeType(doc),
+          width: doc.width,
+          height: doc.height,
+        }));
+
+        setMediaLibrary((prev) => (reset ? items : [...prev, ...items]));
+
+        const rawDocsCount = (data?.docs ?? []).length;
+        const more =
+          data?.hasNextPage === true ||
+          (data?.hasNextPage !== false && rawDocsCount >= ITEMS_PER_PAGE);
+
+        setHasMore(Boolean(more));
+      } catch (error) {
+        console.error("Failed to fetch media library:", error);
+        if (reset) setMediaLibrary([]);
+        setHasMore(false);
+      } finally {
+        loadingRef.current = false;
+        setLoading(false);
+      }
+    },
+    [mediaType, projectId, canScope]
+  );
+
   useEffect(() => {
-    if (isOpen) {
-      setPage(1);
-      setHasMore(true);
-      fetchMediaLibrary(1, true); // Reset and load first page
-      setPreviewMedia(null);
-      setActiveTab("image");
-      setSearch("");
-    }
+    if (!isOpen) return;
+    setPage(1);
+    setHasMore(true);
+    setSearch("");
+    setPreviewMedia(null);
+    setActiveTab("image");
+    fetchMediaLibrary(1, true);
   }, [isOpen, fetchMediaLibrary]);
 
-  // Handle file upload
-  const handleFileUpload = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    
-    try {
-      const res = await fetch("/api/payload/media", {
-        method: "POST",
-        body: formData,
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        const uploadedItem: MediaItem = {
-          id: data.id,
-          filename: data.filename,
-          url: data.url || `/media/${data.filename}`,
-          mimeType: data.mimeType,
-        };
-        
-        // Automatically select the uploaded image (no "Use This" confirmation needed)
-        try {
-          onSelect(uploadedItem);
-          // Close popup after a brief delay to ensure callback completes
-          setTimeout(() => {
-            onClose();
-          }, 100);
-        } catch (error) {
-          console.error("Error selecting uploaded media:", error);
-        }
-        
-        // Refresh library - reset to first page (for next time popup opens)
-        setPage(1);
-        setHasMore(true);
-        fetchMediaLibrary(1, true);
+  // Delegate upload to parent (parent is responsible for projectId requirement)
+  const handleUploadAndRefresh = useCallback(
+    (file: File) => {
+      try {
+        onUpload(file);
+      } finally {
+        setTimeout(() => {
+          setPage(1);
+          setHasMore(true);
+          fetchMediaLibrary(1, true);
+        }, 350);
       }
-    } catch (error) {
-      console.error("Failed to upload image:", error);
-    }
-  };
+    },
+    [onUpload, fetchMediaLibrary]
+  );
 
-  // Handle drag and drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -242,126 +215,92 @@ export function MediaLibraryPopup({
     setIsDragging(false);
 
     const file = e.dataTransfer.files?.[0];
-    if (file) {
-      handleFileUpload(file);
-    }
+    if (file) handleUploadAndRefresh(file);
   };
 
-  // Handle file input change
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      handleFileUpload(file);
-    }
+    if (file) handleUploadAndRefresh(file);
+    e.currentTarget.value = "";
   };
 
-  // Handle selecting media from library
   const handleSelectMedia = (item: MediaItem) => {
     setPreviewMedia(item);
     setActiveTab("image");
   };
 
-  // Confirm selection
   const handleConfirmSelection = () => {
-    if (previewMedia) {
-      try {
-        // Call onSelect first, then close
-        onSelect(previewMedia);
-        // Use setTimeout to ensure the callback completes before closing
-        setTimeout(() => {
-          onClose();
-        }, 0);
-      } catch (error) {
-        console.error("Error selecting media:", error);
-        // Don't close if there's an error
-      }
+    if (!previewMedia) return;
+    try {
+      onSelect(previewMedia);
+      setTimeout(() => onClose(), 0);
+    } catch (error) {
+      console.error("Error selecting media:", error);
     }
   };
 
-  // Filter media by search (client-side filtering of loaded items)
-  // Note: For large libraries, you might want server-side search with pagination
   const filteredMedia = useMemo(() => {
-    return search
-      ? mediaLibrary.filter((m) =>
-          m.filename.toLowerCase().includes(search.toLowerCase())
-        )
-      : mediaLibrary;
+    if (!search) return mediaLibrary;
+    const q = search.toLowerCase();
+    return mediaLibrary.filter((m) => (m.filename || "").toLowerCase().includes(q));
   }, [mediaLibrary, search]);
-  
-  // Reset pagination when search changes (if implementing server-side search)
-  // For now, we filter client-side, so pagination continues normally
 
-  // Calculate rows for virtual scrolling (5 columns per row)
   const rows = useMemo(() => {
     const rowCount = Math.ceil(filteredMedia.length / COLUMNS);
-    const rows: MediaItem[][] = [];
+    const out: MediaItem[][] = [];
     for (let i = 0; i < rowCount; i++) {
-      const start = i * COLUMNS;
-      const end = start + COLUMNS;
-      rows.push(filteredMedia.slice(start, end));
+      out.push(filteredMedia.slice(i * COLUMNS, i * COLUMNS + COLUMNS));
     }
-    return rows;
+    return out;
   }, [filteredMedia]);
 
-  // Calculate row height helper function
   const calculateRowHeight = useCallback(() => {
     if (parentRef.current && parentRef.current.clientWidth > 0) {
       const containerWidth = parentRef.current.clientWidth;
-      const availableWidth = containerWidth - 8; // Account for padding (px-1 = 4px each side)
-      const totalGaps = GAP * (COLUMNS - 1); // 4 gaps between 5 items
+      const availableWidth = containerWidth - 8;
+      const totalGaps = GAP * (COLUMNS - 1);
       const itemWidth = (availableWidth - totalGaps) / COLUMNS;
-      const rowHeight = itemWidth + GAP;
-      return Math.max(rowHeight, 100); // Ensure minimum 100px
+      return Math.max(itemWidth + GAP, 100);
     }
-    // Fallback - assume ~500px container width
     return 100;
   }, []);
 
-  // Virtual scrolling for grid
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: calculateRowHeight,
-    overscan: 5, // Render 5 extra rows above/below viewport for smooth scrolling
+    overscan: 5,
   });
 
-  // Load more when scrolling near bottom - observe last few rows
   useEffect(() => {
-    if (!parentRef.current || !hasMore || loading || rows.length === 0) {
-      return;
-    }
+    if (!parentRef.current || !hasMore || loading || rows.length === 0) return;
+
+    const rootEl = parentRef.current;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && hasMore && !loading && !loadingRef.current) {
-            console.log('Loading more media, page:', page + 1, 'Total rows:', rows.length);
-            const nextPage = page + 1;
-            setPage(nextPage);
-            fetchMediaLibrary(nextPage, false);
-          }
-        });
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          if (!hasMore || loading || loadingRef.current) continue;
+
+          const next = page + 1;
+          setPage(next);
+          fetchMediaLibrary(next, false);
+          break;
+        }
       },
-      {
-        root: parentRef.current,
-        rootMargin: "300px", // Start loading 300px before bottom
-        threshold: 0.1,
-      }
+      { root: rootEl, rootMargin: "300px", threshold: 0.1 }
     );
 
-    // Observe the last 2-3 rows (they should be rendered by virtualizer)
-    const lastRowIndices = [rows.length - 1, rows.length - 2, rows.length - 3].filter(i => i >= 0);
-    
+    const lastRowIndices = [rows.length - 1, rows.length - 2, rows.length - 3].filter((i) => i >= 0);
+
     const observeRows = () => {
       lastRowIndices.forEach((rowIndex) => {
-        const rowElement = parentRef.current?.querySelector(`[data-index="${rowIndex}"]`);
-        if (rowElement) {
-          observer.observe(rowElement);
-        }
+        const el = rootEl.querySelector(`[data-index="${rowIndex}"]`);
+        if (el) observer.observe(el);
       });
     };
 
-    // Try to observe rows immediately and also after a delay
     observeRows();
     const timeoutId = setTimeout(observeRows, 200);
 
@@ -374,18 +313,15 @@ export function MediaLibraryPopup({
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 bg-void/90 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 bg-void/90 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
         className="bg-shadow border border-border rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-medium text-text-primary">Select Media</h3>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-deep/50 text-text-muted hover:text-text-primary transition-colors"
           >
@@ -393,18 +329,14 @@ export function MediaLibraryPopup({
           </button>
         </div>
 
-        {/* Body */}
         <div className="flex flex-1 min-h-0">
-          {/* Sidebar Navigation */}
           <SidebarNav
             items={[
               { id: "image", label: "Preview", icon: ImageIcon },
               { id: "library", label: "Library", icon: Search },
             ]}
             activeId={activeTab}
-            onItemClick={(id) => {
-              setActiveTab(id as "image" | "library");
-            }}
+            onItemClick={(id) => setActiveTab(id as "image" | "library")}
             width="sm"
             showBorder={true}
             showBackground={false}
@@ -415,7 +347,6 @@ export function MediaLibraryPopup({
             inactiveClassName="text-text-muted hover:text-text-primary hover:bg-deep/30"
           />
 
-          {/* Content */}
           <div className="flex-1 overflow-hidden flex flex-col">
             {activeTab === "image" ? (
               <div className="p-5">
@@ -426,11 +357,7 @@ export function MediaLibraryPopup({
                       onMouseEnter={() => setIsHovered(true)}
                       onMouseLeave={() => setIsHovered(false)}
                     >
-                      <img
-                        src={previewMedia.url}
-                        alt={previewMedia.filename}
-                        className="w-full h-full object-contain"
-                      />
+                      <img src={previewMedia.url} alt={previewMedia.filename} className="w-full h-full object-contain" />
 
                       <div
                         className={`absolute bottom-3 right-3 flex items-center gap-2 transition-opacity duration-200 ${
@@ -438,12 +365,14 @@ export function MediaLibraryPopup({
                         }`}
                       >
                         <button
+                          type="button"
                           onClick={() => setPreviewMedia(null)}
                           className="px-3 py-1.5 text-xs bg-void/90 backdrop-blur-sm border border-border/50 rounded-lg hover:border-ember/50 text-text-primary hover:text-ember-glow transition-colors"
                         >
                           Cancel
                         </button>
                         <button
+                          type="button"
                           onClick={handleConfirmSelection}
                           className="px-3 py-1.5 text-xs bg-ember/90 backdrop-blur-sm border border-ember/50 rounded-lg hover:bg-ember text-void transition-colors font-medium"
                         >
@@ -454,9 +383,7 @@ export function MediaLibraryPopup({
                   ) : (
                     <div
                       className={`w-full max-w-md aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-colors cursor-pointer relative group ${
-                        isDragging
-                          ? "border-ember-glow bg-ember/10"
-                          : "border-border/50 hover:border-ember/30"
+                        isDragging ? "border-ember-glow bg-ember/10" : "border-border/50 hover:border-ember/30"
                       }`}
                       onMouseEnter={() => setIsHovered(true)}
                       onMouseLeave={() => setIsHovered(false)}
@@ -470,12 +397,8 @@ export function MediaLibraryPopup({
                           <ImageIcon className="w-8 h-8 text-text-muted" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-text-primary mb-1">
-                            No media selected
-                          </p>
-                          <p className="text-xs text-text-muted">
-                            {isDragging ? "Drop file here" : "Click to upload or pick from library"}
-                          </p>
+                          <p className="text-sm font-medium text-text-primary mb-1">No media selected</p>
+                          <p className="text-xs text-text-muted">{isDragging ? "Drop file here" : "Click to upload or pick from library"}</p>
                         </div>
                       </div>
 
@@ -485,6 +408,7 @@ export function MediaLibraryPopup({
                         }`}
                       >
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveTab("library");
@@ -495,6 +419,7 @@ export function MediaLibraryPopup({
                           Library
                         </button>
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             fileInputRef.current?.click();
@@ -511,7 +436,6 @@ export function MediaLibraryPopup({
               </div>
             ) : (
               <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Search - Always visible at top */}
                 <div className="flex-shrink-0 p-4 pb-3 bg-shadow/70 backdrop-blur border-b border-border">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
@@ -525,7 +449,6 @@ export function MediaLibraryPopup({
                   </div>
                 </div>
 
-                {/* Media Grid with Virtual Scrolling */}
                 {loading && mediaLibrary.length === 0 ? (
                   <div className="flex items-center justify-center py-12 flex-1">
                     <Loader2 className="w-5 h-5 animate-spin text-ember-glow" />
@@ -540,23 +463,17 @@ export function MediaLibraryPopup({
                       scrollbarWidth: "none",
                       msOverflowStyle: "none",
                       WebkitOverflowScrolling: "touch",
+                      position: "relative",
                     }}
                     className="scrollbar-hide"
                   >
-                    <div
-                      style={{
-                        height: `${rowVirtualizer.getTotalSize()}px`,
-                        width: "100%",
-                        position: "relative",
-                      }}
-                    >
+                    <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
                       {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                         const row = rows[virtualRow.index];
                         if (!row) return null;
 
-                        // Calculate row height based on container width
                         const containerWidth = parentRef.current?.clientWidth || 500;
-                        const availableWidth = containerWidth - 8; // Account for padding
+                        const availableWidth = containerWidth - 8;
                         const totalGaps = GAP * (COLUMNS - 1);
                         const itemWidth = (availableWidth - totalGaps) / COLUMNS;
                         const rowHeight = Math.max(itemWidth + GAP, 100);
@@ -580,27 +497,31 @@ export function MediaLibraryPopup({
                               <MediaGridItem
                                 key={item.id}
                                 item={item}
-                                isSelected={
-                                  previewMedia?.id === item.id ||
-                                  currentMediaId === item.id
-                                }
+                                isSelected={previewMedia?.id === item.id || currentMediaId === item.id}
                                 onSelect={handleSelectMedia}
                               />
                             ))}
-                            {/* Fill empty cells in last row */}
+
                             {row.length < COLUMNS &&
-                              Array.from({ length: COLUMNS - row.length }).map(
-                                (_, idx) => (
-                                  <div key={`empty-${idx}`} className="aspect-square" />
-                                )
-                              )}
+                              Array.from({ length: COLUMNS - row.length }).map((_, idx) => (
+                                <div key={`empty-${idx}`} className="aspect-square" />
+                              ))}
                           </div>
                         );
                       })}
                     </div>
-                    {/* Loading indicator at bottom when loading more */}
+
                     {loading && page > 1 && (
-                      <div className="flex items-center justify-center py-4" style={{ position: "absolute", bottom: "20px", left: "50%", transform: "translateX(-50%)", pointerEvents: "none" }}>
+                      <div
+                        className="flex items-center justify-center py-4"
+                        style={{
+                          position: "absolute",
+                          bottom: "20px",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          pointerEvents: "none",
+                        }}
+                      >
                         <Loader2 className="w-4 h-4 animate-spin text-ember-glow" />
                       </div>
                     )}
@@ -610,18 +531,8 @@ export function MediaLibraryPopup({
                     <div className="text-center py-12">
                       <ImageIcon className="w-10 h-10 text-text-muted/30 mx-auto mb-3" />
                       <p className="text-sm text-text-muted">
-                        {search
-                          ? "No matching media found"
-                          : mediaLibrary.length === 0
-                          ? "No media in library"
-                          : "No results"}
+                        {search ? "No matching media found" : mediaLibrary.length === 0 ? "No media in library" : "No results"}
                       </p>
-                      {loading && mediaLibrary.length > 0 && (
-                        <div className="mt-4 flex items-center justify-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin text-ember-glow" />
-                          <span className="text-xs text-text-muted">Searching...</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -630,11 +541,18 @@ export function MediaLibraryPopup({
           </div>
         </div>
 
-        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
-          accept={mediaType === "image" ? "image/*" : "*"}
+          accept={
+            mediaType === "image"
+              ? "image/*"
+              : mediaType === "video"
+              ? "video/*"
+              : mediaType === "audio"
+              ? "audio/*"
+              : "*"
+          }
           onChange={handleFileInputChange}
           className="hidden"
         />
@@ -642,4 +560,3 @@ export function MediaLibraryPopup({
     </div>
   );
 }
-

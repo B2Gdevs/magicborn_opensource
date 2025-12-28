@@ -11,6 +11,7 @@ export function useCodexEntitiesByType(projectId: string, typeId: string, enable
     enabled: enabled && !!typeId,
     queryFn: async () => {
       const docs = await listEntitiesByType(projectId, typeId);
+      console.log("docs", docs);
       return docs.filter((d: any) => d?._status !== "trashed");
     },
   });

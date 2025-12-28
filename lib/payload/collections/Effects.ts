@@ -52,7 +52,7 @@ export const Effects: CollectionConfig = {
       type: 'select',
       options: EFFECT_TYPE_OPTIONS,
       required: true,
-      unique: true,
+      unique: false,
       admin: {
         description: 'Maps to EffectType enum in core/enums',
       },

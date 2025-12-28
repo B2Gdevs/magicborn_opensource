@@ -84,6 +84,8 @@ export interface Config {
     runes: Rune;
     objects: Object;
     creatures: Creature;
+    'codex-entity-types': CodexEntityType;
+    'codex-entities': CodexEntity;
     'project-snapshots': ProjectSnapshot;
     'ai-generations': AiGeneration;
     'payload-kv': PayloadKv;
@@ -110,6 +112,8 @@ export interface Config {
     runes: RunesSelect<false> | RunesSelect<true>;
     objects: ObjectsSelect<false> | ObjectsSelect<true>;
     creatures: CreaturesSelect<false> | CreaturesSelect<true>;
+    'codex-entity-types': CodexEntityTypesSelect<false> | CodexEntityTypesSelect<true>;
+    'codex-entities': CodexEntitiesSelect<false> | CodexEntitiesSelect<true>;
     'project-snapshots': ProjectSnapshotsSelect<false> | ProjectSnapshotsSelect<true>;
     'ai-generations': AiGenerationsSelect<false> | AiGenerationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -289,6 +293,7 @@ export interface Project {
  */
 export interface Media {
   id: number;
+  project: number | Project;
   alt?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -663,6 +668,7 @@ export interface Effect {
  */
 export interface Spell {
   id: number;
+  project: number | Project;
   /**
    * Optional unique identifier. Leave empty for server-generated ID.
    */
@@ -982,6 +988,73 @@ export interface Creature {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "codex-entity-types".
+ */
+export interface CodexEntityType {
+  id: number;
+  project: number | Project;
+  name: string;
+  slug: string;
+  icon?: string | null;
+  schema:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  uiSchema?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  version: number;
+  isSystem?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "codex-entities".
+ */
+export interface CodexEntity {
+  id: number;
+  project: number | Project;
+  type: number | CodexEntityType;
+  name: string;
+  slug: string;
+  description?: string | null;
+  image?: (number | null) | Media;
+  data:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  tags?:
+    | {
+        tag?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "project-snapshots".
  */
 export interface ProjectSnapshot {
@@ -1143,6 +1216,14 @@ export interface PayloadLockedDocument {
         value: number | Creature;
       } | null)
     | ({
+        relationTo: 'codex-entity-types';
+        value: number | CodexEntityType;
+      } | null)
+    | ({
+        relationTo: 'codex-entities';
+        value: number | CodexEntity;
+      } | null)
+    | ({
         relationTo: 'project-snapshots';
         value: number | ProjectSnapshot;
       } | null)
@@ -1280,6 +1361,7 @@ export interface ProjectMembersSelect<T extends boolean = true> {
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
+  project?: T;
   alt?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1509,6 +1591,7 @@ export interface EffectsSelect<T extends boolean = true> {
  * via the `definition` "spells_select".
  */
 export interface SpellsSelect<T extends boolean = true> {
+  project?: T;
   spellId?: T;
   name?: T;
   description?: T;
@@ -1599,6 +1682,47 @@ export interface CreaturesSelect<T extends boolean = true> {
   runeFamiliarity?: T;
   elementXp?: T;
   elementAffinity?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "codex-entity-types_select".
+ */
+export interface CodexEntityTypesSelect<T extends boolean = true> {
+  project?: T;
+  name?: T;
+  slug?: T;
+  icon?: T;
+  schema?: T;
+  uiSchema?: T;
+  version?: T;
+  isSystem?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "codex-entities_select".
+ */
+export interface CodexEntitiesSelect<T extends boolean = true> {
+  project?: T;
+  type?: T;
+  name?: T;
+  slug?: T;
+  description?: T;
+  image?: T;
+  data?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;

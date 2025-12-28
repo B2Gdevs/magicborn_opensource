@@ -12,7 +12,7 @@ import type { RuneCode } from "@core/types";
 import { RuneTag, CrowdControlTag, DamageType, EffectType } from "@core/enums";
 import type { DamageVector } from "@core/combat";
 import type { EffectBlueprint } from "@core/effects";
-import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
+import { type MediaUploadRef } from "@components/ui/MediaUpload";
 import { TagSelector } from "@components/ui/TagSelector";
 import { MultiSelectDropdown } from "@components/ui/MultiSelectDropdown";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
@@ -406,7 +406,7 @@ export function RuneForm({
 
       {/* Form Content */}
       <div ref={formContentRef} className="flex-1 overflow-y-auto">
-        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
+        <form data-entry-form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
           {/* Basic Info Section */}
           <BasicInfoSection
             register={register}
@@ -434,7 +434,6 @@ export function RuneForm({
                 setImageUrl(undefined);
               }
             }}
-            imageUploadRef={imageUploadRef}
             landmarkIconMediaId={landmarkIconMediaId}
             landmarkIconUrl={landmarkIconUrl}
             onLandmarkIconUploaded={(mediaId) => {
@@ -444,7 +443,6 @@ export function RuneForm({
                 setLandmarkIconUrl(undefined);
               }
             }}
-            landmarkIconUploadRef={landmarkIconUploadRef}
             showLandmarkIcon={true}
             saving={saving}
             projectId={projectId}

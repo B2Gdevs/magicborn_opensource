@@ -1,7 +1,7 @@
 // lib/payload/collections/Scenes.ts
 // Scenes collection - versioned story scenes
 
-import type { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 
 export const Scenes: CollectionConfig = {

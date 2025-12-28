@@ -108,13 +108,20 @@ export function EntryModalHost({ projectId }: EntryModalHostProps) {
   // Handle save
   const handleSave = useCallback(
     async (formData: unknown) => {
-      if (!currentConfig || !activeModal || saving) return;
+      console.log("[EntryModalHost] handleSave called with formData:", formData);
+      console.log("[EntryModalHost] currentConfig:", currentConfig?.displayName, "activeModal:", activeModal, "saving:", saving);
+      if (!currentConfig || !activeModal || saving) {
+        console.log("[EntryModalHost] Early return - missing config/modal or already saving");
+        return;
+      }
 
       setSaving(true);
       try {
         const { collection, category } = getEntryTypeMetadata(activeModal);
         const isEdit = !!editData;
         const payloadData = currentConfig.formToPayload(formData, projectId);
+        console.log("[EntryModalHost] collection:", collection, "category:", category, "isEdit:", isEdit);
+        console.log("[EntryModalHost] payloadData:", payloadData);
 
         const url = isEdit
           ? `/api/payload/${collection}/${(editData as { id: number }).id}`
@@ -125,6 +132,7 @@ export function EntryModalHost({ projectId }: EntryModalHostProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...payloadData,
+            // All collections now require project field
             project: parseInt(projectId, 10),
           }),
         });

@@ -2,7 +2,7 @@
 // Locations/Places in the world
 
 import type { CollectionConfig } from 'payload'
-import { Collections } from '../constants'
+import { CharacterFields, Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadWithFlag } from '../access/roles'
 // Removed autoGenerateSlugHook import - IDs are now server-generated
 
@@ -26,10 +26,11 @@ export const Locations: CollectionConfig = {
   // Removed auto-generation hook - IDs are now server-generated
   fields: [
     {
-      name: 'project',
+      name: CharacterFields.Project,
       type: 'relationship',
       relationTo: Collections.Projects,
       required: true,
+      index: true,
     },
     {
       name: 'name',

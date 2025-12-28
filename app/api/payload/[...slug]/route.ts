@@ -19,57 +19,32 @@ function getMediaUrl(filename: string | null | undefined): string | undefined {
 
 // Helper function to normalize media URLs in documents and relationships
 function normalizeMediaUrlsInDoc(doc: any): any {
-  if (!doc || typeof doc !== 'object') return doc
-  
-  const normalized = { ...doc }
-  
-  // Normalize direct media document URLs - just use filename
-  if (normalized.filename) {
-    normalized.url = getMediaUrl(normalized.filename)
+  if (!doc || typeof doc !== "object") return doc;
+
+  const normalized = Array.isArray(doc) ? [...doc] : { ...doc };
+
+  // If this is a direct media doc:
+  if ((normalized as any).filename) {
+    (normalized as any).url = getMediaUrl((normalized as any).filename);
   }
-  
-  // Normalize image relationship URLs (common field name)
-  if (normalized.image) {
-    if (typeof normalized.image === 'object' && normalized.image.filename) {
-      normalized.image = {
-        ...normalized.image,
-        url: getMediaUrl(normalized.image.filename),
-      }
+
+  // Helper to normalize a relationship media object
+  const normalizeMediaRel = (rel: any) => {
+    if (rel && typeof rel === "object" && rel.filename) {
+      return { ...rel, url: getMediaUrl(rel.filename) };
     }
-  }
-  
-  // Normalize featuredImage relationship URLs
-  if (normalized.featuredImage) {
-    if (typeof normalized.featuredImage === 'object' && normalized.featuredImage.filename) {
-      normalized.featuredImage = {
-        ...normalized.featuredImage,
-        url: getMediaUrl(normalized.featuredImage.filename),
-      }
-    }
-  }
-  
-  // Normalize landmarkIcon relationship URLs
-  if (normalized.landmarkIcon) {
-    if (typeof normalized.landmarkIcon === 'object' && normalized.landmarkIcon.filename) {
-      normalized.landmarkIcon = {
-        ...normalized.landmarkIcon,
-        url: getMediaUrl(normalized.landmarkIcon.filename),
-      }
-    }
-  }
-  
-  // Normalize logo relationship URLs (for Projects)
-  if (normalized.logo) {
-    if (typeof normalized.logo === 'object' && normalized.logo.filename) {
-      normalized.logo = {
-        ...normalized.logo,
-        url: getMediaUrl(normalized.logo.filename),
-      }
-    }
-  }
-  
-  return normalized
+    return rel;
+  };
+
+  // Common relationship fields you already handle
+  if ((normalized as any).image) (normalized as any).image = normalizeMediaRel((normalized as any).image);
+  if ((normalized as any).featuredImage) (normalized as any).featuredImage = normalizeMediaRel((normalized as any).featuredImage);
+  if ((normalized as any).landmarkIcon) (normalized as any).landmarkIcon = normalizeMediaRel((normalized as any).landmarkIcon);
+  if ((normalized as any).logo) (normalized as any).logo = normalizeMediaRel((normalized as any).logo);
+
+  return normalized;
 }
+
 
 export async function GET(
   request: NextRequest,
@@ -79,10 +54,10 @@ export async function GET(
   const payload = await getPayloadClient()
   const searchParams = request.nextUrl.searchParams
   const draft = searchParams.get('draft') === 'true'
-  
+
   // Parse slug: e.g., ['projects'] or ['projects', '123'] or ['globals', 'site-config']
   const [first, second, third] = slug
-  
+
   try {
     // Handle auth: /api/payload/users/me
     if (first === 'users' && second === 'me') {
@@ -110,9 +85,9 @@ export async function GET(
       })
       return NextResponse.json(result)
     }
-    
+
     const [collection, id] = slug
-    
+
     if (id) {
       // Get single document
       const doc = await payload.findByID({
@@ -120,16 +95,16 @@ export async function GET(
         id,
         ...(draft ? { draft: true } : {}),
       })
-      
+
       // Normalize media URLs if this is a media document - just use filename
       if (collection === 'media') {
         const mediaDoc = doc as any
-        return NextResponse.json({ 
-          ...mediaDoc, 
-          url: getMediaUrl(mediaDoc.filename) 
+        return NextResponse.json({
+          ...mediaDoc,
+          url: getMediaUrl(mediaDoc.filename)
         })
       }
-      
+
       // Normalize media URLs in relationships (e.g., image fields)
       const normalizedDoc = normalizeMediaUrlsInDoc(doc as any)
       return NextResponse.json(normalizedDoc)
@@ -137,7 +112,7 @@ export async function GET(
       // Get collection
       const limit = parseInt(searchParams.get('limit') || '10')
       const page = parseInt(searchParams.get('page') || '1')
-      
+
       // Parse where clauses from query params (e.g., where[project][equals]=1)
       const where: Record<string, any> = {}
       searchParams.forEach((value, key) => {
@@ -155,10 +130,10 @@ export async function GET(
           }
         }
       })
-      
+
       // Parse sort
       const sort = searchParams.get('sort') || undefined
-      
+
       const result = await payload.find({
         collection: collection as any,
         ...(Object.keys(where).length > 0 && { where }),
@@ -167,7 +142,7 @@ export async function GET(
         limit,
         page,
       })
-      
+
       // Normalize media URLs in all documents
       const normalizedDocs = result.docs.map((doc: any) => normalizeMediaUrlsInDoc(doc))
       return NextResponse.json({ ...result, docs: normalizedDocs })
@@ -188,28 +163,37 @@ export async function POST(
   const { slug } = await params
   const payload = await getPayloadClient()
   const [first, second] = slug
-  
+
   try {
     // Handle media uploads (FormData) - create Payload Media document
-    if (first === 'media') {
-      const formData = await request.formData()
-      const file = formData.get('file') as File
-      
-      if (!file) {
-        return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    if (first === "media") {
+      const searchParams = request.nextUrl.searchParams;
+
+      // Require projectId as a query param (no headers)
+      const projectIdRaw = searchParams.get("projectId") || searchParams.get("project");
+      const projectId =
+        projectIdRaw && /^\d+$/.test(projectIdRaw) ? Number(projectIdRaw) : undefined;
+
+      if (!projectId) {
+        return NextResponse.json({ error: "projectId is required" }, { status: 400 });
       }
 
-      // Convert File to Buffer for Payload Local API
-      const arrayBuffer = await file.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
+      const formData = await request.formData();
+      const file = formData.get("file") as File;
 
-      // Create Media document in Payload
-      // Payload 3.x Local API expects file object with data, mimetype, name, size
+      if (!file) {
+        return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      }
+
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
       try {
         const media = await payload.create({
-          collection: 'media',
+          collection: "media",
           data: {
             alt: file.name,
+            project: projectId, // relationship field
           },
           file: {
             data: buffer,
@@ -217,23 +201,29 @@ export async function POST(
             name: file.name,
             size: file.size,
           },
-        } as any)
-        
-        const mediaData = media as any
-        // Just construct URL from filename - ignore Payload's generated URL
-        return NextResponse.json({ 
-          id: mediaData.id,
-          url: getMediaUrl(mediaData.filename),
-          filename: mediaData.filename,
-        }, { status: 201 })
-      } catch (mediaError: any) {
-        console.error('Media upload error:', mediaError)
+        } as any);
+
+        const mediaData = media as any;
+
         return NextResponse.json(
-          { error: mediaError.message || 'Failed to upload media' },
+          {
+            id: mediaData.id,
+            url: getMediaUrl(mediaData.filename),
+            filename: mediaData.filename,
+            project: mediaData.project,
+            mimeType: mediaData.mimeType ?? mediaData.mime_type,
+          },
+          { status: 201 }
+        );
+      } catch (mediaError: any) {
+        console.error("Media upload error:", mediaError);
+        return NextResponse.json(
+          { error: mediaError.message || "Failed to upload media" },
           { status: mediaError.status || 500 }
-        )
+        );
       }
     }
+
 
     // Handle auth: /api/payload/users/logout (no body needed)
     if (first === 'users' && second === 'logout') {
@@ -248,11 +238,11 @@ export async function POST(
     if (third === 'restore') {
       const collection = first
       const id = second
-      
+
       if (!id) {
         return NextResponse.json({ error: 'ID required' }, { status: 400 })
       }
-      
+
       try {
         // In Payload 3.x, trashed documents are accessible via findByID with overrideAccess
         // We need to restore by updating _status from 'trashed' to 'draft'
@@ -281,7 +271,7 @@ export async function POST(
             )
           }
         }
-        
+
         // Restore by updating _status back to 'draft' and clearing deletedAt
         // Note: We need to publish the change (not just save draft) for it to persist
         const restored = await payload.update({
@@ -294,7 +284,7 @@ export async function POST(
           overrideAccess: true,
           draft: false, // Publish the change, not just draft
         })
-        
+
         const normalizedDoc = normalizeMediaUrlsInDoc(restored as any)
         return NextResponse.json(normalizedDoc)
       } catch (error: any) {
@@ -317,7 +307,7 @@ export async function POST(
       // Empty body or invalid JSON - use empty object
       body = {};
     }
-    
+
     // Handle auth: /api/payload/users/login
     if (first === 'users' && second === 'login') {
       const result = await payload.login({
@@ -345,12 +335,12 @@ export async function POST(
       })
       return NextResponse.json(global)
     }
-    
+
     // Regular collection create
     // Payload automatically generates integer IDs for all documents
     // Remove empty slug/ID fields to let Payload handle ID generation
     const cleanedData = { ...body };
-    
+
     // Remove empty slug fields (server will generate IDs automatically)
     if (cleanedData.slug === '' || cleanedData.slug === null || cleanedData.slug === undefined) {
       delete cleanedData.slug;
@@ -358,7 +348,14 @@ export async function POST(
     if (cleanedData.spellId === '' || cleanedData.spellId === null || cleanedData.spellId === undefined) {
       delete cleanedData.spellId;
     }
-    
+
+    // For Effects collection, clean up blueprint to only include valid fields
+    if (first === 'effects' && cleanedData.blueprint) {
+      // Remove 'type' field from blueprint - it's not in Payload schema
+      const { type, ...cleanBlueprint } = cleanedData.blueprint;
+      cleanedData.blueprint = cleanBlueprint;
+    }
+
     // For Projects collection, ensure name is provided (required field)
     if (first === Collections.Projects && !cleanedData.name) {
       return NextResponse.json(
@@ -366,13 +363,13 @@ export async function POST(
         { status: 400 }
       );
     }
-    
+
     const doc = await payload.create({
       collection: first as any,
       data: cleanedData,
       overrideAccess: true, // Allow creation with proper validation
     })
-    
+
     // Normalize media URLs in relationships
     const normalizedDoc = normalizeMediaUrlsInDoc(doc as any)
     return NextResponse.json(normalizedDoc, { status: 201 })
@@ -392,20 +389,20 @@ export async function PUT(
   const { slug } = await params
   const payload = await getPayloadClient()
   const [collection, id] = slug
-  
+
   if (!id) {
     return NextResponse.json({ error: 'ID required' }, { status: 400 })
   }
-  
+
   try {
     const body = await request.json()
-    
+
     const doc = await payload.update({
       collection: collection as any,
       id,
       data: body,
     })
-    
+
     // Normalize media URLs in relationships
     const normalizedDoc = normalizeMediaUrlsInDoc(doc as any)
     return NextResponse.json(normalizedDoc)
@@ -428,7 +425,7 @@ export async function PATCH(
 
 // Collections that support soft-delete (have trash: true in their config)
 const TRASHABLE_COLLECTIONS = [
-  'characters', 'creatures', 'locations', 'objects', 
+  'characters', 'creatures', 'locations', 'objects',
   'lore', 'spells', 'runes', 'effects',
   'codex-entity-types', 'codex-entities'
 ]
@@ -440,12 +437,24 @@ export async function DELETE(
   const { slug } = await params
   const payload = await getPayloadClient()
   const [collection, id] = slug
-  
+  const { searchParams } = new URL(request.url)
+  const forceDelete = searchParams.get('force') === 'true'
+
   if (!id) {
     return NextResponse.json({ error: 'ID required' }, { status: 400 })
   }
-  
+
   try {
+    // If force=true, permanently delete regardless of trash setting
+    if (forceDelete) {
+      await payload.delete({
+        collection: collection as any,
+        id,
+        overrideAccess: true,
+      })
+      return NextResponse.json({ success: true, permanentlyDeleted: true })
+    }
+
     // For trashable collections, soft-delete by setting _status to 'trashed'
     // (Payload's delete() hard-deletes even with trash: true in some versions)
     if (TRASHABLE_COLLECTIONS.includes(collection)) {
@@ -459,14 +468,14 @@ export async function DELETE(
       })
       return NextResponse.json({ success: true, trashed: true })
     }
-    
+
     // For non-trashable collections, actually delete
     await payload.delete({
       collection: collection as any,
       id,
       overrideAccess: true,
     })
-    
+
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error(`Payload DELETE error:`, error)

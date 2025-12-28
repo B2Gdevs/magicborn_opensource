@@ -1,13 +1,14 @@
-// drizzle.config.ts
-import type { Config } from "drizzle-kit";
-import { join } from "path";
+import { defineConfig } from 'drizzle-kit';
 
-export default {
-  schema: "./lib/data/spells.schema.ts",
-  out: "./drizzle",
-  dialect: "sqlite",
+export default defineConfig({
+  dialect: 'sqlite',
   dbCredentials: {
-    url: join(process.cwd(), "data", "spells.db"),
+    url: './data/payload.db',
   },
-} satisfies Config;
+});
+
+
+
+
+
 

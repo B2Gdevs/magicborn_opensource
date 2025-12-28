@@ -8,12 +8,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { GridSelector } from "@components/ui/GridSelector";
-import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
+import { type MediaUploadRef } from "@components/ui/MediaUpload";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
 import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
 import { MapPin, User, Save, X } from "lucide-react";
-import { nameToId } from "@lib/utils/id-generation";
 import { checkIdUniqueness } from "@lib/validation/id-validation";
 import { EntryType } from "@lib/content-editor/constants";
 import { toast } from "@/lib/hooks/useToast";
@@ -463,7 +462,7 @@ export function RegionForm({
 
             {/* Form Content */}
             <div ref={formContentRef} className="flex-1 overflow-y-auto">
-                <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
+                <form data-entry-form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
                     {/* Basic Info Section */}
                     <BasicInfoSection
                         register={register}
@@ -491,7 +490,6 @@ export function RegionForm({
                                 setImageUrl(undefined);
                             }
                         }}
-                        imageUploadRef={imageUploadRef}
                         landmarkIconMediaId={landmarkIconMediaId}
                         landmarkIconUrl={landmarkIconUrl}
                         onLandmarkIconUploaded={(mediaId) => {
@@ -501,7 +499,6 @@ export function RegionForm({
                                 setLandmarkIconUrl(undefined);
                             }
                         }}
-                        landmarkIconUploadRef={landmarkIconUploadRef}
                         showLandmarkIcon={true}
                         saving={saving}
                         projectId={projectId}
@@ -688,8 +685,8 @@ export function RegionFormFooter({
     onCancel?: () => void;
     onSubmit: () => void;
 }) {
-    const handleSubmit = async () => {
-        const form = document.querySelector('form') as HTMLFormElement;
+    const handleSubmit = () => {
+        const form = document.querySelector('form[data-entry-form]') as HTMLFormElement;
         if (form) {
             form.requestSubmit();
         } else {

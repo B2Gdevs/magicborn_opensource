@@ -4,7 +4,8 @@
 
 "use client";
 
-import { useMemo, useCallback, useRef, type ReactNode } from "react";
+import { useMemo, useCallback, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMagicbornMode } from "@lib/payload/hooks/useMagicbornMode";
 import { useInvalidateCodexEntries } from "@lib/hooks/useCodexEntries";
 import { Settings, Trash2, Plus, Edit, Copy, Download, Upload } from "lucide-react";
@@ -24,6 +25,7 @@ import type { CodexEntry } from "./types/codex.types";
 import { useCodexEntityTypes } from "@/lib/content-editor/codex/hooks/useCodexEntityTypes";
 import { EntityTypeModalHost } from "./modals/EntityTypeModalHost";
 import { CustomEntityModalHost } from "./modals/CustomEntityModalHost";
+import { ImportEntityTypeModal } from "./modals/ImportEntityTypeModal";
 import { EntryModalHost } from "./EntryModalHost";
 import { useCodexTypeCommands } from "@/lib/content-editor/codex/commands/useCodexTypeCommands";
 import { assertValidEntityTypeExport } from "@/lib/content-editor/codex/schema/validate";
@@ -37,6 +39,9 @@ interface Category {
   icon: ReactNode;
 }
 
+// Set of valid CodexCategory values for differentiating system vs custom entries
+const VALID_CODEX_CATEGORIES = new Set(Object.values(CodexCategory));
+
 interface CodexSidebarProps {
   projectId: string;
   selectedCategory: CodexCategory | null;
@@ -47,7 +52,10 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   const { isMagicbornMode } = useMagicbornMode(projectId);
   const projectConfigs = useProjectConfigs(projectId);
   const invalidateCodexEntries = useInvalidateCodexEntries();
-  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const qc = useQueryClient();
+
+  // Import modal state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Zustand store for UI state
   const {
@@ -156,35 +164,26 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   const canRedo = useCodexHistoryStore((s) => s.redoStack.length > 0);
 
   const handleImportTypeClick = () => {
-    importInputRef.current?.click();
+    setIsImportModalOpen(true);
   };
 
-  const handleImportTypeFile = async (file: File | null) => {
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      assertValidEntityTypeExport(parsed);
-
-      // Create as a new type (no overwrite behavior yet)
-      await typeCommands.createType({
-        project: parseInt(projectId, 10),
-        name: parsed.name,
-        slug: parsed.slug,
-        icon: parsed.icon,
-        schema: parsed.schema,
-        uiSchema: parsed.uiSchema,
-        version: parsed.version ?? 1,
-        isSystem: false,
-      });
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message || "Failed to import Entity Type");
-    } finally {
-      if (importInputRef.current) {
-        importInputRef.current.value = "";
-      }
-    }
+  const handleImportType = async (data: {
+    name: string;
+    slug: string;
+    icon?: string;
+    schema: Record<string, any>;
+    uiSchema?: Record<string, any>;
+  }) => {
+    await typeCommands.createType({
+      project: parseInt(projectId, 10),
+      name: data.name,
+      slug: data.slug,
+      icon: data.icon,
+      schema: data.schema,
+      uiSchema: data.uiSchema,
+      version: 1,
+      isSystem: false,
+    });
   };
 
   // Handle category toggle
@@ -240,48 +239,85 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
   );
 
   // Handle bulk operations for selected entries
+  // Selection keys are composite: `${categoryId}:${entryId}`
+  // categoryId can be a CodexCategory (system entries) or a custom type ID (numeric string)
+
   const handleBulkDeleteSelected = useCallback(async () => {
     if (selectedEntries.size === 0) return;
 
-    // Group selected entries by category with names
-    const entriesByCategory = new Map<CodexCategory, string[]>();
+    // Parse composite keys and separate system vs custom entries
+    const systemEntriesByCategory = new Map<CodexCategory, string[]>();
+    const customEntriesByType = new Map<string, string[]>();
 
-    allCategories.forEach((category) => {
-      const entries = getEntries(category.id);
-      const selected = entries.filter((e) => selectedEntries.has(e.id));
-      if (selected.length > 0) {
-        entriesByCategory.set(category.id, selected.map((e) => e.id));
+    selectedEntries.forEach((key) => {
+      const idx = key.indexOf(":");
+      if (idx === -1) return;
+      const categoryOrTypeId = key.slice(0, idx);
+      const entryId = key.slice(idx + 1);
+
+      if (VALID_CODEX_CATEGORIES.has(categoryOrTypeId as CodexCategory)) {
+        // System entry
+        const categoryId = categoryOrTypeId as CodexCategory;
+        if (!systemEntriesByCategory.has(categoryId)) {
+          systemEntriesByCategory.set(categoryId, []);
+        }
+        systemEntriesByCategory.get(categoryId)!.push(entryId);
+      } else {
+        // Custom entity (categoryOrTypeId is a custom type ID)
+        if (!customEntriesByType.has(categoryOrTypeId)) {
+          customEntriesByType.set(categoryOrTypeId, []);
+        }
+        customEntriesByType.get(categoryOrTypeId)!.push(entryId);
       }
     });
 
     try {
-      await commands.bulkDelete(entriesByCategory);
+      // Delete system entries
+      if (systemEntriesByCategory.size > 0) {
+        await commands.bulkDelete(systemEntriesByCategory);
+      }
+      // Delete custom entries
+      for (const [typeId, entryIds] of customEntriesByType) {
+        for (const entryId of entryIds) {
+          await customEntityCommands.trashEntity(typeId, entryId);
+        }
+      }
     } catch (error) {
       console.error("Failed to delete entries:", error);
     }
-  }, [selectedEntries, allCategories, getEntries, commands]);
+  }, [selectedEntries, commands, customEntityCommands]);
 
   const handleBulkDuplicateSelected = useCallback(async () => {
     if (selectedEntries.size === 0) return;
 
-    // Group selected entries by category
+    // Parse composite keys and group by category (only system entries support duplicate for now)
     const entriesByCategory = new Map<CodexCategory, string[]>();
 
-    allCategories.forEach((category) => {
-      const entries = getEntries(category.id);
-      const selected = entries.filter((e) => selectedEntries.has(e.id));
-      if (selected.length > 0) {
-        entriesByCategory.set(category.id, selected.map((e) => e.id));
+    selectedEntries.forEach((key) => {
+      const idx = key.indexOf(":");
+      if (idx === -1) return;
+      const categoryOrTypeId = key.slice(0, idx);
+      const entryId = key.slice(idx + 1);
+
+      // Only system entries support duplicate
+      if (VALID_CODEX_CATEGORIES.has(categoryOrTypeId as CodexCategory)) {
+        const categoryId = categoryOrTypeId as CodexCategory;
+        if (!entriesByCategory.has(categoryId)) {
+          entriesByCategory.set(categoryId, []);
+        }
+        entriesByCategory.get(categoryId)!.push(entryId);
       }
     });
 
     try {
-      await commands.bulkDuplicate(entriesByCategory);
+      if (entriesByCategory.size > 0) {
+        await commands.bulkDuplicate(entriesByCategory);
+      }
       clearSelection();
     } catch (error) {
       console.error("Failed to duplicate entries:", error);
     }
-  }, [selectedEntries, allCategories, getEntries, commands, clearSelection]);
+  }, [selectedEntries, commands, clearSelection]);
 
   // Build context menu items
   const getContextMenuItems = (): CodexContextMenuItem[] => {
@@ -428,14 +464,6 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         canRedo={canRedo}
       />
 
-      <input
-        ref={importInputRef}
-        type="file"
-        accept="application/json"
-        className="hidden"
-        onChange={(e) => handleImportTypeFile(e.target.files?.[0] ?? null)}
-      />
-
       <CodexCategoryList
         projectId={projectId}
         categories={allCategories}
@@ -477,10 +505,15 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
             typeDoc,
           });
         }}
-        onCustomEntryClick={(e, entryId) => {
-          // minimal selection highlight parity
-          if ((e.target as HTMLElement).closest("button")) return;
-          setSelectedEntries(new Set([entryId]));
+        onCustomEntryClick={(e, typeId, entryId, index) => {
+          // Use the same selection handler as regular entries for multi-select support
+          // Pass a getter that returns entries for this custom type
+          handleSelectionClick(e, typeId, entryId, index, (tid) => {
+            // This getter is used for shift-select range calculation
+            // We return the entries from the query cache if available
+            const cached = qc.getQueryData<any[]>(["codexEntities", projectId, tid]);
+            return (cached ?? []).map((d: any) => ({ id: String(d.id), name: d.name }));
+          });
         }}
         onCustomEntryDoubleClick={(e, typeId, entryId) => {
           e.preventDefault();
@@ -533,6 +566,11 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
       {/* Custom Types modals */}
       <EntityTypeModalHost projectId={projectId} />
       <CustomEntityModalHost projectId={projectId} />
+      <ImportEntityTypeModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImportType}
+      />
 
       {/* System entry modal host (replaces NewEntryMenu for registered forms) */}
       <EntryModalHost projectId={projectId} />

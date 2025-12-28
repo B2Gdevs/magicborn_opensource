@@ -1,7 +1,7 @@
 // lib/payload/collections/Projects.ts
 // Projects collection - the tenant boundary for content
 
-import type { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 import { isSuperuser, getAccessibleProjectIds } from '../access/helpers'
 import { Collections } from '../constants'
 import { HERO_CONTENT_STYLE_OPTIONS, HERO_CONTENT_COLOR_OPTIONS } from '@/lib/constants/homepage'
@@ -224,7 +224,7 @@ export const Projects: CollectionConfig = {
             {
               name: 'style',
               type: 'select',
-              options: HERO_CONTENT_STYLE_OPTIONS,
+              options: HERO_CONTENT_STYLE_OPTIONS as any,
               defaultValue: 'normal',
             },
             {
@@ -237,7 +237,7 @@ export const Projects: CollectionConfig = {
             {
               name: 'color',
               type: 'select',
-              options: HERO_CONTENT_COLOR_OPTIONS,
+              options: HERO_CONTENT_COLOR_OPTIONS as any,
             },
           ],
         },

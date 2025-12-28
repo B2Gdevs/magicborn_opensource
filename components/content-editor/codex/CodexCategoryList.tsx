@@ -9,6 +9,7 @@ import { CodexEntryList } from "./CodexEntryList";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { CodexEntry } from "./types/codex.types";
 import { useCodexEntitiesByType } from "@/lib/content-editor/codex/hooks/useCodexEntitiesByType";
+import { makeSelectionKey } from "@/components/content-editor/hooks/useCodexSelection";
 
 interface Category {
   id: CodexCategory;
@@ -39,7 +40,7 @@ interface CodexCategoryListProps {
   onToggleCustomType?: (typeId: string) => void;
   onSidebarContextMenu?: (e: React.MouseEvent) => void;
   onCustomTypeContextMenu?: (e: React.MouseEvent, typeId: string, typeName: string, typeDoc?: any) => void;
-  onCustomEntryClick?: (e: React.MouseEvent, entryId: string) => void;
+  onCustomEntryClick?: (e: React.MouseEvent, typeId: string, entryId: string, index: number) => void;
   onCustomEntryDoubleClick?: (e: React.MouseEvent, typeId: string, entryId: string) => void;
   onCustomEntryContextMenu?: (e: React.MouseEvent, typeId: string, entry: CodexEntry) => void;
 }
@@ -146,7 +147,7 @@ export function CodexCategoryList({
               selectedEntries={selectedEntries}
               onToggle={() => onToggleCustomType?.(t.id)}
               onContextMenu={(e) => onCustomTypeContextMenu?.(e, t.id, t.name)}
-              onEntryClick={onCustomEntryClick}
+              onEntryClick={(e, entryId, index) => onCustomEntryClick?.(e, t.id, entryId, index)}
               onEntryDoubleClick={(e, entryId) => onCustomEntryDoubleClick?.(e, t.id, entryId)}
               onEntryContextMenu={(e, entry) => onCustomEntryContextMenu?.(e, t.id, entry)}
             />
@@ -178,7 +179,7 @@ function CustomTypeRow({
   selectedEntries: Set<string>;
   onToggle: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
-  onEntryClick?: (e: React.MouseEvent, entryId: string) => void;
+  onEntryClick?: (e: React.MouseEvent, entryId: string, index: number) => void;
   onEntryDoubleClick?: (e: React.MouseEvent, entryId: string) => void;
   onEntryContextMenu?: (e: React.MouseEvent, entry: CodexEntry) => void;
 }) {
@@ -222,7 +223,9 @@ function CustomTypeRow({
             <div className="text-xs text-text-muted px-2 py-0.5 italic">No entries yet</div>
           ) : (
             entries.map((entry, index) => {
-              const isSelected = selectedEntries.has(entry.id);
+              // Use composite key for selection to avoid cross-category collisions
+              const selectionKey = makeSelectionKey(typeId, entry.id);
+              const isSelected = selectedEntries.has(selectionKey);
               return (
                 <div
                   key={entry.id}
@@ -231,7 +234,7 @@ function CustomTypeRow({
                       ? "bg-ember/20 border border-ember/30 text-ember-glow"
                       : "text-text-secondary hover:text-ember-glow hover:bg-deep/50"
                   }`}
-                  onClick={(e) => onEntryClick?.(e, entry.id)}
+                  onClick={(e) => onEntryClick?.(e, entry.id, index)}
                   onDoubleClick={(e) => onEntryDoubleClick?.(e, entry.id)}
                   onContextMenu={(e) => onEntryContextMenu?.(e, entry)}
                 >

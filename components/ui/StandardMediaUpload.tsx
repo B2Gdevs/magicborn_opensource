@@ -1,35 +1,46 @@
 // components/ui/StandardMediaUpload.tsx
-// Standardized media upload component used everywhere in the app
-// Supports hover interactions, drag-and-drop, and media library popup
-// Clean, readable code that's easy to understand
-
 "use client";
 
-import { useState, useRef } from "react";
-import { Upload, X, Image as ImageIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { X, Image as ImageIcon } from "lucide-react";
 import { MediaLibraryPopup, type MediaItem } from "./MediaLibraryPopup";
 import { isValidImageFile } from "@/lib/utils/image-validation";
 import { toast } from "@/lib/hooks/useToast";
 
-// Size variants
 export type MediaUploadSize = "thumbnail" | "full" | "inline";
+export type MediaType = "image" | "video" | "audio" | "all";
 
 interface StandardMediaUploadProps {
-  // Current media state
   currentMediaId?: number;
   currentMediaUrl?: string;
-  
-  // Callbacks
-  onMediaSelected: (mediaId: number | undefined) => void; // Called when media is selected/uploaded/removed
-  
-  // Configuration
-  size?: MediaUploadSize; // Display size: thumbnail (small), full (large), inline (next to elements)
-  mediaType?: "image" | "video" | "audio" | "all"; // Filter media type (default: image)
-  label?: string; // Optional label (for forms)
-  disabled?: boolean; // Disable interactions
-  
-  // Optional styling
+
+  onMediaSelected: (mediaId: number | undefined) => void;
+
+  size?: MediaUploadSize;
+  mediaType?: MediaType;
+  label?: string;
+  disabled?: boolean;
+
   className?: string;
+
+  /**
+   * If true, and currentMediaId is present but currentMediaUrl is not,
+   * StandardMediaUpload will fetch `/api/payload/media/:id` to resolve the URL.
+   */
+  resolveUrlFromId?: boolean;
+
+  /**
+   * Project scoping for media (stored on media docs).
+   * We pass this through as a query param (NOT a header).
+   */
+  projectId?: string | number;
+}
+
+function withProjectId(url: string, projectId?: string | number) {
+  if (projectId === undefined || projectId === null || String(projectId).length === 0) return url;
+  const u = new URL(url, window.location.origin);
+  u.searchParams.set("projectId", String(projectId));
+  return u.pathname + u.search;
 }
 
 export function StandardMediaUpload({
@@ -41,137 +52,70 @@ export function StandardMediaUpload({
   label,
   disabled = false,
   className = "",
+  resolveUrlFromId = true,
+  projectId,
 }: StandardMediaUploadProps) {
-  // State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [uploading, setUploading] = useState(false);
+
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  
-  // Refs
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropZoneRef = useRef<HTMLDivElement>(null);
+  const [resolvedUrl, setResolvedUrl] = useState<string | undefined>(undefined);
 
-  // Get the display URL (preview or current)
-  const displayUrl = previewUrl || currentMediaUrl;
-  const hasMedia = !!displayUrl;
+  // Resolve URL for edit-mode when only id is provided
+  useEffect(() => {
+    let cancelled = false;
 
-  // Handle file upload
-  const handleFileUpload = async (file: File) => {
-    // Validate image files
-    if (mediaType === "image") {
-      const isValid = await isValidImageFile(file);
-      if (!isValid) {
-        toast.warning("Please select a valid image file (PNG, JPEG, GIF, WebP, BMP, or SVG)");
+    async function resolve() {
+      if (!resolveUrlFromId) return;
+
+      // If we have a URL from parent or from a new upload, don't fetch
+      if (previewUrl || currentMediaUrl) {
+        setResolvedUrl(undefined);
         return;
       }
-    }
 
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch("/api/payload/media", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to upload media");
+      if (!currentMediaId) {
+        setResolvedUrl(undefined);
+        return;
       }
 
-      const data = await response.json();
-      const mediaId = data.id;
-      
-      // Update preview URL
-      if (data.url) {
-        setPreviewUrl(data.url);
-      } else if (data.filename) {
-        setPreviewUrl(`/media/${data.filename}`);
+      try {
+        const url = withProjectId(`/api/payload/media/${currentMediaId}`, projectId);
+        const res = await fetch(url);
+        if (!res.ok) {
+          if (!cancelled) setResolvedUrl(undefined);
+          return;
+        }
+        const data = await res.json();
+        const finalUrl = data?.url || (data?.filename ? `/media/${data.filename}` : undefined);
+        if (!cancelled) setResolvedUrl(finalUrl);
+      } catch {
+        if (!cancelled) setResolvedUrl(undefined);
       }
-      
-      // Notify parent
-      onMediaSelected(mediaId);
-    } catch (error) {
-      console.error("Error uploading media:", error);
-      toast.error("Failed to upload media");
-    } finally {
-      setUploading(false);
     }
-  };
 
-  // Handle file input change
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileUpload(file);
-    }
-  };
+    resolve();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentMediaId, currentMediaUrl, previewUrl, resolveUrlFromId, projectId]);
 
-  // Handle drag and drop
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!disabled && !uploading) {
-      setIsDragging(true);
-    }
-  };
+  const displayUrl = previewUrl || currentMediaUrl || resolvedUrl;
+  const hasMedia = !!displayUrl;
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
+  const accept = useMemo(() => {
+    if (mediaType === "image") return "image/*";
+    if (mediaType === "video") return "video/*";
+    if (mediaType === "audio") return "audio/*";
+    return "*";
+  }, [mediaType]);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    if (disabled || uploading) return;
-
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      handleFileUpload(file);
-    }
-  };
-
-  // Handle click - always open popup (consistent with ActDetailView behavior)
-  const handleClick = () => {
-    if (disabled || uploading) return;
-    // Always open popup - user can upload or select from library
-    setShowPopup(true);
-  };
-
-  // Handle media selection from popup
-  const handleMediaSelected = (media: MediaItem) => {
-    try {
-      setPreviewUrl(null); // Clear preview
-      onMediaSelected(media.id);
-      setShowPopup(false); // Close popup after selection
-    } catch (error) {
-      console.error("Error handling media selection:", error);
-      // Keep popup open if there's an error
-    }
-  };
-
-  // Handle file upload from popup
-  const handleMediaUploaded = (file: File) => {
-    handleFileUpload(file);
-  };
-
-  // Handle remove
-  const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPreviewUrl(null);
-    onMediaSelected(undefined);
-  };
-
-  // Size-specific styles
-  const getSizeClasses = () => {
+  const zoneSizeClasses = useMemo(() => {
     switch (size) {
       case "thumbnail":
         return "w-20 h-20";
@@ -181,209 +125,147 @@ export function StandardMediaUpload({
       default:
         return "w-full aspect-square";
     }
-  };
+  }, [size]);
 
-  // Render thumbnail size (small, for toolbars/lists)
-  if (size === "thumbnail") {
-    return (
-      <>
-        <div className={`flex items-center gap-3 ${className}`}>
-          <div
-            ref={dropZoneRef}
-            onClick={handleClick}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`
-              relative ${getSizeClasses()} border-2 border-dashed rounded-lg overflow-hidden
-              transition-all cursor-pointer flex-shrink-0
-              ${
-                isDragging
-                  ? "border-ember-glow bg-ember/10 scale-[1.02]"
-                  : hasMedia
-                  ? "border-border bg-deep"
-                  : "border-border/50 bg-deep/30 hover:border-ember/50 hover:bg-deep/50"
-              }
-              ${disabled ? "cursor-not-allowed opacity-50" : ""}
-              ${uploading ? "cursor-wait" : ""}
-            `}
-          >
-            {displayUrl ? (
-              <img
-                src={displayUrl}
-                alt={label || "Media"}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="w-10 h-10 rounded-full bg-deep/50 flex items-center justify-center">
-                  <ImageIcon className="w-5 h-5 text-text-muted" />
-                </div>
-              </div>
-            )}
-            
-            {displayUrl && !disabled && isHovered && (
-              <button
-                type="button"
-                onClick={handleRemove}
-                className="absolute top-1 right-1 w-5 h-5 bg-ember/90 hover:bg-ember rounded-full flex items-center justify-center text-white text-xs"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-            
-            {uploading && (
-              <div className="absolute inset-0 bg-deep/80 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-2 border-ember border-t-transparent" />
-              </div>
-            )}
-          </div>
-          
-          {label && (
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-text-secondary">
-                {label}
-              </label>
-            </div>
-          )}
-        </div>
+  const zoneClasses = useMemo(() => {
+    const base = `relative ${zoneSizeClasses} border-2 border-dashed rounded-lg overflow-hidden transition-all cursor-pointer`;
+    const state =
+      isDragging
+        ? "border-ember-glow bg-ember/10 scale-[1.02]"
+        : hasMedia
+        ? "border-border bg-deep"
+        : "border-border/50 bg-deep/30 hover:border-ember/50 hover:bg-deep/50";
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={mediaType === "image" ? "image/*" : "*"}
-          onChange={handleFileInputChange}
-          className="hidden"
-          disabled={disabled || uploading}
-        />
+    const disabledState = disabled ? "cursor-not-allowed opacity-50" : "";
+    const uploadingState = uploading ? "cursor-wait" : "";
+    const compact = size === "thumbnail" || size === "inline" ? "flex-shrink-0" : "";
 
-        <MediaLibraryPopup
-          isOpen={showPopup}
-          onClose={() => setShowPopup(false)}
-          onSelect={handleMediaSelected}
-          onUpload={handleMediaUploaded}
-          currentMediaId={currentMediaId}
-          mediaType={mediaType}
-        />
-      </>
-    );
+    return `${base} ${state} ${disabledState} ${uploadingState} ${compact}`;
+  }, [zoneSizeClasses, isDragging, hasMedia, disabled, uploading, size]);
+
+  const uploadFile = useCallback(
+    async (file: File) => {
+      if (disabled) return;
+
+      if (mediaType === "image") {
+        const ok = await isValidImageFile(file);
+        if (!ok) {
+          toast.warning("Please select a valid image file (PNG, JPEG, GIF, WebP, BMP, or SVG)");
+          return;
+        }
+      }
+
+      if (projectId === undefined || projectId === null || String(projectId).length === 0) {
+        toast.error("Project is required to upload media.");
+        return;
+      }
+
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Matches your POST handler: /api/payload/media?projectId=#
+        const uploadUrl = withProjectId("/api/payload/media", projectId);
+
+        const response = await fetch(uploadUrl, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error((error as any)?.error || "Failed to upload media");
+        }
+
+        const data = await response.json();
+        const mediaId = typeof data?.id === "number" ? data.id : data?.id ? Number(data.id) : undefined;
+
+        // Display immediately
+        if (data?.url) setPreviewUrl(data.url);
+        else if (data?.filename) setPreviewUrl(`/media/${data.filename}`);
+
+        // Clear resolvedUrl (edit-mode) since we now have a fresh URL
+        setResolvedUrl(undefined);
+
+        onMediaSelected(mediaId);
+      } catch (err) {
+        console.error("Error uploading media:", err);
+        toast.error("Failed to upload media");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [disabled, mediaType, projectId, onMediaSelected]
+  );
+
+  function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+    e.currentTarget.value = "";
   }
 
-  // Render inline size (next to other elements)
-  if (size === "inline") {
-    return (
-      <>
-        <div className={`flex items-center gap-3 ${className}`}>
-          <div
-            ref={dropZoneRef}
-            onClick={handleClick}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`
-              relative ${getSizeClasses()} border-2 border-dashed rounded-lg overflow-hidden
-              transition-all cursor-pointer flex-shrink-0
-              ${
-                isDragging
-                  ? "border-ember-glow bg-ember/10 scale-[1.02]"
-                  : hasMedia
-                  ? "border-border bg-deep"
-                  : "border-border/50 bg-deep/30 hover:border-ember/50 hover:bg-deep/50"
-              }
-              ${disabled ? "cursor-not-allowed opacity-50" : ""}
-              ${uploading ? "cursor-wait" : ""}
-            `}
-          >
-            {displayUrl ? (
-              <>
-                <img
-                  src={displayUrl}
-                  alt={label || "Media"}
-                  className="w-full h-full object-cover"
-                />
-                {!disabled && isHovered && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowPopup(true);
-                        }}
-                        className="px-2 py-1 text-xs bg-ember/90 hover:bg-ember text-white rounded"
-                      >
-                        Change
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleRemove}
-                        className="px-2 py-1 text-xs bg-red-500/90 hover:bg-red-500 text-white rounded"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-deep/50 flex items-center justify-center">
-                  <ImageIcon className="w-6 h-6 text-text-muted" />
-                </div>
-              </div>
-            )}
-            
-            {uploading && (
-              <div className="absolute inset-0 bg-deep/80 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-2 border-ember border-t-transparent" />
-              </div>
-            )}
-          </div>
-          
-          {label && (
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-text-secondary">
-                {label}
-              </label>
-            </div>
-          )}
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={mediaType === "image" ? "image/*" : "*"}
-          onChange={handleFileInputChange}
-          className="hidden"
-          disabled={disabled || uploading}
-        />
-
-        <MediaLibraryPopup
-          isOpen={showPopup}
-          onClose={() => setShowPopup(false)}
-          onSelect={handleMediaSelected}
-          onUpload={handleMediaUploaded}
-          currentMediaId={currentMediaId}
-          mediaType={mediaType}
-        />
-      </>
-    );
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled && !uploading) setIsDragging(true);
   }
 
-  // Render full size (default, large display)
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (disabled || uploading) return;
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) uploadFile(file);
+  }
+
+  function handleClick() {
+    if (disabled || uploading) return;
+    setShowPopup(true);
+  }
+
+  function handleRemove(e: React.MouseEvent) {
+    e.stopPropagation();
+    setPreviewUrl(null);
+    setResolvedUrl(undefined);
+    onMediaSelected(undefined);
+  }
+
+  function handleMediaSelected(media: MediaItem) {
+    // Selected from library: we only store the id and let parent resolve if needed
+    setPreviewUrl(null);
+    setResolvedUrl(undefined);
+    onMediaSelected(media.id);
+    setShowPopup(false);
+  }
+
+  function handleMediaUploaded(file: File) {
+    uploadFile(file);
+  }
+
+  const wrapperLayout = size === "full" ? "w-full" : "flex items-center gap-3";
+
+  const showTopLabel = size === "full" && !!label;
+  const showSideLabel = (size === "thumbnail" || size === "inline") && !!label;
+
+  const showThumbnailX = size === "thumbnail" && hasMedia && !disabled && isHovered;
+  const showOverlayActions = (size === "inline" || size === "full") && hasMedia && !disabled && isHovered;
+
   return (
     <>
-      <div className={`w-full ${className}`}>
-        {label && (
-          <label className="block text-sm font-semibold text-text-secondary mb-1">
-            {label}
-          </label>
+      <div className={`${wrapperLayout} ${className}`}>
+        {showTopLabel && (
+          <label className="block text-sm font-semibold text-text-secondary mb-1">{label}</label>
         )}
-        
+
         <div
           ref={dropZoneRef}
           onClick={handleClick}
@@ -392,28 +274,24 @@ export function StandardMediaUpload({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`
-            relative ${getSizeClasses()} border-2 border-dashed rounded-lg overflow-hidden
-            transition-all cursor-pointer
-            ${
-              isDragging
-                ? "border-ember-glow bg-ember/10 scale-[1.02]"
-                : hasMedia
-                ? "border-border bg-deep"
-                : "border-border/50 bg-deep/30 hover:border-ember/50 hover:bg-deep/50"
-            }
-            ${disabled ? "cursor-not-allowed opacity-50" : ""}
-            ${uploading ? "cursor-wait" : ""}
-          `}
+          className={zoneClasses}
         >
           {displayUrl ? (
             <>
-              <img
-                src={displayUrl}
-                alt={label || "Media"}
-                className="w-full h-full object-cover"
-              />
-              {!disabled && isHovered && (
+              <img src={displayUrl} alt={label || "Media"} className="w-full h-full object-cover" />
+
+              {showThumbnailX && (
+                <button
+                  type="button"
+                  onClick={handleRemove}
+                  className="absolute top-1 right-1 w-5 h-5 bg-ember/90 hover:bg-ember rounded-full flex items-center justify-center text-white text-xs"
+                  aria-label="Remove media"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+
+              {showOverlayActions && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <div className="flex gap-2">
                     <button
@@ -422,14 +300,22 @@ export function StandardMediaUpload({
                         e.stopPropagation();
                         setShowPopup(true);
                       }}
-                      className="px-3 py-1.5 bg-ember/90 hover:bg-ember text-white rounded text-xs font-semibold transition-colors"
+                      className={
+                        size === "full"
+                          ? "px-3 py-1.5 bg-ember/90 hover:bg-ember text-white rounded text-xs font-semibold transition-colors"
+                          : "px-2 py-1 text-xs bg-ember/90 hover:bg-ember text-white rounded"
+                      }
                     >
                       Change
                     </button>
                     <button
                       type="button"
                       onClick={handleRemove}
-                      className="px-3 py-1.5 bg-red-500/90 hover:bg-red-500 text-white rounded text-xs font-semibold transition-colors"
+                      className={
+                        size === "full"
+                          ? "px-3 py-1.5 bg-red-500/90 hover:bg-red-500 text-white rounded text-xs font-semibold transition-colors"
+                          : "px-2 py-1 text-xs bg-red-500/90 hover:bg-red-500 text-white rounded"
+                      }
                     >
                       Remove
                     </button>
@@ -439,35 +325,64 @@ export function StandardMediaUpload({
             </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-deep/50 flex items-center justify-center">
-                <ImageIcon className="w-8 h-8 text-text-muted" />
+              <div
+                className={
+                  size === "thumbnail"
+                    ? "w-10 h-10 rounded-full bg-deep/50 flex items-center justify-center"
+                    : size === "inline"
+                    ? "w-12 h-12 rounded-full bg-deep/50 flex items-center justify-center"
+                    : "w-16 h-16 mx-auto mb-4 rounded-full bg-deep/50 flex items-center justify-center"
+                }
+              >
+                <ImageIcon
+                  className={
+                    size === "thumbnail"
+                      ? "w-5 h-5 text-text-muted"
+                      : size === "inline"
+                      ? "w-6 h-6 text-text-muted"
+                      : "w-8 h-8 text-text-muted"
+                  }
+                />
               </div>
-              <p className="text-text-secondary font-semibold mb-2">
-                {isDragging ? "Drop media here" : "Click or drag to upload"}
-              </p>
-              {mediaType === "image" && (
-                <p className="text-xs text-text-muted">
-                  PNG, JPEG, WebP, GIF, or SVG
-                </p>
+
+              {size === "full" && (
+                <>
+                  <p className="text-text-secondary font-semibold mb-2">
+                    {isDragging ? "Drop media here" : "Click to choose or drag to upload"}
+                  </p>
+                  {mediaType === "image" && <p className="text-xs text-text-muted">PNG, JPEG, WebP, GIF, or SVG</p>}
+                </>
               )}
             </div>
           )}
-          
+
           {uploading && (
             <div className="absolute inset-0 bg-deep/80 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-ember border-t-transparent" />
+              <div
+                className={
+                  size === "full"
+                    ? "animate-spin rounded-full h-8 w-8 border-2 border-ember border-t-transparent"
+                    : "animate-spin rounded-full h-6 w-6 border-2 border-ember border-t-transparent"
+                }
+              />
             </div>
           )}
         </div>
+
+        {showSideLabel && (
+          <div className="flex-1">
+            <label className="block text-sm font-semibold text-text-secondary">{label}</label>
+          </div>
+        )}
       </div>
 
       <input
         ref={fileInputRef}
         type="file"
-        accept={mediaType === "image" ? "image/*" : "*"}
+        accept={accept}
         onChange={handleFileInputChange}
         className="hidden"
-        disabled={uploading || disabled}
+        disabled={disabled || uploading}
       />
 
       <MediaLibraryPopup
@@ -477,8 +392,8 @@ export function StandardMediaUpload({
         onUpload={handleMediaUploaded}
         currentMediaId={currentMediaId}
         mediaType={mediaType}
+        projectId={projectId}
       />
     </>
   );
 }
-

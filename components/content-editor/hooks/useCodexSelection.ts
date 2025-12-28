@@ -1,29 +1,43 @@
 // hooks/useCodexSelection.ts
 // Selection logic for codex entries
+// Uses composite keys: `${categoryId}:${entryId}` to avoid cross-category collisions
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CodexCategory } from "@lib/content-editor/constants";
 
+// Helper to create a composite selection key
+export function makeSelectionKey(categoryId: CodexCategory | string, entryId: string): string {
+  return `${categoryId}:${entryId}`;
+}
+
+// Helper to parse a composite selection key
+export function parseSelectionKey(key: string): { categoryId: string; entryId: string } {
+  const idx = key.indexOf(":");
+  return { categoryId: key.slice(0, idx), entryId: key.slice(idx + 1) };
+}
+
 export function useCodexSelection() {
+  // Selection keys are composite: `${categoryId}:${entryId}`
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<{
-    categoryId: CodexCategory;
+    categoryId: CodexCategory | string;
     index: number;
   } | null>(null);
   const sidebarRef = useRef<HTMLElement>(null);
 
   const handleEntryClick = useCallback((
     e: React.MouseEvent,
-    categoryId: CodexCategory,
+    categoryId: CodexCategory | string,
     entryId: string,
     index: number,
-    getEntries: (categoryId: CodexCategory) => { id: string; name: string }[]
+    getEntries: (categoryId: CodexCategory | string) => { id: string; name: string }[]
   ) => {
     // Don't interfere with context menu or action buttons
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
 
+    const selectionKey = makeSelectionKey(categoryId, entryId);
     const isMetaKey = e.metaKey || e.ctrlKey;
     const isShiftKey = e.shiftKey;
 
@@ -31,29 +45,29 @@ export function useCodexSelection() {
       // Cmd/Ctrl + click: toggle selection
       setSelectedEntries(prev => {
         const next = new Set(prev);
-        if (next.has(entryId)) {
-          next.delete(entryId);
+        if (next.has(selectionKey)) {
+          next.delete(selectionKey);
         } else {
-          next.add(entryId);
+          next.add(selectionKey);
         }
         return next;
       });
       setLastSelectedIndex({ categoryId, index });
     } else if (isShiftKey && lastSelectedIndex && lastSelectedIndex.categoryId === categoryId) {
-      // Shift + click: range selection
+      // Shift + click: range selection (only within same category)
       const entries = getEntries(categoryId);
       const start = Math.min(lastSelectedIndex.index, index);
       const end = Math.max(lastSelectedIndex.index, index);
-      const rangeIds = entries.slice(start, end + 1).map(e => e.id);
+      const rangeKeys = entries.slice(start, end + 1).map(e => makeSelectionKey(categoryId, e.id));
       
       setSelectedEntries(prev => {
         const next = new Set(prev);
-        rangeIds.forEach(id => next.add(id));
+        rangeKeys.forEach(key => next.add(key));
         return next;
       });
     } else {
       // Regular click: single selection
-      setSelectedEntries(new Set([entryId]));
+      setSelectedEntries(new Set([selectionKey]));
       setLastSelectedIndex({ categoryId, index });
     }
   }, [lastSelectedIndex]);
@@ -64,16 +78,16 @@ export function useCodexSelection() {
   }, []);
 
   const selectAllInCategories = useCallback((
-    expandedCategories: Set<CodexCategory>,
-    getEntries: (categoryId: CodexCategory) => { id: string; name: string }[]
+    expandedCategories: Set<CodexCategory | string>,
+    getEntries: (categoryId: CodexCategory | string) => { id: string; name: string }[]
   ) => {
-    const allEntryIds = new Set<string>();
+    const allKeys = new Set<string>();
     expandedCategories.forEach(categoryId => {
       getEntries(categoryId).forEach(entry => {
-        allEntryIds.add(entry.id);
+        allKeys.add(makeSelectionKey(categoryId, entry.id));
       });
     });
-    setSelectedEntries(allEntryIds);
+    setSelectedEntries(allKeys);
   }, []);
 
   // NOTE: Intentionally no keyboard shortcuts in Codex (per product decision).

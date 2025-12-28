@@ -7,6 +7,8 @@ import { UseFormRegister, UseFormSetValue, UseFormWatch, FieldErrors } from "rea
 import { Hash, User, FileText } from "lucide-react";
 import { StandardMediaUpload } from "./StandardMediaUpload";
 
+import { Collections } from "@/lib/payload/constants";
+
 interface BasicInfoSectionProps {
   // Form registration
   register: UseFormRegister<any>;

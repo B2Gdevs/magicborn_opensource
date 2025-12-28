@@ -11,7 +11,8 @@ export enum EffectCategory {
 }
 
 export interface EffectDefinition extends BaseEntity {
-  id: EffectType;
+  /** The effect type enum value (Burn, Slow, Shield, etc.) */
+  effectType: EffectType;
   category: EffectCategory;
   blueprint: EffectBlueprint;
   maxStacks?: number;
@@ -21,7 +22,8 @@ export interface EffectDefinition extends BaseEntity {
 
 export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
   [EffectType.Burn]: {
-    id: EffectType.Burn,
+    id: "burn", // Auto-generated ID (string)
+    effectType: EffectType.Burn,
     name: "Burn",
     description: "Takes periodic fire damage over time.",
     category: EffectCategory.DamageOverTime,
@@ -35,7 +37,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     maxStacks: 3,
   },
   [EffectType.Slow]: {
-    id: EffectType.Slow,
+    id: "slow",
+    effectType: EffectType.Slow,
     name: "Slow",
     description: "Movement and attack speed are reduced.",
     category: EffectCategory.CrowdControl,
@@ -48,7 +51,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     },
   },
   [EffectType.Shield]: {
-    id: EffectType.Shield,
+    id: "shield",
+    effectType: EffectType.Shield,
     name: "Barrier",
     description: "A temporary shield that absorbs damage.",
     category: EffectCategory.Defensive,
@@ -62,7 +66,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     },
   },
   [EffectType.Regen]: {
-    id: EffectType.Regen,
+    id: "regen",
+    effectType: EffectType.Regen,
     name: "Regeneration",
     description: "Slowly restores health over time.",
     category: EffectCategory.DamageOverTime,
@@ -76,7 +81,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     },
   },
   [EffectType.Vulnerable]: {
-    id: EffectType.Vulnerable,
+    id: "vulnerable",
+    effectType: EffectType.Vulnerable,
     name: "Vulnerable",
     description: "Target takes increased damage from all sources.",
     category: EffectCategory.OffensiveBuff,
@@ -89,7 +95,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     },
   },
   [EffectType.Fortified]: {
-    id: EffectType.Fortified,
+    id: "fortified",
+    effectType: EffectType.Fortified,
     name: "Fortified",
     description: "Takes reduced damage from all sources.",
     category: EffectCategory.Defensive,
@@ -103,7 +110,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     },
   },
   [EffectType.Poison]: {
-    id: EffectType.Poison,
+    id: "poison",
+    effectType: EffectType.Poison,
     name: "Poison",
     description: "Takes periodic poison damage over time.",
     category: EffectCategory.DamageOverTime,
@@ -117,7 +125,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     maxStacks: 3,
   },
   [EffectType.Bleed]: {
-    id: EffectType.Bleed,
+    id: "bleed",
+    effectType: EffectType.Bleed,
     name: "Bleed",
     description: "Takes periodic physical damage over time.",
     category: EffectCategory.DamageOverTime,
@@ -131,7 +140,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     maxStacks: 3,
   },
   [EffectType.Shock]: {
-    id: EffectType.Shock,
+    id: "shock",
+    effectType: EffectType.Shock,
     name: "Shock",
     description: "Electric-related debuff that disrupts abilities.",
     category: EffectCategory.CrowdControl,
@@ -144,7 +154,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     },
   },
   [EffectType.Stun]: {
-    id: EffectType.Stun,
+    id: "stun",
+    effectType: EffectType.Stun,
     name: "Stun",
     description: "Cannot act or move for the duration.",
     category: EffectCategory.CrowdControl,
@@ -157,7 +168,8 @@ export const EFFECT_DEFS: Record<EffectType, EffectDefinition> = {
     },
   },
   [EffectType.Silence]: {
-    id: EffectType.Silence,
+    id: "silence",
+    effectType: EffectType.Silence,
     name: "Silence",
     description: "Cannot cast spells or use mind abilities.",
     category: EffectCategory.CrowdControl,

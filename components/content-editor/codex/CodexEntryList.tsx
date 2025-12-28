@@ -6,17 +6,18 @@
 import { CodexCategory } from "@lib/content-editor/constants";
 import { CodexEntryActionsMenu } from "./CodexEntryActionsMenu";
 import type { CodexEntry } from "./types/codex.types";
+import { makeSelectionKey } from "@/components/content-editor/hooks/useCodexSelection";
 
 interface CodexEntryListProps {
-  categoryId: CodexCategory;
+  categoryId: CodexCategory | string;
   entries: CodexEntry[];
   selectedEntries: Set<string>;
-  onEntryClick: (e: React.MouseEvent, categoryId: CodexCategory, entryId: string, index: number) => void;
-  onEntryDoubleClick: (e: React.MouseEvent, categoryId: CodexCategory, entryId: string) => void;
-  onContextMenu: (e: React.MouseEvent, type: "category" | "entry", categoryId: CodexCategory, entry?: CodexEntry) => void;
-  onEdit: (categoryId: CodexCategory, entryId: string) => void;
-  onDuplicate: (categoryId: CodexCategory, entryId: string) => void;
-  onDelete: (categoryId: CodexCategory, entryId: string) => void;
+  onEntryClick: (e: React.MouseEvent, categoryId: CodexCategory | string, entryId: string, index: number) => void;
+  onEntryDoubleClick: (e: React.MouseEvent, categoryId: CodexCategory | string, entryId: string) => void;
+  onContextMenu: (e: React.MouseEvent, type: "category" | "entry", categoryId: CodexCategory | string, entry?: CodexEntry) => void;
+  onEdit: (categoryId: CodexCategory | string, entryId: string) => void;
+  onDuplicate: (categoryId: CodexCategory | string, entryId: string) => void;
+  onDelete: (categoryId: CodexCategory | string, entryId: string) => void;
 }
 
 export function CodexEntryList({
@@ -30,6 +31,7 @@ export function CodexEntryList({
   onDuplicate,
   onDelete,
 }: CodexEntryListProps) {
+  console.log("entries", entries);
   if (entries.length === 0) {
     return (
       <div className="text-xs text-text-muted px-2 py-0.5 italic">
@@ -41,7 +43,9 @@ export function CodexEntryList({
   return (
     <>
       {entries.map((entry, index) => {
-        const isSelected = selectedEntries.has(entry.id);
+        // Use composite key for selection to avoid cross-category collisions
+        const selectionKey = makeSelectionKey(categoryId, entry.id);
+        const isSelected = selectedEntries.has(selectionKey);
         return (
           <div
             key={entry.id}

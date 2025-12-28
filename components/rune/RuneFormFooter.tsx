@@ -14,10 +14,10 @@ export function RuneFormFooter({
   onCancel?: () => void;
   onSubmit: () => void;
 }) {
-  const handleSubmit = async () => {
-    const form = document.querySelector('form') as HTMLFormElement & { validateAndSubmit?: () => Promise<void> };
-    if (form?.validateAndSubmit) {
-      await form.validateAndSubmit();
+  const handleSubmit = () => {
+    const form = document.querySelector('form[data-entry-form]') as HTMLFormElement;
+    if (form) {
+      form.requestSubmit();
     } else {
       onSubmit();
     }

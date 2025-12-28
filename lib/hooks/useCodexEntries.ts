@@ -26,11 +26,20 @@ export function useCodexEntries({ categoryId, projectId, enabled = true }: UseCo
     queryFn: async () => {
       if (!collection) return [];
 
+      // Spells and Effects are global collections (no project field)
+      // Runes has a project field, so it should be filtered
+      const isGlobalCollection =
+        categoryId === CodexCategory.Spells ||
+        categoryId === CodexCategory.Effects;
+
+      // Build query URL - only include project filter for project-specific collections
+      const queryUrl = isGlobalCollection
+        ? `/api/payload/${collection}?limit=50`
+        : `/api/payload/${collection}?where[project][equals]=${projectId}&limit=50`;
+
       // Fetch entries - Payload automatically excludes trashed when trash is enabled
       // For existing data without _status, we'll filter client-side if needed
-      const response = await fetch(
-        `/api/payload/${collection}?where[project][equals]=${projectId}&limit=50`
-      );
+      const response = await fetch(queryUrl);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch ${categoryId} entries`);

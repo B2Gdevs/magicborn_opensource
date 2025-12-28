@@ -35,16 +35,26 @@ export function useCodexCustomEntityCommands(projectId: string) {
   );
 
   const createEntity = useCallback(
-    async (typeId: string, formData: Record<string, any>) => {
-      const name = String(formData?.name || formData?.title || "Untitled");
-      const slug = String(formData?.slug || slugify(name));
+    async (
+      typeId: string,
+      formData: {
+        name: string;
+        description?: string;
+        imageMediaId?: number;
+        data?: Record<string, any>;
+      }
+    ) => {
+      const name = String(formData?.name || "Untitled");
+      const slug = slugify(name);
 
       const payload = {
         project: parseInt(projectId, 10),
-        type: typeId,
+        type: parseInt(typeId, 10),
         name,
         slug,
-        data: formData,
+        description: formData.description || "",
+        image: formData.imageMediaId || null, // Payload upload field
+        data: formData.data || {},
       } as Record<string, unknown>;
 
       const created: any = await createCustomEntity(payload);
@@ -80,15 +90,26 @@ export function useCodexCustomEntityCommands(projectId: string) {
   );
 
   const updateEntity = useCallback(
-    async (typeId: string, entityId: string, formData: Record<string, any>) => {
+    async (
+      typeId: string,
+      entityId: string,
+      formData: {
+        name: string;
+        description?: string;
+        imageMediaId?: number;
+        data?: Record<string, any>;
+      }
+    ) => {
       const before: any = await getCustomEntity(entityId);
-      const name = String(formData?.name || formData?.title || before.name || "Untitled");
-      const slug = String(formData?.slug || before.slug || slugify(name));
+      const name = String(formData?.name || before.name || "Untitled");
+      const slug = slugify(name);
 
       const nextPayload: Record<string, unknown> = {
         name,
         slug,
-        data: formData,
+        description: formData.description || "",
+        image: formData.imageMediaId || null, // Payload upload field
+        data: formData.data || {},
       };
 
       await updateCustomEntity(entityId, nextPayload);
@@ -100,6 +121,8 @@ export function useCodexCustomEntityCommands(projectId: string) {
           await updateCustomEntity(entityId, {
             name: before.name,
             slug: before.slug,
+            description: before.description,
+            image: before.image,
             data: before.data,
             tags: before.tags,
             type: typeof before.type === "object" ? (before.type as any).id : before.type,

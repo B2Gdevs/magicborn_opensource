@@ -2,7 +2,7 @@
 // Lore entries - publishable world-building content
 
 import type { CollectionConfig } from 'payload'
-import { Collections, LORE_CATEGORY_OPTIONS } from '../constants'
+import { CharacterFields, Collections, LORE_CATEGORY_OPTIONS } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadWithFlag } from '../access/roles'
 // Removed autoGenerateSlugHook import - IDs are now server-generated
 
@@ -26,10 +26,11 @@ export const Lore: CollectionConfig = {
   // Removed auto-generation hook - IDs are now server-generated
   fields: [
     {
-      name: 'project',
+      name: CharacterFields.Project,
       type: 'relationship',
       relationTo: Collections.Projects,
       required: true,
+      index: true,
     },
     {
       name: 'title',

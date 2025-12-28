@@ -1,7 +1,7 @@
 // lib/payload/collections/Acts.ts
 // Acts collection - versioned story acts
 
-import type { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 
 export const Acts: CollectionConfig = {

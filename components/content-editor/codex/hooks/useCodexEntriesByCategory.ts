@@ -35,11 +35,12 @@ export function useCodexEntriesByCategory({
         queryFn: async (): Promise<CodexEntry[]> => {
           if (!collection) return [];
 
+          // Build query URL - only include project filter for project-specific collections
+          const queryUrl = `/api/payload/${collection}?where[project][equals]=${projectId}&limit=50`;
+
           // Fetch entries - Payload automatically excludes trashed when trash is enabled
           // For existing data without _status, we'll filter client-side if needed
-          const response = await fetch(
-            `/api/payload/${collection}?where[project][equals]=${projectId}&limit=50`
-          );
+          const response = await fetch(queryUrl);
 
           if (!response.ok) {
             throw new Error(`Failed to fetch ${categoryId} entries`);

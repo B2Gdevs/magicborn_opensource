@@ -20,9 +20,8 @@ import { RuneFamiliarityEditor } from "@components/ui/RuneFamiliarityEditor";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
 import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
-import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
+import { type MediaUploadRef } from "@components/ui/MediaUpload";
 import { Sparkles, User, Save, X } from "lucide-react";
-import { nameToId } from "@lib/utils/id-generation";
 import { checkIdUniqueness } from "@lib/validation/id-validation";
 import { EntryType } from "@lib/content-editor/constants";
 import { toast } from "@/lib/hooks/useToast";
@@ -240,6 +239,7 @@ export function SpellForm({
     : existingSpells;
 
   const onSubmitForm = async (data: SpellFormDataInput) => {
+    console.log("[SpellForm] onSubmitForm called with data:", data);
     // Upload pending images before submitting
     let finalImageMediaId = imageMediaId;
     let finalLandmarkIconMediaId = landmarkIconMediaId;
@@ -368,7 +368,14 @@ export function SpellForm({
 
       {/* Form Content */}
       <div ref={formContentRef} className="flex-1 overflow-y-auto">
-        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
+        <form data-entry-form onSubmit={handleSubmit(onSubmitForm, (errors) => {
+          console.log("[SpellForm] Validation errors:", errors);
+          // Show toast with validation errors
+          const errorMessages = Object.values(errors).map(err => err?.message).filter(Boolean);
+          if (errorMessages.length > 0) {
+            toast.error(`Validation failed: ${errorMessages.join(", ")}`);
+          }
+        })} className="space-y-6 p-6">
       {/* Basic Info and Description Sections */}
       <BasicInfoSection
         register={register}
@@ -396,7 +403,6 @@ export function SpellForm({
             setImageUrl(undefined);
           }
         }}
-        imageUploadRef={imageUploadRef}
         landmarkIconMediaId={landmarkIconMediaId}
         landmarkIconUrl={landmarkIconUrl}
         onLandmarkIconUploaded={(mediaId) => {
@@ -406,7 +412,6 @@ export function SpellForm({
             setLandmarkIconUrl(undefined);
           }
         }}
-        landmarkIconUploadRef={landmarkIconUploadRef}
         showLandmarkIcon={true}
         saving={saving}
         projectId={projectId}
@@ -434,7 +439,8 @@ export function SpellForm({
           selected={(watch("allowedExtraRunes") || []) as RuneCode[]}
           onChange={(runes) => setValue("allowedExtraRunes", runes as string[])}
           label="Allowed Extra Runes (optional)"
-          disabled={watch("requiredRunes")}
+          disabled={watch("requiredRunes") as RuneCode[]}
+          required={false}
         />
 
         <div>
@@ -689,11 +695,17 @@ export function SpellFormFooter({
   onCancel?: () => void;
   onSubmit: () => void;
 }) {
-  const handleSubmit = async () => {
-    const form = document.querySelector('form') as HTMLFormElement;
+  const handleSubmit = () => {
+    console.log("[SpellFormFooter] handleSubmit called");
+    // Use the data-entry-form attribute to find our specific form
+    const form = document.querySelector('form[data-entry-form]') as HTMLFormElement;
+    console.log("[SpellFormFooter] Found form:", form);
     if (form) {
+      console.log("[SpellFormFooter] Calling form.requestSubmit()");
       form.requestSubmit();
     } else {
+      console.log("[SpellFormFooter] No form found, calling onSubmit()");
+      // Fallback to the onSubmit callback
       onSubmit();
     }
   };

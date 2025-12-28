@@ -1,7 +1,7 @@
 // lib/payload/collections/Pages.ts
 // Pages collection - versioned story pages
 
-import type { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 
 export const Pages: CollectionConfig = {

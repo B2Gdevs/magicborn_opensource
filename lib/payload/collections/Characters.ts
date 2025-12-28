@@ -1,7 +1,7 @@
 // lib/payload/collections/Characters.ts
 // Characters collection - tenant-scoped with versions/drafts
 
-import type { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 import { Collections, CharacterFields } from '../constants'
 // Removed autoGenerateSlugHook import - IDs are now server-generated

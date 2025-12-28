@@ -1,7 +1,7 @@
 // lib/payload/collections/Chapters.ts
 // Chapters collection - versioned story chapters
 
-import type { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 
 export const Chapters: CollectionConfig = {

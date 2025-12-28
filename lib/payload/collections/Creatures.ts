@@ -1,7 +1,7 @@
 // lib/payload/collections/Creatures.ts
 // Creatures collection - similar to Characters but for non-player entities
 
-import type { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 import { Collections } from '../constants'
 // Removed autoGenerateSlugHook import - IDs are now server-generated

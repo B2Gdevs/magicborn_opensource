@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,11 +12,10 @@ import { EffectCategory } from "@/lib/data/effects";
 import { EffectType } from "@core/enums";
 import type { EffectBlueprint } from "@core/effects";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
-import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
+import { type MediaUploadRef } from "@components/ui/MediaUpload";
 import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
 import { Zap, User, Save, X } from "lucide-react";
-import { nameToId } from "@lib/utils/id-generation";
 import { checkIdUniqueness } from "@lib/validation/id-validation";
 import { EntryType } from "@lib/content-editor/constants";
 import { toast } from "@/lib/hooks/useToast";
@@ -34,9 +33,9 @@ interface EffectFormProps {
   editEntryId?: number;
 }
 
-// Validation schema
-const effectSchema = z.object({
-  id: z.string().min(1, "ID (Effect Type) is required"),
+// Validation schema - effectType is required (user selects from enum)
+const createEffectSchema = () => z.object({
+  effectType: z.string().min(1, "Effect Type is required"), // Required - user must select from EffectType enum
   name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
   category: z.nativeEnum(EffectCategory),
@@ -50,7 +49,7 @@ const effectSchema = z.object({
   landmarkIconMediaId: z.number().optional(),
 });
 
-type EffectFormDataInput = z.infer<typeof effectSchema>;
+type EffectFormDataInput = z.infer<ReturnType<typeof createEffectSchema>>;
 
 // Wrapper for checkIdUniqueness with EntryType.Effect
 async function checkEffectIdUniqueness(
@@ -103,10 +102,13 @@ export function EffectForm({
 
   const availableEffectTypes = allEffectTypes.filter(type => !existingIds.includes(type));
 
+  // Create schema - effectType is always required
+  const effectSchema = useMemo(() => createEffectSchema(), []);
+
   const form = useForm({
     resolver: zodResolver(effectSchema),
     defaultValues: {
-      id: initialValues.id || "",
+      effectType: initialValues.effectType || "",
       name: initialValues.name || "",
       description: initialValues.description || "",
       category: initialValues.category || EffectCategory.DamageOverTime,
@@ -123,17 +125,17 @@ export function EffectForm({
 
   const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = form;
   const name = watch("name");
-  const id = watch("id");
+  const effectType = watch("effectType") || "";
 
-  // Use reusable ID validation hook
+  // Use reusable ID validation hook (for effectType uniqueness)
   const { idValidation, validatingId } = useIdValidation({
-    id,
+    id: effectType, // Validate effectType uniqueness
     isEdit,
     projectId,
     editEntryId,
     checkIdUniqueness: checkEffectIdUniqueness,
-    setError,
-    clearErrors,
+    setError: (field, error) => setError("effectType" as any, error),
+    clearErrors: () => clearErrors("effectType" as any),
   });
 
   // Fetch image URLs when editing
@@ -190,6 +192,7 @@ export function EffectForm({
   // ID is now server-generated, no auto-generation needed
 
   const onSubmitForm = async (data: EffectFormDataInput) => {
+    console.log("[EffectForm] onSubmitForm called with data:", data);
     // Upload pending images before submitting
     let finalImageMediaId = imageMediaId;
     let finalLandmarkIconMediaId = landmarkIconMediaId;
@@ -211,28 +214,30 @@ export function EffectForm({
       return;
     }
 
-    // For edit mode, ID (EffectType) should already be set
-    if (isEdit && !data.id) {
-      toast.error("Effect Type is required for editing");
+    // effectType is required (user must select from enum)
+    if (!data.effectType || !data.effectType.trim()) {
+      toast.error("Effect Type is required. Please select an effect type.");
       return;
     }
-    
-    // For new entries, EffectType is required (it's an enum, not auto-generated)
-    // Only check uniqueness if validation was performed
-    if (!isEdit && data.id && data.id.trim() && idValidation && !idValidation.isUnique) {
+
+    // Validate uniqueness if validation was performed
+    if (idValidation && !idValidation.isUnique) {
       toast.error(idValidation.error || "Effect Type validation failed. Please choose a different type.");
       return;
     }
 
+    const selectedEffectType = data.effectType as EffectType;
+
     const blueprint: EffectBlueprint = {
-      type: data.id as EffectType,
+      type: selectedEffectType,
       baseMagnitude: data.baseMagnitude,
       baseDurationSec: data.baseDurationSec,
       self: data.self || undefined,
     };
 
     const effect: EffectDefinition = {
-      id: data.id as EffectType,
+      id: "", // Auto-generated by server (string slug)
+      effectType: selectedEffectType, // User-selected enum value
       name: data.name.trim(),
       description: data.description.trim(),
       category: data.category,
@@ -304,21 +309,26 @@ export function EffectForm({
 
       {/* Form Content */}
       <div ref={formContentRef} className="flex-1 overflow-y-auto">
-        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
+        <form data-entry-form onSubmit={handleSubmit(onSubmitForm, (errors) => {
+          console.log("[EffectForm] Validation errors:", errors);
+          // Show toast with validation errors
+          const errorMessages = Object.values(errors).map(err => err?.message).filter(Boolean);
+          if (errorMessages.length > 0) {
+            toast.error(`Validation failed: ${errorMessages.join(", ")}`);
+          }
+        })} className="space-y-6 p-6">
           {/* Basic Info Section */}
           <BasicInfoSection
             register={register}
             watch={watch}
             setValue={setValue}
             errors={errors}
-            idValue={id}
-            idPlaceholder={availableEffectTypes.length > 0 ? "e.g., burn, freeze, curse" : "e.g., burn"}
+            idValue="" // ID is auto-generated, hidden
+            idPlaceholder="Auto-generated"
             isEdit={isEdit}
-            idValidation={idValidation}
-            validatingId={validatingId}
-            onIdChange={(newId) => {
-              setValue("id", newId);
-            }}
+            idValidation={null}
+            validatingId={false}
+            onIdChange={() => {}} // No-op - ID is auto-generated
             nameValue={name}
             namePlaceholder="e.g., Burn"
             descriptionValue={watch("description") || ""}
@@ -332,7 +342,6 @@ export function EffectForm({
                 setImageUrl(undefined);
               }
             }}
-            imageUploadRef={imageUploadRef}
             landmarkIconMediaId={landmarkIconMediaId}
             landmarkIconUrl={landmarkIconUrl}
             onLandmarkIconUploaded={(mediaId) => {
@@ -342,7 +351,6 @@ export function EffectForm({
                 setLandmarkIconUrl(undefined);
               }
             }}
-            landmarkIconUploadRef={landmarkIconUploadRef}
             showLandmarkIcon={true}
             saving={saving}
             projectId={projectId}
@@ -354,6 +362,30 @@ export function EffectForm({
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-5 h-5 text-ember-glow" />
           <h2 className="text-xl font-bold text-glow">Effect Properties</h2>
+        </div>
+
+        <div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-1">
+            <span>Effect Type</span>
+            <span className="text-ember">*</span>
+          </label>
+          <select
+            {...register("effectType")}
+            disabled={isEdit} // Can't change effectType when editing
+            className={`w-full px-3 py-2 bg-deep border rounded text-text-primary ${
+              errors.effectType ? "border-red-500" : "border-border"
+            } ${isEdit ? "opacity-60 cursor-not-allowed" : ""}`}
+          >
+            <option value="">Select Effect Type...</option>
+            {availableEffectTypes.map((type) => (
+              <option key={type} value={type}>
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </option>
+            ))}
+          </select>
+          {errors.effectType && (
+            <p className="text-xs text-red-500 mt-1">{errors.effectType.message as string}</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -491,11 +523,15 @@ export function EffectFormFooter({
   onCancel?: () => void;
   onSubmit: () => void;
 }) {
-  const handleSubmit = async () => {
-    const form = document.querySelector('form') as HTMLFormElement;
+  const handleSubmit = () => {
+    console.log("[EffectFormFooter] handleSubmit called");
+    const form = document.querySelector('form[data-entry-form]') as HTMLFormElement;
+    console.log("[EffectFormFooter] Found form:", form);
     if (form) {
+      console.log("[EffectFormFooter] Calling form.requestSubmit()");
       form.requestSubmit();
     } else {
+      console.log("[EffectFormFooter] No form found, calling onSubmit()");
       onSubmit();
     }
   };

@@ -3,7 +3,7 @@
 
 import type { CollectionConfig } from 'payload'
 import { DamageType, SpellTag } from '@core/enums'
-import { Collections } from '../constants'
+import { CharacterFields, Collections } from '../constants'
 import { isSuperuser, isEditorOrAbove, publicReadAccess } from '../access/roles'
 // Removed autoGenerateSlugHook import - IDs are now server-generated
 
@@ -37,6 +37,13 @@ export const Spells: CollectionConfig = {
   },
   // Removed auto-generation hook - IDs are now server-generated
   fields: [
+    {
+      name: CharacterFields.Project,
+      type: 'relationship',
+      relationTo: Collections.Projects,
+      required: true,
+      index: true,
+    },
     {
       name: 'spellId',
       type: 'text',

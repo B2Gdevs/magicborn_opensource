@@ -338,7 +338,7 @@ export function NewEntryMenu({
   const handleCreateEffect = createSaveHandler<EffectDefinition & { image?: number }>(
     EntryType.Effect,
     (effect) => ({
-      effectType: effect.id,
+      effectType: effect.effectType,
       name: effect.name,
       description: effect.description,
       category: effect.category,
@@ -639,12 +639,22 @@ export function NewEntryMenu({
           >
             <EffectForm
               initialValues={
-                (hasEditData ? editData : undefined) as (EffectDefinition & { image?: number }) | undefined
+                hasEditData ? payloadToEffect(editData) : undefined
               }
               isEdit={hasEditData}
               onSubmit={handleCreateEffect}
               onCancel={closeModal}
               saving={saving}
+              projectId={projectId}
+              editEntryId={
+                hasEditData && typeof editData === "object" && "id" in editData
+                  ? typeof editData.id === "number"
+                    ? editData.id
+                    : typeof editData.id === "string"
+                      ? parseInt(editData.id, 10) || undefined
+                      : undefined
+                  : undefined
+              }
             />
           </Modal>
         );

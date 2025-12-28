@@ -1,7 +1,7 @@
 // lib/payload/collections/ProjectMembers.ts
 // Project memberships - links users to projects with roles
 
-import type { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 import { isSuperuser, getAccessibleProjectIds } from '../access/helpers'
 
 export const ProjectMembers: CollectionConfig = {
@@ -83,6 +83,7 @@ export const ProjectMembers: CollectionConfig = {
     },
   ],
 }
+
 
 
 

@@ -11,14 +11,12 @@ import type { CharacterDefinition } from "@/lib/data/characters";
 import type { AlphabetVector } from "@core/types";
 import type { ElementXpMap, ElementAffinityMap } from "@/lib/packages/player/AffinityService";
 import { DamageType } from "@core/enums";
-import { MediaUpload, type MediaUploadRef } from "@components/ui/MediaUpload";
-import { CombatStatsEditor } from "@components/ui/CombatStatsEditor";
+import { type MediaUploadRef } from "@components/ui/MediaUpload";
 import { RuneFamiliarityEditor } from "@components/ui/RuneFamiliarityEditor";
 import { BasicInfoSection } from "@components/ui/BasicInfoSection";
 import { SidebarNav, type SidebarNavItem, type SidebarNavGroup } from "@components/ui/SidebarNav";
 import { useMagicbornMode } from "@/lib/payload/hooks/useMagicbornMode";
 import { useIdValidation } from "@/lib/hooks/useIdValidation";
-import { nameToId } from "@lib/utils/id-generation";
 import { checkIdUniqueness } from "@lib/validation/id-validation";
 import { EntryType } from "@lib/content-editor/constants";
 import { toast } from "@/lib/hooks/useToast";
@@ -28,7 +26,6 @@ import {
   Heart, 
   Zap, 
   Sparkles,
-  ChevronRight,
   Save,
   X
 } from "lucide-react";
@@ -340,7 +337,7 @@ export function CharacterForm({
 
       {/* Form Content */}
       <div className="flex-1 overflow-y-auto">
-        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
+        <form data-entry-form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6 p-6">
           {/* Basic Info and Description Sections */}
           <BasicInfoSection
             register={register}
@@ -610,7 +607,7 @@ export function CharacterFormFooter({
 }) {
   const handleSubmit = () => {
     // Find the form and trigger submit
-    const form = document.querySelector('form');
+    const form = document.querySelector('form[data-entry-form]') as HTMLFormElement;
     if (form) {
       form.requestSubmit();
     } else {

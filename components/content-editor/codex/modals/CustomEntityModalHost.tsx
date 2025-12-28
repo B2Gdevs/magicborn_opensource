@@ -5,11 +5,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
-import { SchemaEntityForm } from "../forms/SchemaEntityForm";
+import { SchemaEntityForm, SchemaEntityFormFooter } from "../forms/SchemaEntityForm";
 import { useCodexSidebarStore } from "../store/codexSidebar.store";
 import { getEntityType, getCustomEntity } from "@/lib/content-editor/codex/api/entityTypeApi";
 import { useCodexCustomEntityCommands } from "@/lib/content-editor/codex/commands/useCodexCustomEntityCommands";
 import { toast } from "@/lib/hooks/useToast";
+
+const FORM_ID = "custom-entity-form";
 
 export function CustomEntityModalHost({ projectId }: { projectId: string }) {
   const modalState = useCodexSidebarStore((s) => s.customEntityModal);
@@ -34,9 +36,9 @@ export function CustomEntityModalHost({ projectId }: { projectId: string }) {
       getEntityType(typeId),
       isEdit && entityId ? getCustomEntity(entityId) : Promise.resolve(null),
     ])
-      .then(([t, e]) => {
-        setTypeDoc(t);
-        setEntityDoc(e);
+      .then(([entityType, entityDoc]) => {
+        setTypeDoc(entityType);
+        setEntityDoc(entityDoc);
       })
       .catch((err) => {
         console.error(err);
@@ -54,19 +56,24 @@ export function CustomEntityModalHost({ projectId }: { projectId: string }) {
 
   const initialData = useMemo(() => {
     if (!isEdit || !entityDoc) return undefined;
-    // We store the full form data in `data`.
-    return entityDoc.data || {};
+    // Return structured data matching SchemaEntityFormData
+    return {
+      name: entityDoc.name || "",
+      description: entityDoc.description || "",
+      imageMediaId: typeof entityDoc.image === "object" ? entityDoc.image?.id : entityDoc.image,
+      data: entityDoc.data || {},
+    };
   }, [isEdit, entityDoc]);
 
   const handleSubmit = useCallback(
-    async (data: Record<string, any>) => {
+    async (formData: { name: string; description?: string; imageMediaId?: number; data?: Record<string, any> }) => {
       if (!typeId || saving) return;
       setSaving(true);
       try {
         if (isEdit && entityId) {
-          await commands.updateEntity(typeId, entityId, data);
+          await commands.updateEntity(typeId, entityId, formData);
         } else {
-          await commands.createEntity(typeId, data);
+          await commands.createEntity(typeId, formData);
         }
         close();
       } catch (e: any) {
@@ -103,6 +110,16 @@ export function CustomEntityModalHost({ projectId }: { projectId: string }) {
       onDelete={isEdit ? handleDelete : undefined}
       deleteLabel={isEdit ? `Delete ${entityDoc?.name || "Entry"}` : undefined}
       isDeleting={saving}
+      footer={
+        !loading && (
+          <SchemaEntityFormFooter
+            formId={FORM_ID}
+            saving={saving}
+            onCancel={close}
+            isEdit={isEdit}
+          />
+        )
+      }
     >
       {loading ? (
         <div className="p-8 text-center text-text-muted">Loading...</div>
@@ -110,12 +127,17 @@ export function CustomEntityModalHost({ projectId }: { projectId: string }) {
         <div className="p-2">
           <SchemaEntityForm
             schema={typeDoc?.schema || { type: "object", properties: {} }}
-            uiSchema={typeDoc?.uiSchema}
             initialData={initialData}
+            typeName={typeDoc?.name}
             saving={saving}
             onSubmit={handleSubmit}
-            onCancel={close}
+            projectId={projectId}
+            isEdit={isEdit}
+            entityId={entityId ?? undefined}
+            formId={FORM_ID}
+            hideFooter
           />
+
         </div>
       )}
     </Modal>

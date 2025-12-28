@@ -1,7 +1,7 @@
 // lib/payload/collections/CodexEntities.ts
 // Custom entity instances (data conforms to JSON Schema stored in CodexEntityTypes)
 
-import type { CollectionConfig } from "payload/types";
+import type { CollectionConfig } from "payload";
 import { isSuperuser, buildProjectWhereClause } from "../access/helpers";
 
 export const CodexEntities: CollectionConfig = {
@@ -50,6 +50,17 @@ export const CodexEntities: CollectionConfig = {
       name: "slug",
       type: "text",
       required: true,
+    },
+    {
+      name: "description",
+      type: "textarea",
+      required: false,
+    },
+    {
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+      required: false,
     },
     {
       name: "data",
