@@ -5,7 +5,7 @@
 
 import { Cloud, CloudOff, Loader2 } from "lucide-react";
 import { SaveStatus } from "@lib/content-editor/types";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 
 interface SaveStatusIndicatorProps {
   status: SaveStatus;

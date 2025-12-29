@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { X, BookOpen, Map, CheckCircle2, Circle, Loader2, AlertTriangle, Bug, Code, TestTube, HelpCircle, Lightbulb } from "lucide-react";
 import { SidebarNav, type SidebarNavItem } from "@components/ui/SidebarNav";
-import { allRoadmaps, currentStatus, nextSteps, getRoadmapByName, standardizedMediaUploadQuestions, standardizedMediaUploadRecommendations } from "@/lib/roadmaps";
+import { allRoadmaps, getRoadmapByName } from "@/lib/roadmaps";
 import type { RoadmapData } from "@/lib/roadmaps/roadmap-types";
 
 interface RoadmapDialogProps {
@@ -16,11 +16,6 @@ interface RoadmapDialogProps {
 
 type Section = "quick-guide" | "roadmap" | "issues";
 
-// Legacy roadmap data structure (kept for backward compatibility with quick-guide)
-const legacyRoadmapData = {
-  currentStatus,
-  nextSteps,
-};
 
 export function RoadmapDialog({ onClose }: RoadmapDialogProps) {
   const [activeSection, setActiveSection] = useState<Section>("quick-guide");
@@ -162,12 +157,6 @@ export function RoadmapDialog({ onClose }: RoadmapDialogProps) {
               <h3 className="text-lg font-semibold mb-1 text-text-primary">Current Status</h3>
               <div className="h-px bg-border mb-6" />
               <div className="space-y-2">
-                {legacyRoadmapData.currentStatus.map((item, index) => (
-                  <div key={index} className="flex items-start gap-2 p-2 bg-deep/30 rounded">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-text-secondary">{item}</span>
-                  </div>
-                ))}
               </div>
             </div>
 
@@ -175,12 +164,6 @@ export function RoadmapDialog({ onClose }: RoadmapDialogProps) {
               <h3 className="text-lg font-semibold mb-1 text-text-primary">Immediate Next Steps</h3>
               <div className="h-px bg-border mb-6" />
               <div className="space-y-2">
-                {legacyRoadmapData.nextSteps.map((step, index) => (
-                  <div key={index} className="flex items-start gap-2 p-2 bg-deep/30 rounded">
-                    <Circle className="w-4 h-4 text-ember-glow mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-text-secondary">{step}</span>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -202,114 +185,6 @@ export function RoadmapDialog({ onClose }: RoadmapDialogProps) {
               <p className="text-sm text-text-secondary">{selectedRoadmap.description}</p>
             </div>
             
-            {selectedRoadmap.phases.map((phase, phaseIndex) => (
-              <div key={phaseIndex}>
-                <div className="flex items-center gap-3 mb-4">
-                  <h3 className="text-lg font-semibold text-text-primary">{phase.title}</h3>
-                  <span className="px-2 py-1 text-xs bg-ember/20 text-ember-glow rounded border border-ember/30">
-                    {phase.priority}
-                  </span>
-                </div>
-                <div className="h-px bg-border mb-6" />
-                <div className="space-y-6">
-                  {phase.sections.map((section, sectionIndex) => (
-                    <div key={sectionIndex} className="p-4 bg-deep/50 border border-border rounded-lg">
-                      <h4 className="font-semibold text-text-primary mb-1">{section.title}</h4>
-                      <p className="text-xs text-text-muted mb-4">{section.goal}</p>
-                      <div className="space-y-2">
-                        {section.items.map((item, itemIndex) => (
-                          <div key={itemIndex} className="flex items-start gap-2">
-                            {item.completed ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                            ) : (
-                              <Circle className="w-4 h-4 text-text-muted mt-0.5 flex-shrink-0" />
-                            )}
-                            <span className={`text-sm ${item.completed ? "text-text-secondary line-through" : "text-text-secondary"}`}>
-                              {item.text}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {/* Questions & Recommendations - Only show for Standardized Media Upload roadmap */}
-            {selectedRoadmap.name === "Standardized Media Upload" && (
-              <>
-                {/* Questions Section */}
-                {standardizedMediaUploadQuestions && standardizedMediaUploadQuestions.length > 0 && (
-                  <div className="mt-12">
-                    <div className="flex items-center gap-3 mb-4">
-                      <HelpCircle className="w-5 h-5 text-blue-500" />
-                      <h3 className="text-lg font-semibold text-text-primary">Questions & Options</h3>
-                      <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded border border-blue-500/30">
-                        Discussion Needed
-                      </span>
-                    </div>
-                    <div className="h-px bg-border mb-6" />
-                    <div className="space-y-6">
-                      {standardizedMediaUploadQuestions.map((q, index) => (
-                        <div key={index} className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                          <h4 className="font-semibold text-text-primary mb-2 flex items-center gap-2">
-                            <HelpCircle className="w-4 h-4 text-blue-400" />
-                            {q.question}
-                          </h4>
-                          <div className="space-y-2 mb-3">
-                            {q.options.map((option, optIndex) => (
-                              <div key={optIndex} className="flex items-start gap-2 pl-4">
-                                <span className="text-blue-400 mt-1">•</span>
-                                <span className="text-sm text-text-secondary">{option}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="mt-3 pt-3 border-t border-blue-500/20">
-                            <p className="text-xs text-blue-300 flex items-start gap-2">
-                              <Lightbulb className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                              <span><strong className="text-blue-200">Recommendation:</strong> {q.recommendation}</span>
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Recommendations Section */}
-                {standardizedMediaUploadRecommendations && standardizedMediaUploadRecommendations.length > 0 && (
-                  <div className="mt-12">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Lightbulb className="w-5 h-5 text-yellow-500" />
-                      <h3 className="text-lg font-semibold text-text-primary">Technical Recommendations</h3>
-                      <span className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-400 rounded border border-yellow-500/30">
-                        Best Practices
-                      </span>
-                    </div>
-                    <div className="h-px bg-border mb-6" />
-                    <div className="space-y-6">
-                      {standardizedMediaUploadRecommendations.map((rec, index) => (
-                        <div key={index} className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                          <h4 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
-                            <Lightbulb className="w-4 h-4 text-yellow-400" />
-                            {rec.category}
-                          </h4>
-                          <div className="space-y-2">
-                            {rec.recommendations.map((recommendation, recIndex) => (
-                              <div key={recIndex} className="flex items-start gap-2 pl-4">
-                                <span className="text-yellow-400 mt-1">•</span>
-                                <span className="text-sm text-text-secondary">{recommendation}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
           </div>
         );
 

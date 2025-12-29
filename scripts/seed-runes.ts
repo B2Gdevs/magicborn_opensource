@@ -4,7 +4,6 @@
 
 import { getPayload } from 'payload'
 import config from '../payload.config'
-import { seedRunes } from '../lib/payload/seed/gameData'
 
 async function seed() {
   const projectId = process.argv[2] ? parseInt(process.argv[2], 10) : 1
@@ -17,8 +16,6 @@ async function seed() {
   console.log(`=== Seeding Runes for Project ${projectId} ===\n`)
 
   const payload = await getPayload({ config })
-
-  await seedRunes(payload, projectId)
 
   console.log('\n=== Runes Seeding Complete ===')
   process.exit(0)

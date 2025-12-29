@@ -8,7 +8,7 @@ import { Download, MoreVertical, HelpCircle } from "lucide-react";
 import { SaveStatus } from "@lib/content-editor/types";
 import { Modal } from "@components/ui/Modal";
 import { Button } from "@components/ui/Button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 interface PageEditorProps {

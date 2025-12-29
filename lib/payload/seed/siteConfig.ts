@@ -54,7 +54,7 @@ export async function seedSiteConfig(payload: Payload): Promise<void> {
       slug: Globals.SiteConfig,
     })
 
-    if (existing?.heroContent?.length > 0) {
+    if (existing?.heroContent?.length || 0 > 0) {
       console.log('  Site config already has hero content, skipping')
       return
     }
@@ -63,18 +63,18 @@ export async function seedSiteConfig(payload: Payload): Promise<void> {
     await payload.updateGlobal({
       slug: Globals.SiteConfig,
       data: {
-        ...existing,
+        ...(existing as any),
         ...DEFAULT_SITE_CONFIG,
         // Keep any existing values that were set
-        siteName: existing?.siteName || DEFAULT_SITE_CONFIG.siteName,
-        tagline: existing?.tagline || DEFAULT_SITE_CONFIG.tagline,
+        siteName: (existing as any)?.siteName || DEFAULT_SITE_CONFIG.siteName,
+        tagline: (existing as any)?.tagline || DEFAULT_SITE_CONFIG.tagline,
       },
     })
   } catch {
     // Global doesn't exist yet, will create
     await payload.updateGlobal({
       slug: Globals.SiteConfig,
-      data: DEFAULT_SITE_CONFIG,
+      data: DEFAULT_SITE_CONFIG as any,
     })
   }
 

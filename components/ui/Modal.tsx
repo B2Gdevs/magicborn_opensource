@@ -5,7 +5,7 @@
 
 import { ReactNode, useState } from "react";
 import { X, Trash2 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 
 interface ModalProps {
   isOpen: boolean;

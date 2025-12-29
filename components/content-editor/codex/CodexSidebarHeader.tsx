@@ -6,7 +6,7 @@
 
 import { FolderOpen, FolderClosed, Undo2, Redo2, Plus, Upload } from "lucide-react";
 import { CodexSearch } from "./CodexSearch";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 
 interface CodexSidebarHeaderProps {
   isCollapsed: boolean;

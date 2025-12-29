@@ -4,7 +4,7 @@
 "use client";
 
 import { Network, GitBranch, FileText } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 
 export enum DetailTab {
   Detail = "detail",
