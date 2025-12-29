@@ -33,7 +33,7 @@ export async function seedEffects(payload: Payload): Promise<void> {
     await payload.create({
       collection: Collections.Effects,
       data: {
-        effectType: def.id,
+        effectType: def.id as any,
         name: def.name,
         description: def.description,
         category: def.category,
@@ -47,6 +47,7 @@ export async function seedEffects(payload: Payload): Promise<void> {
         },
         _status: 'published',
       },
+      draft: false,
     })
     console.log(`  Created effect: ${def.name}`)
   }

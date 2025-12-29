@@ -104,8 +104,8 @@ export const Locations: CollectionConfig = {
           admin: {
             description: 'Left edge cell coordinate (0-7 for 8x8 grid)',
           },
-          validate: (value: number) => {
-            if (value !== undefined && (value < 0 || value > 7)) {
+          validate: (value: number | null | undefined) => {
+            if (value !== undefined && value !== null && (value < 0 || value > 7)) {
               return 'Cell X must be between 0 and 7';
             }
             return true;
@@ -117,8 +117,8 @@ export const Locations: CollectionConfig = {
           admin: {
             description: 'Top edge cell coordinate (0-7 for 8x8 grid)',
           },
-          validate: (value: number) => {
-            if (value !== undefined && (value < 0 || value > 7)) {
+          validate: (value: number | null | undefined) => {
+            if (value !== undefined && value !== null && (value < 0 || value > 7)) {
               return 'Cell Y must be between 0 and 7';
             }
             return true;
@@ -130,8 +130,8 @@ export const Locations: CollectionConfig = {
           admin: {
             description: 'Width in cells (1-8)',
           },
-          validate: (value: number) => {
-            if (value !== undefined && (value < 1 || value > 8)) {
+          validate: (value: number | null | undefined) => {
+            if (value !== undefined && value !== null && (value < 1 || value > 8)) {
               return 'Width must be between 1 and 8';
             }
             return true;
@@ -143,8 +143,8 @@ export const Locations: CollectionConfig = {
           admin: {
             description: 'Height in cells (1-8)',
           },
-          validate: (value: number) => {
-            if (value !== undefined && (value < 1 || value > 8)) {
+          validate: (value: number | null | undefined) => {
+            if (value !== undefined && value !== null && (value < 1 || value > 8)) {
               return 'Height must be between 1 and 8';
             }
             return true;

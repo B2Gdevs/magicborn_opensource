@@ -9,6 +9,7 @@ import {
   ToolCall,
   ToolResponse,
   ChatCompletionRequest,
+  ToolExecutor,
 } from "./types";
 
 export interface AgentOptions {
@@ -37,7 +38,7 @@ export class AIAgent {
   /**
    * Register tools with the agent
    */
-  registerTools(tools: import("./tools/game-data-tools").ToolExecutor[]): void {
+  registerTools(tools: ToolExecutor[]): void {
     tools.forEach((tool) => this.toolRegistry.register(tool));
   }
 
@@ -222,6 +223,7 @@ export class AIAgent {
     }
   }
 }
+
 
 
 

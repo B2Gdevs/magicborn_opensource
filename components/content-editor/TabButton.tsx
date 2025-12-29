@@ -4,12 +4,12 @@
 "use client";
 
 import { LucideIcon } from "lucide-react";
-import { ContentEditorTab } from "@lib/content-editor/types";
+import { DetailTab } from "./DetailToolbar";
 
 interface TabButtonProps {
-  tab: ContentEditorTab;
+  tab: DetailTab;
   active: boolean;
-  onClick: (tab: ContentEditorTab) => void;
+  onClick: (tab: DetailTab) => void;
   icon: LucideIcon;
 }
 

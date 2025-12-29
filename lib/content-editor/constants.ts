@@ -53,7 +53,8 @@ export const CATEGORY_TO_COLLECTION: Record<CodexCategory, string> = {
 };
 
 // Reverse mapping: EntryType to CodexCategory
-export const ENTRY_TYPE_TO_CATEGORY: Record<EntryType, CodexCategory> = {
+// Note: Act, Chapter, and Page don't have categories (they're content structure, not codex entries)
+export const ENTRY_TYPE_TO_CATEGORY: Partial<Record<EntryType, CodexCategory>> = {
   [EntryType.Character]: CodexCategory.Characters,
   [EntryType.Creature]: CodexCategory.Creatures,
   [EntryType.Region]: CodexCategory.Regions,
@@ -74,5 +75,8 @@ export const ENTRY_TYPE_TO_COLLECTION: Record<EntryType, string> = {
   [EntryType.Spell]: Collections.Spells,
   [EntryType.Rune]: Collections.Runes,
   [EntryType.Effect]: Collections.Effects,
+  [EntryType.Act]: Collections.Acts,
+  [EntryType.Chapter]: Collections.Chapters,
+  [EntryType.Page]: Collections.Pages,
 };
 

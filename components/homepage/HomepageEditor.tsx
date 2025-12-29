@@ -99,7 +99,7 @@ export function HomepageEditor({ siteConfig, activeProjectId, onClose }: Homepag
     try {
       // If activeProject is set, save to project's homepageConfig instead of SiteConfig
       if (activeProjectId) {
-        const projectId = typeof activeProjectId === 'object' ? activeProjectId.id : activeProjectId;
+        const projectId = String(activeProjectId);
         
         // Build homepageConfig (only hero and heroContent, not siteName/tagline/features)
         const homepageConfig: any = {};

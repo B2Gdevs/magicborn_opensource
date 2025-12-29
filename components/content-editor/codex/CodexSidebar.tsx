@@ -200,40 +200,58 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
     (
       e: React.MouseEvent,
       type: "category" | "entry",
-      categoryId: CodexCategory,
+      categoryId: CodexCategory | string,
       entry?: CodexEntry
     ) => {
       e.preventDefault();
       e.stopPropagation();
-      openContextMenu({
-        x: e.clientX,
-        y: e.clientY,
-        type,
-        categoryId,
-        entry,
-      });
+      // Only handle system categories (CodexCategory), not custom types
+      if (VALID_CODEX_CATEGORIES.has(categoryId as CodexCategory)) {
+        openContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          type,
+          categoryId: categoryId as CodexCategory,
+          entry,
+        });
+      }
     },
     [openContextMenu]
+  );
+
+  // Wrap getEntries to accept CodexCategory | string for selection handler
+  const getEntriesForSelection = useCallback(
+    (categoryId: CodexCategory | string) => {
+      // Only handle system categories (CodexCategory), not custom types
+      if (VALID_CODEX_CATEGORIES.has(categoryId as CodexCategory)) {
+        return getEntries(categoryId as CodexCategory);
+      }
+      return [];
+    },
+    [getEntries]
   );
 
   // Wrap handleEntryClick to include selection logic
   const handleEntryClick = useCallback(
     (
       e: React.MouseEvent,
-      categoryId: CodexCategory,
+      categoryId: CodexCategory | string,
       entryId: string,
       index: number
     ) => {
-      handleSelectionClick(e, categoryId, entryId, index, getEntries);
+      handleSelectionClick(e, categoryId, entryId, index, getEntriesForSelection);
     },
-    [handleSelectionClick, getEntries]
+    [handleSelectionClick, getEntriesForSelection]
   );
 
   const handleEntryDoubleClick = useCallback(
-    (e: React.MouseEvent, categoryId: CodexCategory, entryId: string) => {
+    (e: React.MouseEvent, categoryId: CodexCategory | string, entryId: string) => {
       e.preventDefault();
       e.stopPropagation();
-      commands.editEntry(categoryId, entryId);
+      // Only handle system categories (CodexCategory), not custom types
+      if (VALID_CODEX_CATEGORIES.has(categoryId as CodexCategory)) {
+        commands.editEntry(categoryId as CodexCategory, entryId);
+      }
     },
     [commands]
   );
@@ -476,12 +494,25 @@ export function CodexSidebar({ projectId, selectedCategory, onCategorySelect }: 
         selectedEntries={selectedEntries}
         onEntryClick={handleEntryClick}
         onEntryDoubleClick={handleEntryDoubleClick}
-        onEdit={commands.editEntry}
-        onDuplicate={commands.duplicateOne}
+        onEdit={(categoryId, entryId) => {
+          // Only handle system categories (CodexCategory), not custom types
+          if (VALID_CODEX_CATEGORIES.has(categoryId as CodexCategory)) {
+            commands.editEntry(categoryId as CodexCategory, entryId);
+          }
+        }}
+        onDuplicate={(categoryId, entryId) => {
+          // Only handle system categories (CodexCategory), not custom types
+          if (VALID_CODEX_CATEGORIES.has(categoryId as CodexCategory)) {
+            commands.duplicateOne(categoryId as CodexCategory, entryId);
+          }
+        }}
         onDelete={(categoryId, entryId) => {
-          const entries = getEntries(categoryId);
-          const entry = entries.find((e) => e.id === entryId);
-          commands.trashOne(categoryId, entryId, entry?.name);
+          // Only handle system categories (CodexCategory), not custom types
+          if (VALID_CODEX_CATEGORIES.has(categoryId as CodexCategory)) {
+            const entries = getEntries(categoryId as CodexCategory);
+            const entry = entries.find((e) => e.id === entryId);
+            commands.trashOne(categoryId as CodexCategory, entryId, entry?.name);
+          }
         }}
         isCollapsed={isCollapsed}
         customTypes={(entityTypesQuery.data ?? []).map((t: any) => ({ id: String(t.id), name: t.name }))}

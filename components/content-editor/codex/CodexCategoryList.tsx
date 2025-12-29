@@ -23,15 +23,15 @@ interface CodexCategoryListProps {
   selectedCategory: CodexCategory | null;
   expanded: Record<CodexCategory, boolean>;
   onToggleCategory: (categoryId: CodexCategory) => void;
-  onContextMenu: (e: React.MouseEvent, type: "category" | "entry", categoryId: CodexCategory, entry?: CodexEntry) => void;
+  onContextMenu: (e: React.MouseEvent, type: "category" | "entry", categoryId: CodexCategory | string, entry?: CodexEntry) => void;
   getEntries: (categoryId: CodexCategory) => CodexEntry[];
   isLoading: (categoryId: CodexCategory) => boolean;
   selectedEntries: Set<string>;
-  onEntryClick: (e: React.MouseEvent, categoryId: CodexCategory, entryId: string, index: number) => void;
-  onEntryDoubleClick: (e: React.MouseEvent, categoryId: CodexCategory, entryId: string) => void;
-  onEdit: (categoryId: CodexCategory, entryId: string) => void;
-  onDuplicate: (categoryId: CodexCategory, entryId: string) => void;
-  onDelete: (categoryId: CodexCategory, entryId: string) => void;
+  onEntryClick: (e: React.MouseEvent, categoryId: CodexCategory | string, entryId: string, index: number) => void;
+  onEntryDoubleClick: (e: React.MouseEvent, categoryId: CodexCategory | string, entryId: string) => void;
+  onEdit: (categoryId: CodexCategory | string, entryId: string) => void;
+  onDuplicate: (categoryId: CodexCategory | string, entryId: string) => void;
+  onDelete: (categoryId: CodexCategory | string, entryId: string) => void;
   isCollapsed: boolean;
 
   // Custom Types (rendered in the same list)

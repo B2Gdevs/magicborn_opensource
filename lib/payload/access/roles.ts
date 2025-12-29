@@ -81,7 +81,7 @@ export const publicReadAccess = ({ req }: AccessArgs) => {
 /**
  * Public read with isPublic flag check
  */
-export const publicReadWithFlag = ({ req }: AccessArgs) => {
+export const publicReadWithFlag = ({ req }: AccessArgs): boolean | { and: Array<{ _status: { equals: string } } | { isPublic: { equals: boolean } }> } => {
   if (req.user && isContributorOrAbove({ req })) {
     return true
   }

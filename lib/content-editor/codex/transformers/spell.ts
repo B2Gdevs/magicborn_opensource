@@ -1,7 +1,7 @@
 // spell.ts
 // Spell entity transformers
 
-import type { NamedSpellBlueprint } from "@/lib/data/namedSpells";
+import type { NamedSpellBlueprint, NamedSpellId } from "@/lib/data/namedSpells";
 
 /**
  * Transform Payload API response to SpellForm data
@@ -12,7 +12,7 @@ export function payloadToSpell(payload: unknown): Partial<NamedSpellBlueprint> |
   const p = payload as Record<string, unknown>;
   
   return {
-    id: (p.spellId as string) || (p.id?.toString() || ""),
+    id: (p.spellId as NamedSpellId | undefined),
     name: (p.name as string) || "",
     description: (p.description as string) || "",
     tags: (p.tags as NamedSpellBlueprint["tags"]) || [],
@@ -20,7 +20,7 @@ export function payloadToSpell(payload: unknown): Partial<NamedSpellBlueprint> |
     allowedExtraRunes: p.allowedExtraRunes as NamedSpellBlueprint["allowedExtraRunes"],
     minDamageFocus: p.minDamageFocus as NamedSpellBlueprint["minDamageFocus"],
     minTotalPower: p.minTotalPower as number,
-    requiresNamedSourceId: p.requiresNamedSourceId as string,
+    requiresNamedSourceId: p.requiresNamedSourceId as NamedSpellId | undefined,
     minRuneFamiliarity: p.minRuneFamiliarity as NamedSpellBlueprint["minRuneFamiliarity"],
     minTotalFamiliarityScore: p.minTotalFamiliarityScore as number,
     requiredFlags: p.requiredFlags as NamedSpellBlueprint["requiredFlags"],

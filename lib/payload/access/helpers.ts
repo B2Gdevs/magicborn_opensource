@@ -1,7 +1,9 @@
 // lib/payload/access/helpers.ts
 // Access control helpers for multi-tenant Payload setup
 
-import type { AccessArgs } from 'payload/types'
+import type { PayloadRequest } from 'payload'
+
+type AccessArgs = { req: PayloadRequest }
 
 /**
  * Check if user is superuser
@@ -21,7 +23,7 @@ export async function getAccessibleProjectIds({ req }: AccessArgs): Promise<stri
       collection: 'projects',
       limit: 1000, // Adjust as needed
     })
-    return projects.docs.map(p => p.id)
+    return projects.docs.map(p => String(p.id))
   }
 
   if (!req.user?.id) {
@@ -39,7 +41,15 @@ export async function getAccessibleProjectIds({ req }: AccessArgs): Promise<stri
     limit: 1000,
   })
 
-  return memberships.docs.map(m => typeof m.project === 'string' ? m.project : m.project.id)
+  return memberships.docs.map(m => {
+    if (typeof m.project === 'string') {
+      return m.project;
+    } else if (typeof m.project === 'number') {
+      return String(m.project);
+    } else {
+      return String(m.project.id);
+    }
+  })
 }
 
 /**

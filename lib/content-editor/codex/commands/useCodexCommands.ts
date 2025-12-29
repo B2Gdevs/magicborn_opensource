@@ -18,7 +18,7 @@ import {
   bulkRestore,
   getCollectionFromCategory,
 } from "../api/codexApi";
-import type { CodexEntry } from "../types/codex.types";
+import type { CodexEntry } from "@/components/content-editor/codex/types/codex.types";
 
 interface UseCodexCommandsArgs {
   projectId: string;
@@ -88,7 +88,16 @@ export function useCodexCommands({
           action: {
             label: "Undo",
             onClick: async () => {
-              await undoLast();
+              const op = popUndo();
+              if (op) {
+                try {
+                  await op.undo();
+                  toast.success(`Undid: ${op.label}`);
+                } catch (error) {
+                  toast.error("Failed to undo operation");
+                  pushHistory(op);
+                }
+              }
             },
           },
         });
@@ -169,7 +178,16 @@ export function useCodexCommands({
           action: {
             label: "Undo",
             onClick: async () => {
-              await undoLast();
+              const op = popUndo();
+              if (op) {
+                try {
+                  await op.undo();
+                  toast.success(`Undid: ${op.label}`);
+                } catch (error) {
+                  toast.error("Failed to undo operation");
+                  pushHistory(op);
+                }
+              }
             },
           },
         });
@@ -312,7 +330,16 @@ export function useCodexCommands({
             action: {
               label: "Undo",
               onClick: async () => {
-                await undoLast();
+                const op = popUndo();
+                if (op) {
+                  try {
+                    await op.undo();
+                    toast.success(`Undid: ${op.label}`);
+                  } catch (error) {
+                    toast.error("Failed to undo operation");
+                    pushHistory(op);
+                  }
+                }
               },
             },
           }

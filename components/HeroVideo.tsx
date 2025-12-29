@@ -20,7 +20,13 @@ export default function HeroVideo({ video, children, fallbackImage, loopVideos =
   
   // Use CMS video URLs if provided, otherwise fall back to defaults
   const allVideos: HeroVideoConfig[] = videoUrls?.length 
-    ? videoUrls.map(src => ({ src, thumbnail: '' }))
+    ? videoUrls.map((src, index) => ({ 
+        id: `cms-video-${index}`,
+        src,
+        title: `Video ${index + 1}`,
+        description: '',
+        thumbnail: ''
+      }))
     : defaultVideos;
   const currentVideo = video || allVideos[currentVideoIndex];
   const imageFallback = fallbackImage || currentVideo.thumbnail || "/design/images/new_tarro.webp";

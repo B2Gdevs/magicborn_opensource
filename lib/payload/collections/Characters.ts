@@ -55,7 +55,7 @@ export const Characters: CollectionConfig = {
       admin: {
         description: 'Optional URL-friendly identifier. Leave empty for server-generated ID.',
       },
-      validate: (value: string) => {
+      validate: (value: string | null | undefined) => {
         // Only validate format if provided, but allow empty (will be server-generated)
         if (value && value.trim() && !/^[a-z0-9_-]+$/.test(value)) {
           return 'Slug must contain only lowercase letters, numbers, underscores, and hyphens'

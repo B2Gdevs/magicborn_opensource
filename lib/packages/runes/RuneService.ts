@@ -2,7 +2,7 @@
 // Service for loading and managing runes
 
 import type { RuneCode } from "@core/types";
-import type { RuneDefinition } from "@/lib/data/runes";
+import type { RuneDefinition, RuneDef } from "@/lib/data/runes";
 
 /**
  * Load runes from Payload CMS with fallback to hardcoded data.

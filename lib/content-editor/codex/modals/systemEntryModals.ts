@@ -43,7 +43,7 @@ registerEntryModal<CharacterDefinition, unknown>({
   displayName: "Character",
   FormComponent: CharacterForm as any,
   FooterComponent: CharacterFormFooter as any,
-  payloadToForm: (payload) => payloadToCharacter(payload),
+  payloadToForm: (payload) => payloadToCharacter(payload) as CharacterDefinition,
   formToPayload: (data, projectId) => characterToPayload(data as any, projectId),
   defaultValues: undefined,
 });

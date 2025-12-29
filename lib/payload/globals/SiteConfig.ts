@@ -99,7 +99,7 @@ export const SiteConfig: GlobalConfig = {
             {
               name: 'style',
               type: 'select',
-              options: HERO_CONTENT_STYLE_OPTIONS,
+              options: [...HERO_CONTENT_STYLE_OPTIONS],
               defaultValue: 'normal',
             },
         {
@@ -112,7 +112,7 @@ export const SiteConfig: GlobalConfig = {
             {
               name: 'color',
               type: 'select',
-              options: HERO_CONTENT_COLOR_OPTIONS,
+              options: [...HERO_CONTENT_COLOR_OPTIONS],
             },
       ],
     },

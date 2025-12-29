@@ -1,7 +1,7 @@
 // lib/payload/collections/ProjectSnapshots.ts
 // Project-level snapshots - captures entire project state at a point in time
 
-import type { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 import { isSuperuser, buildProjectWhereClause } from '../access/helpers'
 
 export const ProjectSnapshots: CollectionConfig = {
