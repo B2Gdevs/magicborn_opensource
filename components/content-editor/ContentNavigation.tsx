@@ -73,9 +73,7 @@ export function ContentNavigation({
           <ProjectHeader projectId={projectId} />
           <div className="w-px h-6 bg-border/30" />
           <ProjectSwitcher 
-            projectId={projectId} 
-            activeView={activeView}
-            onViewChange={onViewChange}
+            projectId={projectId}
           />
           <SaveStatusIndicator status={saveStatus} lastSaved={lastSaved} />
         </div>
