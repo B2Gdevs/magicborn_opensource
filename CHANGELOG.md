@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Documentation**
+  - Added Payload `handleEndpoints` migration plan covering effort, media handling, and risks.
+  - Created agent-facing roadmap with current focus, near-term tasks, and decision log.
+  - Added repository-wide `AGENTS.md` with priorities, workflow notes, and style guidance for contributors.
 - **Landing Page Redesign**
   - Hero video section with looping videos
   - Magicborn logo prominently displayed
